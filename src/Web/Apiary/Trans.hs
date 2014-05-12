@@ -2,9 +2,12 @@ module Web.Apiary.Trans
     ( 
     -- * Action Monad
       ActionT
+    -- ** getter
     , getRequest
+    -- ** setter
     , status
     , addHeader
+    -- *** body
     , file
     , lbs
     , builder
@@ -14,11 +17,14 @@ module Web.Apiary.Trans
     , method, stdMethod
 
     -- * Apiary Monad
-    , runApiaryT
     , ApplicationM
+    , ApiaryT
+    , runApiaryT
+    , ApiaryConfig(..)
+
+    -- ** raw route functions
     , addRoute
     , function
-    , ApiaryConfig(..)
 
     -- * Reexport
     , Default(..)
@@ -26,7 +32,8 @@ module Web.Apiary.Trans
     , Alternative(..)
     ) where
 
-import Data.Default
 import Web.Apiary.Trans.Internal
+
+import Data.Default
 import Network.HTTP.Types
 import Control.Applicative

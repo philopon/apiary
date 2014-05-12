@@ -10,8 +10,11 @@ import Control.Monad
 import Network.Wai
 import Text.Read
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
+import Data.Int
+import Data.Word
 
 import Web.Apiary.Trans.Internal
 
@@ -30,14 +33,31 @@ capture = QuasiQuoter
 class Param a where
   readParam :: T.Text -> Maybe a
 
-instance Param Int where
-    readParam = readMaybe . T.unpack
+instance Param Char where
+    readParam s | T.null s  = Nothing
+                | otherwise = Just $ T.head s
 
-instance Param Double where
-    readParam = readMaybe . T.unpack
+instance Param Int     where readParam = readMaybe . T.unpack
+instance Param Int8    where readParam = readMaybe . T.unpack
+instance Param Int16   where readParam = readMaybe . T.unpack
+instance Param Int32   where readParam = readMaybe . T.unpack
+instance Param Int64   where readParam = readMaybe . T.unpack
+instance Param Integer where readParam = readMaybe . T.unpack
+
+instance Param Word   where readParam = readMaybe . T.unpack
+instance Param Word8  where readParam = readMaybe . T.unpack
+instance Param Word16 where readParam = readMaybe . T.unpack
+instance Param Word32 where readParam = readMaybe . T.unpack
+instance Param Word64 where readParam = readMaybe . T.unpack
+
+instance Param Double  where readParam = readMaybe . T.unpack
+instance Param Float   where readParam = readMaybe . T.unpack
 
 instance Param T.Text where
     readParam = Just
+
+instance Param TL.Text where
+    readParam = Just . TL.fromStrict
 
 instance Param String where
     readParam = Just . T.unpack
