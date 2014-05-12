@@ -1,0 +1,77 @@
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
+
+module Web.Apiary.Route.Internal where
+
+import Control.Monad
+import Network.Wai
+import Text.Read
+import qualified Data.Text as T
+import Language.Haskell.TH
+import Language.Haskell.TH.Quote
+
+import Web.Apiary.Trans.Internal
+
+preCapture :: [Char] -> [T.Text]
+preCapture ('/':s) = T.splitOn "/" $ T.pack s
+preCapture s       = T.splitOn "/" $ T.pack s
+
+capture :: QuasiQuoter
+capture = QuasiQuoter
+    { quoteExp  = capture' . preCapture
+    , quotePat  = \_ -> error "No quotePat."
+    , quoteType = \_ -> error "No quoteType."
+    , quoteDec  = \_ -> error "No quoteDec."
+    }
+
+class Param a where
+  readParam :: T.Text -> Maybe a
+
+instance Param Int where
+    readParam = readMaybe . T.unpack
+
+instance Param Double where
+    readParam = readMaybe . T.unpack
+
+instance Param T.Text where
+    readParam = Just
+
+instance Param String where
+    readParam = Just . T.unpack
+
+integralE :: Integral i => i -> ExpQ
+integralE = litE . integerL . fromIntegral
+
+capture' :: [T.Text] -> ExpQ
+capture' cap = [| addRoute . \ $(varP $ mkName "action") -> do
+    req <- getRequest 
+    $(caseE [|pathInfo req|] 
+        [ match pat   (guards >>= \g -> body >>= \b -> normalB (doE $ g ++ b)) []
+        , match wildP (normalB  [|mzero|]) []
+        ]) |]
+  where
+    varNames = zip cap $ map (('v':) . show) [0 :: Int ..]
+    pat      = listP $ map (varP . mkName . snd) varNames
+    isType s | T.null s        = False
+             | T.head s == ':' = True
+             | otherwise       = False
+    guards = return $ 
+        map (\(a,v) -> noBindS [|guard $ $(varE $ mkName v) == $(stringE $ T.unpack a) |]) $
+        filter (not . isType . fst) varNames
+    body = do
+        let ss = map (\(a,v) -> do
+                ty <- lookupTypeName ( T.unpack $ T.tail a) >>= \case
+                    Nothing -> fail $ "capture': type not found: " ++ T.unpack (T.tail a)
+                    Just ty -> return ty
+                -- let ty = mkName . T.unpack $ T.tail a
+                bindS (varP . mkName $ v ++ "'")
+                    [| maybe mzero return $ 
+                       (readParam $(varE $ mkName v) :: Maybe $(conT ty) ) |])
+                    $ filter (isType . fst) varNames
+            rt = noBindS $ foldl (\f i -> f `appE` varE (mkName i))
+                (varE $ mkName "action") . map ((++ "'") . snd) $ filter (isType . fst) varNames
+        return $ ss ++ [rt]
+
