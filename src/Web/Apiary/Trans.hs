@@ -13,18 +13,17 @@ module Web.Apiary.Trans
     , builder
     , source
 
-    -- ** Filtering Requests
-    , method, stdMethod
-
     -- * Apiary Monad
     , ApplicationM
     , ApiaryT
     , runApiaryT
     , ApiaryConfig(..)
 
-    -- ** raw route functions
-    , addRoute
-    , function
+    -- ** Filtering Requests
+    , method, stdMethod, function, root
+
+    -- ** excute action
+    , action, action_
 
     -- * Reexport
     , Default(..)
