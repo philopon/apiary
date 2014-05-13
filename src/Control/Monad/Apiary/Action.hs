@@ -8,12 +8,15 @@ module Control.Monad.Apiary.Action
     , getRequest
     -- ** setter
     , status
-    , addHeader, setHeaders
-    -- *** body
+    -- *** response header
+    , addHeader, setHeaders, modifyHeader
+    , contentType
+    -- *** response body
     , file'
     , builder
     , lbs
     , source
+    , json
     -- * Reexport
     , def
     ) where

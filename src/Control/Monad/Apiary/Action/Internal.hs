@@ -5,6 +5,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -24,6 +26,10 @@ import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.Conduit
+import Data.Aeson
+#ifdef DefineMonadLoggerInstance
+import Control.Monad.Logger
+#endif
 
 data ApiaryConfig m = ApiaryConfig
     { -- | call when no handler matched.
@@ -113,27 +119,46 @@ instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
     liftBaseWith = defaultLiftBaseWith StMT
     restoreM     = defaultRestoreM   unStMT
 
+#ifdef DefineMonadLoggerInstance
+instance MonadLogger m => MonadLogger (ActionT m) where
+    monadLoggerLog loc src lv msg = lift $ monadLoggerLog loc src lv msg
+#endif
+
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT ask
 
+modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
+modifyState f = ActionT . lift $ modify f
+
 status :: Monad m => Status -> ActionT m ()
-status st = ActionT . lift $ modify (\s -> s { actionStatus = st } )
+status st = modifyState (\s -> s { actionStatus = st } )
+
+modifyHeader :: Monad m => (ResponseHeaders -> ResponseHeaders) -> ActionT m ()
+modifyHeader f = modifyState (\s -> s {actionHeaders = f $ actionHeaders s } )
 
 addHeader :: Monad m => Header -> ActionT m ()
-addHeader h = ActionT . lift $ modify (\s -> s { actionHeaders = h : actionHeaders s } )
+addHeader h = modifyHeader (h:)
 
 setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
-setHeaders hs = ActionT . lift $ modify (\s -> s { actionHeaders = hs } )
+setHeaders hs = modifyHeader (const hs)
+
+contentType :: Monad m => S.ByteString -> ActionT m ()
+contentType c = modifyHeader (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
 
 file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file' f p = ActionT . lift $ modify (\s -> s { actionBody = File f p } )
+file' f p = modifyState (\s -> s { actionBody = File f p } )
 
 builder :: Monad m => Builder -> ActionT m ()
-builder b = ActionT . lift $ modify (\s -> s { actionBody = Builder b } )
+builder b = modifyState (\s -> s { actionBody = Builder b } )
 
 lbs :: Monad m => L.ByteString -> ActionT m ()
-lbs l = ActionT . lift $ modify (\s -> s { actionBody = LBS l } )
+lbs l = modifyState (\s -> s { actionBody = LBS l } )
 
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
-source src = ActionT . lift $ modify (\s -> s { actionBody = SRC src } )
+source src = modifyState (\s -> s { actionBody = SRC src } )
 
+-- | set body to j and set Content-Type to \"application/json\"
+json :: (ToJSON j, Monad m) => j -> ActionT m ()
+json j = do
+    contentType "application/json"
+    lbs $ encode j

@@ -1,8 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Control.Monad.Apiary.Filter
     ( method, stdMethod, root
-    , function
+    , ssl, hasQuery
+    , function, function'
     -- * Reexport
     , StdMethod(..)
     ) where
@@ -10,6 +12,7 @@ module Control.Monad.Apiary.Filter
 import Control.Monad
 import Network.Wai
 import Network.HTTP.Types
+import qualified Data.ByteString as S
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Internal
@@ -20,8 +23,17 @@ function f = focus $ \c -> getRequest >>= \r -> case f c r of
     Nothing -> mzero
     Just c' -> return c'
 
+function' :: Monad m => (Request -> Bool) -> ApiaryT c m a -> ApiaryT c m a
+function' f = function $ \c r -> if f r then Just c else Nothing
+
+ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
+ssl = function' isSecure
+
+hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
+hasQuery q = function' (any ((q ==) . fst) . queryString)
+
 method :: Monad m => Method -> ApiaryT c m a -> ApiaryT c m a
-method m = function $ \c r -> if requestMethod r == m then Just c else Nothing
+method m = function' $ ((m ==) . requestMethod)
 
 stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
 stdMethod = method . renderStdMethod
