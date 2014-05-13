@@ -17,10 +17,13 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary
-                       Web.Apiary.Route
-                       Web.Apiary.Trans
-  other-modules:       Web.Apiary.Route.Internal
-                       Web.Apiary.Trans.Internal
+                       Web.Apiary.QQ
+                       Control.Monad.Apiary
+                       Control.Monad.Apiary.Filter
+                       Control.Monad.Apiary.Action
+  other-modules:       Web.Apiary.QQ.Capture
+                       Control.Monad.Apiary.Internal
+                       Control.Monad.Apiary.Action.Internal
   other-extensions:    TemplateHaskell
                        FlexibleInstances
                        LambdaCase

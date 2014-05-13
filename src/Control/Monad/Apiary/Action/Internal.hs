@@ -1,24 +1,18 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TupleSections #-}
 
-module Web.Apiary.Trans.Internal where
+module Control.Monad.Apiary.Action.Internal where
 
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Base
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
@@ -32,9 +26,13 @@ import qualified Data.ByteString.Lazy as L
 import Data.Conduit
 
 data ApiaryConfig m = ApiaryConfig
-    { notFound      :: ApplicationM m 
+    { -- | call when no handler matched.
+      notFound      :: ApplicationM m 
+      -- | used unless call 'status' function.
     , defaultStatus :: Status
+      -- | initial headers.
     , defaultHeader :: ResponseHeaders
+      -- | used by 'Control.Monad.Apiary.Filter.root' filter.
     , rootPattern   :: [S.ByteString]
     }
 
@@ -124,8 +122,11 @@ status st = ActionT . lift $ modify (\s -> s { actionStatus = st } )
 addHeader :: Monad m => Header -> ActionT m ()
 addHeader h = ActionT . lift $ modify (\s -> s { actionHeaders = h : actionHeaders s } )
 
-file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file f p = ActionT . lift $ modify (\s -> s { actionBody = File f p } )
+setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
+setHeaders hs = ActionT . lift $ modify (\s -> s { actionHeaders = hs } )
+
+file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
+file' f p = ActionT . lift $ modify (\s -> s { actionBody = File f p } )
 
 builder :: Monad m => Builder -> ActionT m ()
 builder b = ActionT . lift $ modify (\s -> s { actionBody = Builder b } )
@@ -135,38 +136,4 @@ lbs l = ActionT . lift $ modify (\s -> s { actionBody = LBS l } )
 
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
 source src = ActionT . lift $ modify (\s -> s { actionBody = SRC src } )
-
-newtype ApiaryT c m a = ApiaryT { unApiaryT :: ReaderT (ActionT m c) (ReaderT (ApiaryConfig m) (Writer (ActionT m ()))) a }
-    deriving (Functor, Applicative, Monad)
-
-runApiaryT' :: Monad m => ApiaryConfig m -> ApiaryT c m a -> ActionT m c -> ApplicationM m
-runApiaryT' config (ApiaryT m) = runActionT config . execWriter . flip runReaderT config . runReaderT m
-
-runApiaryT :: Monad m => ApiaryConfig m -> ApiaryT () m a -> ApplicationM m
-runApiaryT conf m = runApiaryT' conf m $ return ()
-
-focus :: Monad m => (c -> ActionT m c') -> ApiaryT c' m a -> ApiaryT c m a
-focus f (ApiaryT m) = ApiaryT . ReaderT $ \c -> runReaderT m (c >>= f)
-
-method :: Monad m => Method -> ApiaryT c m a -> ApiaryT c m a
-method m = focus $ \b -> getRequest >>= \r -> guard (m == requestMethod r) >> return b
-
-stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
-stdMethod = method . renderStdMethod
-
-function :: Monad m => (c -> Request -> Maybe c') -> ApiaryT c' m a -> ApiaryT c m a
-function f = focus $ \c -> getRequest >>= \r -> case f c r of
-    Nothing -> mzero
-    Just c' -> return c'
-
-root :: Monad m => ApiaryT c m b -> ApiaryT c m b
-root m = do
-    rs <- ApiaryT . lift $ asks rootPattern
-    function (\c r -> if rawPathInfo r `elem` rs then Just c else Nothing) m
-
-action_ :: Monad m => ActionT m () -> ApiaryT c m ()
-action_ a = action (const a)
-
-action :: Monad m => (c -> ActionT m ()) -> ApiaryT c m ()
-action a = ApiaryT $ ask >>= \g -> (lift . lift) (tell $ g >>= a)
 

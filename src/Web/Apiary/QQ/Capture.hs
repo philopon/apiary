@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Web.Apiary.Route.Internal where
+module Web.Apiary.QQ.Capture where
 
 import Control.Monad
 import Network.Wai
@@ -16,7 +16,7 @@ import Language.Haskell.TH.Quote
 import Data.Int
 import Data.Word
 
-import Web.Apiary.Trans.Internal
+import Control.Monad.Apiary
 
 preCapture :: [Char] -> [T.Text]
 preCapture ('/':s) = T.splitOn "/" $ T.pack s
