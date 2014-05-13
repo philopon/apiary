@@ -12,6 +12,7 @@ module Control.Monad.Apiary.Action
     , addHeader, setHeaders, modifyHeader
     , contentType
     -- *** response body
+    , file
     , file'
     , builder
     , lbs

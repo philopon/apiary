@@ -47,6 +47,7 @@ library
                      , aeson             >=0.7 && <0.8
 
                      , http-types        >=0.8 && <0.9
+                     , mime-types        >=0.1 && <0.2
                      , wai               >=2.1 && <2.2
 
   if flag(MonadLogger)
