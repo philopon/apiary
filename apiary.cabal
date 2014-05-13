@@ -4,10 +4,33 @@
 name:                apiary
 version:             0.1.0.0
 synopsis:            Simple web framework inspired by scotty.
--- description:         
+description:
+  Simple web framework inspired by scotty.
+  .
+  @
+  &#123;-# LANGUAGE QuasiQuotes #-&#125;
+  &#123;-# LANGUAGE OverloadedStrings #-&#125;
+  .
+  import Web.Apiary
+  import Network.Wai.Handler.Warp
+  import qualified Data.ByteString.Lazy.Char8 as L
+  .
+  main :: IO ()
+  main = run 3000 . runApiaryT def $ do
+  &#32;&#32;[capture|/:String|] $ do
+  &#32;&#32;&#32;&#32;stdMethod GET . action $ \\name -> do
+  &#32;&#32;&#32;&#32;&#32;&#32;contentType "text/html"
+  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ ["&#60;h1&#62;Hello, ", L.pack name, "!&#60;/h1&#62;"]
+  @
+  .
+  * Nestable route handling(ApiaryT Monad; capture, stdMethod and more.).
+  * type safe path capture.
+  .
+  full example & tutorial: <https://github.com/philopon/apiary/blob/master/examples/main.lhs>
+
 license:             MIT
 license-file:        LICENSE
-author:              philopon
+author:              HirotomoMoriwaki
 maintainer:          philopon.dependence@gmail.com
 -- copyright:           
 category:            Web
