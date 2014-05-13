@@ -14,8 +14,8 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Base
-import Control.Monad.Trans.State
-import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State.Strict
+import Control.Monad.Reader
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
 import Network.Wai
@@ -27,8 +27,9 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import Data.Conduit
 import Data.Aeson
+import Control.Monad.Morph
 #ifdef DefineMonadLoggerInstance
-import Control.Monad.Logger
+import qualified Control.Monad.Logger as Logger
 #endif
 
 data ApiaryConfig m = ApiaryConfig
@@ -82,9 +83,14 @@ newtype ActionT m a = ActionT
 instance MonadTrans ActionT where
     lift = ActionT . lift . lift . lift
 
-runActionT :: Monad m => ApiaryConfig m -> ActionT m () -> (ApplicationM m)
-runActionT config (ActionT m) request =
-    runMaybeT (runStateT (runReaderT m request) resp) >>= \case
+runActionT :: ActionT m a -> Request -> ActionState -> m (Maybe (a, ActionState))
+runActionT (ActionT m) request st = runMaybeT (runStateT (runReaderT m request) st)
+
+actionT :: (Request -> ActionState -> m (Maybe (a, ActionState))) -> ActionT m a
+actionT f = ActionT . ReaderT $ \r -> StateT $ \s -> MaybeT $ f r s
+
+execActionT :: Monad m => ApiaryConfig m -> ActionT m () -> (ApplicationM m)
+execActionT config m request = runActionT m request resp >>= \case
         Nothing    -> notFound config request
         Just (_,r) -> return $ actionStateToResponse r
   where
@@ -95,11 +101,10 @@ instance (Monad m, Functor m) => Alternative (ActionT m) where
     (<|>) = mplus
 
 instance Monad m => MonadPlus (ActionT m) where
-    mzero = ActionT . ReaderT $ \_ -> StateT $ \_ -> MaybeT (return Nothing)
-    mplus (ActionT m) (ActionT n) = ActionT . ReaderT $ \r -> StateT $ \s ->
-        MaybeT $ runMaybeT (runStateT (runReaderT m r) s) >>= \case
-            Just a  -> return $ Just a
-            Nothing -> runMaybeT (runStateT (runReaderT n r) s)
+    mzero = actionT $ \_ _ -> return Nothing
+    mplus m n = actionT $ \r s -> runActionT m r s >>= \case
+        Just a  -> return $ Just a
+        Nothing -> runActionT n r s
 
 instance Monad m => Monoid (ActionT m ()) where
     mempty  = mzero
@@ -119,9 +124,17 @@ instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
     liftBaseWith = defaultLiftBaseWith StMT
     restoreM     = defaultRestoreM   unStMT
 
+instance MFunctor ActionT where
+    hoist nat m = actionT $ \r s ->
+        nat $ runActionT m r s
+
+instance MonadReader r m => MonadReader r (ActionT m) where
+    ask     = lift ask
+    local f = hoist $ local f
+
 #ifdef DefineMonadLoggerInstance
-instance MonadLogger m => MonadLogger (ActionT m) where
-    monadLoggerLog loc src lv msg = lift $ monadLoggerLog loc src lv msg
+instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
+    monadLoggerLog loc src lv msg = lift $ Logger.monadLoggerLog loc src lv msg
 #endif
 
 getRequest :: Monad m => ActionT m Request

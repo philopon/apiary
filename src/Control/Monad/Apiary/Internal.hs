@@ -13,7 +13,7 @@ newtype ApiaryT c m a = ApiaryT { unApiaryT :: ReaderT (ActionT m c) (ReaderT (A
     deriving (Functor, Applicative, Monad)
 
 runApiaryT' :: Monad m => ApiaryConfig m -> ApiaryT c m a -> ActionT m c -> ApplicationM m
-runApiaryT' config (ApiaryT m) = runActionT config . execWriter . flip runReaderT config . runReaderT m
+runApiaryT' config (ApiaryT m) = execActionT config . execWriter . flip runReaderT config . runReaderT m
 
 runApiaryT :: Monad m => ApiaryConfig m -> ApiaryT () m a -> ApplicationM m
 runApiaryT conf m = runApiaryT' conf m $ return ()
