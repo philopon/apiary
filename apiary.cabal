@@ -3,7 +3,7 @@
 
 name:                apiary
 version:             0.1.0.0
--- synopsis:            
+synopsis:            Simple web framework inspired by scotty.
 -- description:         
 license:             MIT
 license-file:        LICENSE
