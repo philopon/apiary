@@ -66,9 +66,8 @@ integralE :: Integral i => i -> ExpQ
 integralE = litE . integerL . fromIntegral
 
 capture' :: [T.Text] -> ExpQ
-capture' cap = [| addRoute . \ $(varP $ mkName "action") -> do
-    req <- getRequest 
-    $(caseE [|pathInfo req|] 
+capture' cap = [| function $ \_ request -> 
+    $(caseE [|pathInfo request|] 
         [ match pat   (guards >>= \g -> body >>= \b -> normalB (doE $ g ++ b)) []
         , match wildP (normalB  [|mzero|]) []
         ]) |]
@@ -83,15 +82,15 @@ capture' cap = [| addRoute . \ $(varP $ mkName "action") -> do
         filter (not . isType . fst) varNames
     body = do
         let ss = map (\(a,v) -> do
-                ty <- lookupTypeName ( T.unpack $ T.tail a) >>= \case
-                    Nothing -> fail $ "capture': type not found: " ++ T.unpack (T.tail a)
-                    Just ty -> return ty
+                ty <- lookupType a
                 -- let ty = mkName . T.unpack $ T.tail a
                 bindS (varP . mkName $ v ++ "'")
-                    [| maybe mzero return $ 
-                       (readParam $(varE $ mkName v) :: Maybe $(conT ty) ) |])
+                    [| (readParam $(varE $ mkName v) :: Maybe $(conT ty) ) |])
                     $ filter (isType . fst) varNames
-            rt = noBindS $ foldl (\f i -> f `appE` varE (mkName i))
-                (varE $ mkName "action") . map ((++ "'") . snd) $ filter (isType . fst) varNames
-        return $ ss ++ [rt]
+            rt = tupE $ map (\(_,v) -> varE $ mkName (v ++ "'")) $ filter (isType . fst) varNames
+        return $ ss ++ [noBindS [| return $rt |]]
+    lookupType n =  lookupTypeName (T.unpack $ T.tail n) >>= \case
+        Nothing -> fail $ "capture': type not found: " ++ T.unpack (T.tail n)
+        Just ty -> return ty
+
 
