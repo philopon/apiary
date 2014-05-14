@@ -7,7 +7,6 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -30,10 +29,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Conduit
 import Control.Monad.Morph
-
-#ifdef DefineMonadLoggerInstance
 import qualified Control.Monad.Logger as Logger
-#endif
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
@@ -139,10 +135,8 @@ instance MonadReader r m => MonadReader r (ActionT m) where
     ask     = lift ask
     local f = hoist $ local f
 
-#ifdef DefineMonadLoggerInstance
 instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
     monadLoggerLog loc src lv msg = lift $ Logger.monadLoggerLog loc src lv msg
-#endif
 
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ lift ask

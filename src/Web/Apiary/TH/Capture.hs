@@ -4,7 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Web.Apiary.QQ.Capture where
+module Web.Apiary.TH.Capture where
 
 import Control.Monad
 import Network.Wai

@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.2.0.0
+version:             0.3.0.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -40,17 +40,13 @@ stability:           experimental
 -- extra-source-files:  
 cabal-version:       >=1.10
 
-flag MonadLogger
-  description: define MonadLogger instance
-  default: True
-
 library
   exposed-modules:     Web.Apiary
-                       Web.Apiary.QQ
+                       Web.Apiary.TH
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
                        Control.Monad.Apiary.Action
-  other-modules:       Web.Apiary.QQ.Capture
+  other-modules:       Web.Apiary.TH.Capture
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
   other-extensions:    TemplateHaskell
@@ -68,15 +64,13 @@ library
                      , bytestring        >=0.10 && <0.11
                      , blaze-builder     >=0.3 && <0.4
                      , conduit           >=1.1 && <1.2
+                     , monad-logger      >=0.3 && <0.4
                      , data-default      >=0.5 && <0.6
 
                      , http-types        >=0.8 && <0.9
                      , mime-types        >=0.1 && <0.2
                      , wai               >=2.1 && <2.2
-
-  if flag(MonadLogger)
-    build-depends:     monad-logger      >=0.3 && <0.4
-    cpp-options:       -DDefineMonadLoggerInstance
+                     , warp              >=2.1 && <2.2
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
