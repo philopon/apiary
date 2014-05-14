@@ -6,6 +6,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
@@ -28,16 +29,15 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Conduit
-import Data.Aeson
 import Control.Monad.Morph
 
 #ifdef DefineMonadLoggerInstance
 import qualified Control.Monad.Logger as Logger
 #endif
 
-data ApiaryConfig m = ApiaryConfig
+data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
-      notFound      :: ApplicationM m 
+      notFound      :: Application
       -- | used unless call 'status' function.
     , defaultStatus :: Status
       -- | initial headers.
@@ -47,17 +47,7 @@ data ApiaryConfig m = ApiaryConfig
     , mimeType      :: FilePath -> S.ByteString
     }
 
-data ApiaryConfig' = ApiaryConfig'
-    { defaultStatus' :: Status
-    , defaultHeader' :: ResponseHeaders
-    , rootPattern'   :: [S.ByteString]
-    , mimeType'      :: FilePath -> S.ByteString
-    }
-
-subConfig :: ApiaryConfig m -> ApiaryConfig'
-subConfig (ApiaryConfig _ a b c d) = ApiaryConfig' a b c d
-
-instance Monad m => Default (ApiaryConfig m) where
+instance Default ApiaryConfig where
     def = ApiaryConfig 
         { notFound = \_ -> return $ responseLBS status404 
             [("Content-Type", "text/plain")] "404 Page Notfound."
@@ -67,13 +57,12 @@ instance Monad m => Default (ApiaryConfig m) where
         , mimeType      = defaultMimeLookup . T.pack
         }
 
-type ApplicationM m = Request -> m Response
-
-data ActionState = ActionState
-    { actionStatus  :: Status
-    , actionHeaders :: ResponseHeaders
-    , actionBody    :: Body
-    }
+data ActionState 
+    = ActionState
+        { actionStatus  :: Status
+        , actionHeaders :: ResponseHeaders
+        , actionBody    :: Body
+        }
 
 data Body 
     = File FilePath (Maybe FilePart)
@@ -92,20 +81,23 @@ actionStateToResponse as = case actionBody as of
     hd = actionHeaders as
 
 newtype ActionT m a = ActionT
-    { unActionT :: ReaderT ApiaryConfig' (ReaderT Request (StateT ActionState (MaybeT m))) a 
+    { unActionT :: ReaderT ApiaryConfig (ReaderT Request (StateT ActionState (MaybeT m))) a 
     } deriving (Functor, Applicative, Monad, MonadIO)
 
 instance MonadTrans ActionT where
     lift = ActionT . lift . lift . lift . lift
 
-runActionT :: ActionT m a -> ApiaryConfig' -> Request -> ActionState -> m (Maybe (a, ActionState))
+runActionT :: ActionT m a -> ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState))
 runActionT (ActionT m) config request st = runMaybeT (runStateT (runReaderT (runReaderT m config) request) st)
 
-actionT :: (ApiaryConfig' -> Request -> ActionState -> m (Maybe (a, ActionState))) -> ActionT m a
+actionT :: (ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState))) -> ActionT m a
 actionT f = ActionT . ReaderT $ \c -> ReaderT $ \r -> StateT $ \s -> MaybeT $ f c r s
 
-execActionT :: Monad m => ApiaryConfig m -> ActionT m () -> (ApplicationM m)
-execActionT config m request = runActionT m (subConfig config) request resp >>= \case
+transActionT :: (forall b. m b -> IO b) -> ActionT m a -> ActionT IO a
+transActionT run m = actionT $ \c r s -> run (runActionT m c r s)
+
+execActionT :: ApiaryConfig -> ActionT IO () -> Application
+execActionT config m request = runActionT m config request resp >>= \case
         Nothing    -> notFound config request
         Just (_,r) -> return $ actionStateToResponse r
   where
@@ -129,7 +121,7 @@ instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault
 
 instance MonadTransControl ActionT where
-    newtype StT ActionT a = StAction { unStAction :: StT MaybeT (StT (StateT ActionState) (StT (ReaderT Request) (StT (ReaderT ApiaryConfig') a))) }
+    newtype StT ActionT a = StAction { unStAction :: StT MaybeT (StT (StateT ActionState) (StT (ReaderT Request) (StT (ReaderT ApiaryConfig) a))) }
     liftWith f = ActionT $ liftWith $ \run -> liftWith $ \run' -> liftWith $ \run'' -> liftWith $ \run''' -> 
         f $ liftM StAction . run''' . run'' . run' . run . unActionT
     restoreT = ActionT . restoreT . restoreT . restoreT . restoreT . liftM unStAction
@@ -155,6 +147,20 @@ instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ lift ask
 
+-- | when request header is not found, mzero(pass next handler).
+getRequestHeader' :: Monad m => HeaderName -> ActionT m S.ByteString
+getRequestHeader' h = getRequestHeader h >>= maybe mzero return
+
+getRequestHeader :: Monad m => HeaderName -> ActionT m (Maybe S.ByteString)
+getRequestHeader h = (lookup h . requestHeaders) `liftM` getRequest
+
+-- | when query parameter is not found, mzero(pass next handler).
+getQuery' :: Monad m => S.ByteString -> ActionT m (Maybe S.ByteString)
+getQuery' q = getQuery q >>= maybe mzero return
+
+getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
+getQuery q = (lookup q . queryString) `liftM` getRequest
+
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT . lift . lift $ modify f
 
@@ -176,7 +182,7 @@ contentType c = modifyHeader (\h -> ("Content-Type", c) : filter (("Content-Type
 -- | set body to file content and detect Content-Type by extension.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
 file f p = do
-    mime <- ActionT $ asks mimeType'
+    mime <- ActionT $ asks mimeType
     contentType (mime f)
     file' f p
 
@@ -191,9 +197,3 @@ lbs l = modifyState (\s -> s { actionBody = LBS l } )
 
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
 source src = modifyState (\s -> s { actionBody = SRC src } )
-
--- | set body to j and set Content-Type to \"application/json\"
-json :: (ToJSON j, Monad m) => j -> ActionT m ()
-json j = do
-    contentType "application/json"
-    lbs $ encode j

@@ -1,7 +1,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Control.Monad.Apiary.Internal where
 
+import Network.Wai
 import Control.Applicative
 import Control.Monad.Trans
 import Control.Monad.Trans.Writer
@@ -9,24 +13,34 @@ import Control.Monad.Trans.Reader
 
 import Control.Monad.Apiary.Action.Internal
 
-newtype ApiaryT c m a = ApiaryT { unApiaryT :: ReaderT (ActionT m c) (ReaderT (ApiaryConfig m) (Writer (ActionT m ()))) a }
-    deriving (Functor, Applicative, Monad)
+newtype ApiaryT c m a = ApiaryT { unApiaryT ::
+         ReaderT (forall b. m b -> IO b) 
+        (ReaderT (ActionT IO c) 
+        (ReaderT ApiaryConfig
+        (Writer  (ActionT IO ())))) a 
+    } deriving (Functor, Applicative, Monad)
 
-runApiaryT' :: Monad m => ApiaryConfig m -> ApiaryT c m a -> ActionT m c -> ApplicationM m
-runApiaryT' config (ApiaryT m) = execActionT config . execWriter . flip runReaderT config . runReaderT m
+type Apiary c = ApiaryT c IO
 
-runApiaryT :: Monad m => ApiaryConfig m -> ApiaryT () m a -> ApplicationM m
-runApiaryT conf m = runApiaryT' conf m $ return ()
+-- TODO: error when add signature
+runApiaryT config run (ApiaryT m) =
+    execActionT config . execWriter . flip runReaderT config $ runReaderT (runReaderT m run) (return ())
 
-apiaryConfig :: Monad m => ApiaryT c m (ApiaryConfig m)
-apiaryConfig = ApiaryT $ lift ask
+runApiary :: ApiaryConfig -> Apiary () a -> Application
+runApiary config = runApiaryT config id
 
-focus :: Monad m => (c -> ActionT m c') -> ApiaryT c' m a -> ApiaryT c m a
-focus f (ApiaryT m) = ApiaryT . ReaderT $ \c -> runReaderT m (c >>= f)
+focus :: (c -> ActionT m c') -> ApiaryT c' m b -> ApiaryT c m b
+focus f (ApiaryT m) = do
+    tr <- transActionT `fmap` ApiaryT ask
+    ApiaryT . ReaderT $ \r -> ReaderT $ \c -> runReaderT (runReaderT m r) (c >>= \a -> tr (f a))
 
-action_ :: Monad m => ActionT m () -> ApiaryT c m ()
-action_ a = action (const a)
+action_ :: ActionT m () -> ApiaryT c m ()
+action_ = action . const
 
-action :: Monad m => (c -> ActionT m ()) -> ApiaryT c m ()
-action a = ApiaryT $ ask >>= \g -> (lift . lift) (tell $ g >>= a)
+action :: (c -> ActionT m ()) -> ApiaryT c m ()
+action a = do
+    tr   <- transActionT `fmap` ApiaryT ask
+    ApiaryT $ lift ask >>= \g -> (lift . lift . lift) (tell $ g >>= \c -> tr (a c))
 
+apiaryConfig :: ApiaryT c m ApiaryConfig
+apiaryConfig = ApiaryT . lift $ lift ask

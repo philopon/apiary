@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.1.0.1
+version:             0.2.0.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -14,10 +14,10 @@ description:
   import qualified Data.ByteString.Lazy.Char8 as L
   .
   main :: IO ()
-  main = run 3000 . runApiaryT def $ do
+  main = run 3000 . runApiary def $ do
   &#32;&#32;[capture|/:String|] $ do
   &#32;&#32;&#32;&#32;stdMethod GET . action $ \\name -> do
-  &#32;&#32;&#32;&#32;&#32;&#32;contentType "text/html"
+  &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
   &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, L.pack name, &#34;!&#60;/h1&#62;&#34;]
   @
   .
@@ -69,7 +69,6 @@ library
                      , blaze-builder     >=0.3 && <0.4
                      , conduit           >=1.1 && <1.2
                      , data-default      >=0.5 && <0.6
-                     , aeson             >=0.7 && <0.8
 
                      , http-types        >=0.8 && <0.9
                      , mime-types        >=0.1 && <0.2

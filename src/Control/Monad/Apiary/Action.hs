@@ -1,11 +1,12 @@
 module Control.Monad.Apiary.Action 
     (
       ActionT
-    , ApplicationM
     , ApiaryConfig(..)
     -- * actions
     -- ** getter
     , getRequest
+    , getQuery, getQuery'
+    , getRequestHeader, getRequestHeader'
     -- ** setter
     , status
     -- *** response header
@@ -17,7 +18,6 @@ module Control.Monad.Apiary.Action
     , builder
     , lbs
     , source
-    , json
     -- * Reexport
     , def
     ) where
