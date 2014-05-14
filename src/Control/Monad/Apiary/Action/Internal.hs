@@ -29,7 +29,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Conduit
-import Data.Aeson
 import Control.Monad.Morph
 
 #ifdef DefineMonadLoggerInstance
@@ -184,9 +183,3 @@ lbs l = modifyState (\s -> s { actionBody = LBS l } )
 
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
 source src = modifyState (\s -> s { actionBody = SRC src } )
-
--- | set body to j and set Content-Type to \"application/json\"
-json :: (ToJSON j, Monad m) => j -> ActionT m ()
-json j = do
-    contentType "application/json"
-    lbs $ encode j

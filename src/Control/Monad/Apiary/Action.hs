@@ -16,7 +16,6 @@ module Control.Monad.Apiary.Action
     , builder
     , lbs
     , source
-    , json
     -- * Reexport
     , def
     ) where
