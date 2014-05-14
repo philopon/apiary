@@ -14,7 +14,7 @@
 'runApiaryT' create ApplicationM m, when m == IO, equals Application.
 And you can use Monad Transformers with fmap(but cannot share state, so StateT not work.).
 
-> main = run 3000 . fmap runStdoutLoggingT . runApiaryT def $ do
+> main = run 3000 . runApiaryT def runStdoutLoggingT $ do
 
 Apiary has 2 Monads, ApiaryT and ActionT.
 ApiaryT is filtering Request, ActionT is processing request.

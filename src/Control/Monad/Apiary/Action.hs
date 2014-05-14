@@ -1,7 +1,6 @@
 module Control.Monad.Apiary.Action 
     (
       ActionT
-    , ApplicationM
     , ApiaryConfig(..)
     -- * actions
     -- ** getter
