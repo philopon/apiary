@@ -20,7 +20,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
 import Network.Wai
 import Network.Mime
-import Data.Default
+import Data.Default.Class
 import Data.Monoid
 import Network.HTTP.Types
 import Blaze.ByteString.Builder
@@ -164,8 +164,8 @@ status st = modifyState (\s -> s { actionStatus = st } )
 modifyHeader :: Monad m => (ResponseHeaders -> ResponseHeaders) -> ActionT m ()
 modifyHeader f = modifyState (\s -> s {actionHeaders = f $ actionHeaders s } )
 
-addHeader :: Monad m => Header -> ActionT m ()
-addHeader h = modifyHeader (h:)
+addHeader :: Monad m => HeaderName -> S.ByteString -> ActionT m ()
+addHeader h v = modifyHeader ((h,v):)
 
 setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
 setHeaders hs = modifyHeader (const hs)

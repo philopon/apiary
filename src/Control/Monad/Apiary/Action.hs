@@ -23,4 +23,4 @@ module Control.Monad.Apiary.Action
     ) where
 
 import Control.Monad.Apiary.Action.Internal
-import Data.Default
+import Data.Default.Class
