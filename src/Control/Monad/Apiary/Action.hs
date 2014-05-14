@@ -5,6 +5,8 @@ module Control.Monad.Apiary.Action
     -- * actions
     -- ** getter
     , getRequest
+    , getQuery, getQuery'
+    , getRequestHeader, getRequestHeader'
     -- ** setter
     , status
     -- *** response header

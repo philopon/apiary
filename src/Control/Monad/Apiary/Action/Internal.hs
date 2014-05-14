@@ -147,6 +147,20 @@ instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ lift ask
 
+-- | when request header is not found, mzero(pass next handler).
+getRequestHeader' :: Monad m => HeaderName -> ActionT m S.ByteString
+getRequestHeader' h = getRequestHeader h >>= maybe mzero return
+
+getRequestHeader :: Monad m => HeaderName -> ActionT m (Maybe S.ByteString)
+getRequestHeader h = (lookup h . requestHeaders) `liftM` getRequest
+
+-- | when query parameter is not found, mzero(pass next handler).
+getQuery' :: Monad m => S.ByteString -> ActionT m (Maybe S.ByteString)
+getQuery' q = getQuery q >>= maybe mzero return
+
+getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
+getQuery q = (lookup q . queryString) `liftM` getRequest
+
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT . lift . lift $ modify f
 
