@@ -216,15 +216,33 @@ contentType :: Monad m => S.ByteString -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
 
--- | redirect handler set status, location header and stop. since 0.3.3.0.
+-- | redirect handler
+--
+-- set status, location header and stop. since 0.3.3.0.
 redirect :: Monad m
-         => Bool         -- ^ if True, Permanent Redirect(status301) else Temporary Redirect(status302)
+         => Status
          -> S.ByteString -- ^ Location redirect to
-         -> ActionT m ()
-redirect perm url = do
-    status $ if perm then status301 else status302
+         -> ActionT m a
+redirect st url = do
+    status st
     setHeaders [("location", url)]
     stop
+
+-- | redirect with 301 Moved Permanently. since 0.3.3.0.
+redirectPermanently :: Monad m => S.ByteString -> ActionT m a
+redirectPermanently = redirect movedPermanently301
+
+-- | redirect with 302 Found. since 0.3.3.0.
+redirectFound       :: Monad m => S.ByteString -> ActionT m a
+redirectFound       = redirect found302
+
+-- | redirect with 303 See Other. since 0.3.3.0.
+redirectSeeOther    :: Monad m => S.ByteString -> ActionT m a
+redirectSeeOther    = redirect seeOther303
+
+-- | redirect with 307 Temporary Redirect. since 0.3.3.0.
+redirectTemporary   :: Monad m => S.ByteString -> ActionT m a
+redirectTemporary   = redirect temporaryRedirect307
 
 -- | set body to file content and detect Content-Type by extension.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
