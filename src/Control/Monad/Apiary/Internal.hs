@@ -1,46 +1,76 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Control.Monad.Apiary.Internal where
 
 import Network.Wai
 import Control.Applicative
-import Control.Monad.Trans
-import Control.Monad.Trans.Writer
-import Control.Monad.Trans.Reader
+import Data.Monoid
 
 import Control.Monad.Apiary.Action.Internal
 
-newtype ApiaryT c m a = ApiaryT { unApiaryT ::
-         ReaderT (forall b. m b -> IO b) 
-        (ReaderT (ActionT IO c) 
-        (ReaderT ApiaryConfig
-        (Writer  (ActionT IO ())))) a 
-    } deriving (Functor, Applicative, Monad)
+newtype ApiaryT c m a = ApiaryT { unApiaryT :: forall b.
+    (forall x . m x -> IO x)
+    -> ActionT IO c
+    -> ApiaryConfig
+    -> (a -> ActionT IO () -> m b)
+    -> m b 
+    }
+
+instance Functor (ApiaryT c m) where
+    fmap f m = ApiaryT $ \run grd conf cont ->
+        unApiaryT m run grd conf $ \a hdr -> hdr `seq` cont (f a) hdr
+
+instance Applicative (ApiaryT c m) where
+    pure x = ApiaryT $ \_ _ _ cont -> cont x mempty
+    mf <*> ma = ApiaryT $ \run grd conf cont ->
+        unApiaryT mf run grd conf $ \f hdr  ->
+        unApiaryT ma run grd conf $ \a hdr' ->
+        let hdr'' = hdr <> hdr'
+        in hdr'' `seq` cont (f a) hdr''
+
+instance Monad (ApiaryT c m) where
+    return x = ApiaryT $ \_ _ _ cont -> cont x mempty
+    m >>= k = ApiaryT $ \run grd conf cont ->
+        unApiaryT m run grd conf $ \a hdr ->
+        unApiaryT (k a) run grd conf $ \b hdr' -> 
+        let hdr'' = hdr <> hdr'
+        in hdr'' `seq` cont b hdr''
+
+runApiaryT :: Monad m => ApiaryConfig -> (forall x. m x -> IO x) -> ApiaryT () m a -> Application
+runApiaryT conf run m req = run (unApiaryT m run (return ()) conf (\_ w -> return w)) >>= \a ->
+    execActionT conf a req
 
 type Apiary c = ApiaryT c IO
 
--- TODO: error when add signature
-runApiaryT config run (ApiaryT m) =
-    execActionT config . execWriter . flip runReaderT config $ runReaderT (runReaderT m run) (return ())
-
 runApiary :: ApiaryConfig -> Apiary () a -> Application
-runApiary config = runApiaryT config id
+runApiary conf = runApiaryT conf id
 
-focus :: (c -> ActionT m c') -> ApiaryT c' m b -> ApiaryT c m b
-focus f (ApiaryT m) = do
-    tr <- transActionT `fmap` ApiaryT ask
-    ApiaryT . ReaderT $ \r -> ReaderT $ \c -> runReaderT (runReaderT m r) (c >>= \a -> tr (f a))
+getRunner :: Monad m => ApiaryT c m (ActionT m a -> ActionT IO a)
+getRunner = ApiaryT $ \run _ _ c -> c (hoistActionT run) mempty
 
-action_ :: ActionT m () -> ApiaryT c m ()
-action_ = action . const
-
-action :: (c -> ActionT m ()) -> ApiaryT c m ()
-action a = do
-    tr   <- transActionT `fmap` ApiaryT ask
-    ApiaryT $ lift ask >>= \g -> (lift . lift . lift) (tell $ g >>= \c -> tr (a c))
+getGuard :: ApiaryT c m (ActionT IO c)
+getGuard = ApiaryT $ \_ grd _ c -> c grd mempty
 
 apiaryConfig :: ApiaryT c m ApiaryConfig
-apiaryConfig = ApiaryT . lift $ lift ask
+apiaryConfig = ApiaryT $ \_ _ c cont -> cont c mempty
+
+addRoute :: ActionT IO () -> ApiaryT c m ()
+addRoute r = ApiaryT $ \_ _ _ cont -> cont () r
+
+focus :: Monad m => (c -> ActionT m c') -> ApiaryT c' m b -> ApiaryT c m b
+focus g m = do
+    tr <- getRunner
+    ApiaryT $ \run grd cfg cont ->
+        unApiaryT m run (grd >>= tr . g) cfg cont
+
+action :: Monad m => (c -> ActionT m ()) -> ApiaryT c m ()
+action a = do
+    tr  <- getRunner
+    grd <- getGuard
+    addRoute (grd >>= tr . a)
+
+action_ :: Monad m => ActionT m () -> ApiaryT c m ()
+action_ = action . const
