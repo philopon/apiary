@@ -96,10 +96,15 @@ focus g m = do
         unApiaryT m run (\r -> grd r >>= \c -> g r c) cfg cont
 
 action :: Monad m => Fn c (ActionT m ()) -> ApiaryT c m ()
-action a = do
+action = actionWithPreAction (return ())
+
+-- | execute no argument action before main action. since v0.4.2.0
+actionWithPreAction :: Monad m => ActionT IO a
+                    -> Fn c (ActionT m ()) -> ApiaryT c m ()
+actionWithPreAction pa a = do
     tr  <- getRunner
     grd <- getGuard
-    addRoute $ filterToActionT grd >>= tr . apply a
+    addRoute $ filterToActionT grd >>= \c -> pa >> tr (apply a c)
 
 {-# DEPRECATED action_ "use action method." #-}
 action_ :: Monad m => ActionT m () -> ApiaryT c m ()

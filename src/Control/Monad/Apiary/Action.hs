@@ -3,7 +3,7 @@ module Control.Monad.Apiary.Action
       ActionT
     , ApiaryConfig(..)
     -- * actions
-    , stop
+    , stop, stopWith
 
     -- ** getter
     , getRequest

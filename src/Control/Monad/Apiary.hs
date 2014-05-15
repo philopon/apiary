@@ -6,7 +6,7 @@ module Control.Monad.Apiary
     -- * getter
     , apiaryConfig
     -- * execute action
-    , action, action_
+    , action, action_, actionWithPreAction
     -- * Singletons
     , SList(..)
     , Fn, Snoc
