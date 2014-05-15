@@ -7,6 +7,10 @@ module Control.Monad.Apiary
     , apiaryConfig
     -- * execute action
     , action, action_
+    -- * Singletons
+    , SList(..)
+    , Fn, Snoc
+    , sSnoc
     -- * Reexport
     , module Control.Monad.Apiary.Filter
     ) where

@@ -3,10 +3,13 @@ module Control.Monad.Apiary.Action
       ActionT
     , ApiaryConfig(..)
     -- * actions
+    , stop
+
     -- ** getter
     , getRequest
     , getQuery, getQuery'
     , getRequestHeader, getRequestHeader'
+
     -- ** setter
     , status
     -- *** response header
@@ -18,6 +21,11 @@ module Control.Monad.Apiary.Action
     , builder
     , lbs
     , source
+
+    -- ** monolithic action
+    -- *** redirect
+    , redirect
+    , redirectPermanently, redirectFound, redirectSeeOther, redirectTemporary
     -- * Reexport
     , def
     ) where

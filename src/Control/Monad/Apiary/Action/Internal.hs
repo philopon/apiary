@@ -5,6 +5,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -71,12 +72,17 @@ actionStateToResponse as = case actionBody as of
     st = actionStatus  as
     hd = actionHeaders as
 
+data Action a 
+    = Continue a
+    | Pass
+    | Stop ActionState
+
 newtype ActionT m a = ActionT { unActionT :: forall b. 
     ApiaryConfig
     -> Request
     -> ActionState
-    -> (a -> ActionState -> m (Maybe b))
-    -> m (Maybe b)
+    -> (a -> ActionState -> m (Action b))
+    -> m (Action b)
     }
 
 instance Functor (ActionT m) where
@@ -95,7 +101,7 @@ instance Monad m => Monad (ActionT m) where
     m >>= k  = ActionT $ \conf req st cont ->
         unActionT m conf req st $ \a st' ->
         st' `seq` unActionT (k a) conf req st' cont
-    fail _ = ActionT $ \_ _ _ _ -> return Nothing
+    fail _ = ActionT $ \_ _ _ _ -> return Pass
 
 instance MonadIO m => MonadIO (ActionT m) where
     liftIO m = ActionT $ \_ _ st cont ->
@@ -107,16 +113,17 @@ instance MonadTrans ActionT where
 
 runActionT :: Monad m => ActionT m a
            -> ApiaryConfig -> Request -> ActionState
-           -> m (Maybe (a, ActionState))
+           -> m (Action (a, ActionState))
 runActionT m conf req st = unActionT m conf req st $ \a st' ->
-    st' `seq` return (Just (a, st'))
+    st' `seq` return (Continue (a, st'))
 
 actionT :: Monad m 
-        => (ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState)))
+        => (ApiaryConfig -> Request -> ActionState -> m (Action (a, ActionState)))
         -> ActionT m a
 actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
-    Nothing      -> return Nothing
-    Just (a,st') -> st' `seq` cont a st'
+    Pass             -> return Pass
+    Stop s           -> return $ Stop s
+    Continue (a,st') -> st' `seq` cont a st'
 
 hoistActionT :: (Monad m, Monad n)
              => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
@@ -124,8 +131,9 @@ hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
 execActionT config m request = runActionT m config request resp >>= \case
-        Nothing    -> notFound config request
-        Just (_,r) -> return $ actionStateToResponse r
+        Pass           -> notFound config request
+        Stop s         -> return $ actionStateToResponse s
+        Continue (_,r) -> return $ actionStateToResponse r
   where
     resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "")
 
@@ -134,10 +142,11 @@ instance (Monad m, Functor m) => Alternative (ActionT m) where
     (<|>) = mplus
 
 instance Monad m => MonadPlus (ActionT m) where
-    mzero = actionT $ \_ _ _ -> return Nothing
+    mzero = actionT $ \_ _ _ -> return Pass
     mplus m n = actionT $ \c r s -> runActionT m c r s >>= \case
-        Just a  -> return $ Just a
-        Nothing -> runActionT n c r s
+        Continue a -> return $ Continue a
+        Stop stp   -> return $ Stop stp
+        Pass       -> runActionT n c r s
 
 instance Monad m => Monoid (ActionT m ()) where
     mempty  = mzero
@@ -147,9 +156,9 @@ instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault
 
 instance MonadTransControl ActionT where
-    newtype StT ActionT a = StActionT { unStActionT :: Maybe (a, ActionState) }
+    newtype StT ActionT a = StActionT { unStActionT :: Action (a, ActionState) }
     liftWith f = actionT $ \c r s -> 
-        liftM (\a -> Just (a,s)) (f $ \t -> liftM StActionT $ runActionT t c r s)
+        liftM (\a -> Continue (a,s)) (f $ \t -> liftM StActionT $ runActionT t c r s)
     restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
 
 instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
@@ -163,6 +172,10 @@ instance MonadReader r m => MonadReader r (ActionT m) where
 
 instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
     monadLoggerLog loc src lv msg = lift $ Logger.monadLoggerLog loc src lv msg
+
+-- | stop handler and send current state. since 0.3.3.0.
+stop :: Monad m => ActionT m a
+stop = ActionT $ \_ _ s _ -> return $ Stop s
 
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
@@ -202,6 +215,34 @@ setHeaders hs = modifyHeader (const hs)
 contentType :: Monad m => S.ByteString -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
+
+-- | redirect handler
+--
+-- set status, location header and stop. since 0.3.3.0.
+redirect :: Monad m
+         => Status
+         -> S.ByteString -- ^ Location redirect to
+         -> ActionT m a
+redirect st url = do
+    status st
+    setHeaders [("location", url)]
+    stop
+
+-- | redirect with 301 Moved Permanently. since 0.3.3.0.
+redirectPermanently :: Monad m => S.ByteString -> ActionT m a
+redirectPermanently = redirect movedPermanently301
+
+-- | redirect with 302 Found. since 0.3.3.0.
+redirectFound       :: Monad m => S.ByteString -> ActionT m a
+redirectFound       = redirect found302
+
+-- | redirect with 303 See Other. since 0.3.3.0.
+redirectSeeOther    :: Monad m => S.ByteString -> ActionT m a
+redirectSeeOther    = redirect seeOther303
+
+-- | redirect with 307 Temporary Redirect. since 0.3.3.0.
+redirectTemporary   :: Monad m => S.ByteString -> ActionT m a
+redirectTemporary   = redirect temporaryRedirect307
 
 -- | set body to file content and detect Content-Type by extension.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()

@@ -1,5 +1,6 @@
 module Web.Apiary.TH
-    (capture
+    ( capture
+    , Param(..)
     ) where
 
 import Web.Apiary.TH.Capture

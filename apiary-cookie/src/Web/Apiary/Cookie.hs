@@ -21,7 +21,7 @@
 -- main :: IO ()
 -- main = 'withCookie' def $ run 3000 . runApiary def $ do
 -- 
---     [capture|/:String|] . action $ \s -> do
+--     [capture|/:String|] . action $ \\s -> do
 --         'setCookie' (def { setCookieName = "param", setCookieValue = S.pack s })
 --         'setCookie' (def { setCookieName = "dog", setCookieValue = "bowwow" })
 --         contentType "text/plain"
