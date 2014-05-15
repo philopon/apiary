@@ -70,6 +70,15 @@ Static file provider. content-type auto detected by extension.
 
 >             file p Nothing
 
+when execute 'stop' action, send current status and drop after actions.
+
+>     [capture|/stop/:Int|] . action $ \i -> do
+>         contentType "text/plain"
+>         lbs "stop the handler!"
+>         when (odd i) $ stop
+>         lbs "cannot stop handler..."
+>
+
 $ curl localhost:3000
 Hello World.
 $ curl -XPOST localhost:3000
@@ -96,3 +105,8 @@ $ curl localhost:3000/div/10/0
 $ curl localhost:3000/static/main.lhs # show file
 $ curl localhost:3000/static/notfound.hs # show file
 File not found
+
+$ curl localhost:3000/stop/1
+stop the handler!
+$ curl localhost:3000/stop/2
+cannot stop handler...

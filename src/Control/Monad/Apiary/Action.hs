@@ -3,6 +3,8 @@ module Control.Monad.Apiary.Action
       ActionT
     , ApiaryConfig(..)
     -- * actions
+    , stop
+    , redirect
     -- ** getter
     , getRequest
     , getQuery, getQuery'
