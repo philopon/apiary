@@ -28,7 +28,7 @@ It can configure ApiaryConfig.
 Then 'stdMethod' filter apply and execute action. 
 So only root like path and GET method is processed.
 
->         stdMethod GET . action_ $ do
+>         stdMethod GET . action $ do
 
 Set content-type. default response header can configure by ApiaryConfig.
 

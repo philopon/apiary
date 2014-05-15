@@ -97,6 +97,7 @@ action a = do
     grd <- getGuard
     addRoute $ grd >>= tr . apply a
 
+{-# DEPRECATED action_ "use action method." #-}
 action_ :: Monad m => ActionT m () -> ApiaryT c m ()
 action_ a = do
     tr <- getRunner
