@@ -3,8 +3,9 @@
 --
 -- @
 -- {-# LANGUAGE QuasiQuotes #-}
--- {-# LANGUAGE FlexibleContexts #-} -- for reflection
 -- {-# LANGUAGE OverloadedStrings #-}
+-- {-# LANGUAGE NoMonomorphismRestriction #-} -- for implicit signature
+-- {-# LANGUAGE FlexibleContexts #-} -- for explicit signature
 --
 -- import Web.Apiary
 -- import Web.Apiary.Cookie
@@ -30,19 +31,15 @@
 --     root $ action_ splittedAction
 -- @
 --
--- In splitted action, you must add sigunature
--- with 'Given' 'Cookie' ristriction.
---
 -- 'getCookie' functions, get and auto decrypt cookie.
 --
 -- @
--- splittedAction :: (Monad m, Given Cookie) => ActionT m ()
+-- splittedAction :: (Monad m, HasCookie) => ActionT m ()
 -- splittedAction = do
 --     s <- 'getCookie'' "param"
 --     p <- 'getCookie'' "dog"
 --     contentType "text/plain"
 --     lbs $ L.unlines [L.fromStrict s, L.fromStrict p]
--- 
 -- @
 --
 -- * first, access localhost:3000, 404 page not found shown.
@@ -57,7 +54,7 @@
 --
 
 module Web.Apiary.Cookie 
-    ( Cookie
+    ( HasCookie
     , CookieConfig(..)
     , withCookie
     -- * setter
@@ -66,11 +63,12 @@ module Web.Apiary.Cookie
     , getCookies, getCookies'
     , getCookie, getCookie'
     -- * Reexport
-    , def
-    , SetCookie(..)
-    , Given
+    -- | SetCookie(..)
+    , module Web.Cookie
+    -- | def
+    , module Data.Default.Class
     ) where
 
-import Web.Cookie
+import Web.Cookie (SetCookie(..))
+import Data.Default.Class (def)
 import Web.Apiary.Cookie.Internal
-import Data.Reflection

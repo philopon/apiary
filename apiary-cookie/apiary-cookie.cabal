@@ -1,5 +1,5 @@
 name:                apiary-cookie
-version:             0.4.0.0
+version:             0.4.1.0
 x-revision:          1
 synopsis:            Cookie support for apiary web framework.
 description:
@@ -27,7 +27,6 @@ library
                      , apiary             >=0.4   && <0.5
                      , cookie             >=0.4   && <0.5
                      , clientsession      >=0.9   && <0.10
-                     , reflection         >=1.4   && <1.5
                      , blaze-builder      >=0.3   && <0.4
                      , data-default-class >=0.0   && <0.1
 
