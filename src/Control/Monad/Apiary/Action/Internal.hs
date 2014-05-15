@@ -1,11 +1,9 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE Rank2Types #-}
 
 module Control.Monad.Apiary.Action.Internal where
@@ -14,9 +12,7 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Base
-import Control.Monad.Trans.State.Strict
 import Control.Monad.Reader
-import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
 import Network.Wai
 import Network.Mime
@@ -28,7 +24,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Conduit
-import Control.Monad.Morph
 import qualified Control.Monad.Logger as Logger
 
 data ApiaryConfig = ApiaryConfig
@@ -76,21 +71,53 @@ actionStateToResponse as = case actionBody as of
     st = actionStatus  as
     hd = actionHeaders as
 
-newtype ActionT m a = ActionT
-    { unActionT :: ReaderT ApiaryConfig (ReaderT Request (StateT ActionState (MaybeT m))) a 
-    } deriving (Functor, Applicative, Monad, MonadIO)
+newtype ActionT m a = ActionT { unActionT
+    :: forall b. ApiaryConfig -> Request -> ActionState
+    -> (a -> ActionState -> m (Maybe b)) -> m (Maybe b)
+    }
+
+instance Functor (ActionT m) where
+    fmap f m = ActionT $ \conf req st cont ->
+        unActionT m conf req st (\a s' -> s' `seq` cont (f a) s')
+
+instance Applicative (ActionT m) where
+    pure x = ActionT $ \_ _ st cont -> cont x st
+    mf <*> ma = ActionT $ \conf req st cont ->
+        unActionT mf conf req st  $ \f st'  ->
+        unActionT ma conf req st' $ \a st'' ->
+        st' `seq` st'' `seq` cont (f a) st''
+
+instance Monad m => Monad (ActionT m) where
+    return x = ActionT $ \_ _ st cont -> cont x st
+    m >>= k  = ActionT $ \conf req st cont ->
+        unActionT m conf req st $ \a st' ->
+        st' `seq` unActionT (k a) conf req st' cont
+    fail _ = ActionT $ \_ _ _ _ -> return Nothing
+
+instance MonadIO m => MonadIO (ActionT m) where
+    liftIO m = ActionT $ \_ _ st cont ->
+        liftIO m >>= \a -> cont a st
 
 instance MonadTrans ActionT where
-    lift = ActionT . lift . lift . lift . lift
+    lift m = ActionT $ \_ _ st cont ->
+        m >>= \a -> cont a st
 
-runActionT :: ActionT m a -> ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState))
-runActionT (ActionT m) config request st = runMaybeT (runStateT (runReaderT (runReaderT m config) request) st)
+runActionT :: Monad m => ActionT m a
+           -> ApiaryConfig -> Request -> ActionState
+           -> m (Maybe (a, ActionState))
+runActionT m conf req st = unActionT m conf req st $ \a st' ->
+    st' `seq` return (Just (a, st'))
 
-actionT :: (ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState))) -> ActionT m a
-actionT f = ActionT . ReaderT $ \c -> ReaderT $ \r -> StateT $ \s -> MaybeT $ f c r s
+actionT :: Monad m 
+        => (ApiaryConfig -> Request -> ActionState -> m (Maybe (a, ActionState)))
+        -> ActionT m a
+actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
+    Nothing      -> return Nothing
+    Just (a,st') -> st' `seq` cont a st'
 
-transActionT :: (forall b. m b -> IO b) -> ActionT m a -> ActionT IO a
-transActionT run m = actionT $ \c r s -> run (runActionT m c r s)
+hoistActionT :: (Monad m, Monad n)
+             => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
+hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
 execActionT config m request = runActionT m config request resp >>= \case
@@ -117,29 +144,31 @@ instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault
 
 instance MonadTransControl ActionT where
-    newtype StT ActionT a = StAction { unStAction :: StT MaybeT (StT (StateT ActionState) (StT (ReaderT Request) (StT (ReaderT ApiaryConfig) a))) }
-    liftWith f = ActionT $ liftWith $ \run -> liftWith $ \run' -> liftWith $ \run'' -> liftWith $ \run''' -> 
-        f $ liftM StAction . run''' . run'' . run' . run . unActionT
-    restoreT = ActionT . restoreT . restoreT . restoreT . restoreT . liftM unStAction
+    newtype StT ActionT a = StActionT { unStActionT :: Maybe (a, ActionState) }
+    liftWith f = actionT $ \c r s -> 
+        liftM (\a -> Just (a,s)) (f $ \t -> liftM StActionT $ runActionT t c r s)
+    restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
 
 instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
     newtype StM (ActionT m) a = StMT { unStMT :: ComposeSt ActionT m a }
     liftBaseWith = defaultLiftBaseWith StMT
-    restoreM     = defaultRestoreM   unStMT
-
-instance MFunctor ActionT where
-    hoist nat m = actionT $ \c r s ->
-        nat $ runActionT m c r s
+    restoreM     = defaultRestoreM unStMT
 
 instance MonadReader r m => MonadReader r (ActionT m) where
     ask     = lift ask
-    local f = hoist $ local f
+    local f = hoistActionT $ local f
 
 instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
     monadLoggerLog loc src lv msg = lift $ Logger.monadLoggerLog loc src lv msg
 
 getRequest :: Monad m => ActionT m Request
-getRequest = ActionT $ lift ask
+getRequest = ActionT $ \_ r s c -> c r s
+
+getConfig :: Monad m => ActionT m ApiaryConfig
+getConfig = ActionT $ \c _ s cont -> cont c s
+
+modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
+modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
 -- | when request header is not found, mzero(pass next handler).
 getRequestHeader' :: Monad m => HeaderName -> ActionT m S.ByteString
@@ -155,9 +184,6 @@ getQuery' q = getQuery q >>= maybe mzero return
 getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
 getQuery q = (lookup q . queryString) `liftM` getRequest
 
-modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
-modifyState f = ActionT . lift . lift $ modify f
-
 status :: Monad m => Status -> ActionT m ()
 status st = modifyState (\s -> s { actionStatus = st } )
 
@@ -171,12 +197,13 @@ setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
 setHeaders hs = modifyHeader (const hs)
 
 contentType :: Monad m => S.ByteString -> ActionT m ()
-contentType c = modifyHeader (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
+contentType c = modifyHeader
+    (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
 
 -- | set body to file content and detect Content-Type by extension.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
 file f p = do
-    mime <- ActionT $ asks mimeType
+    mime <- mimeType <$> getConfig
     contentType (mime f)
     file' f p
 

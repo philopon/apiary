@@ -29,17 +29,17 @@ runApiaryT config run (ApiaryT m) =
 runApiary :: ApiaryConfig -> Apiary () a -> Application
 runApiary config = runApiaryT config id
 
-focus :: (c -> ActionT m c') -> ApiaryT c' m b -> ApiaryT c m b
+focus :: Monad m => (c -> ActionT m c') -> ApiaryT c' m b -> ApiaryT c m b
 focus f (ApiaryT m) = do
-    tr <- transActionT `fmap` ApiaryT ask
+    tr <- hoistActionT `fmap` ApiaryT ask
     ApiaryT . ReaderT $ \r -> ReaderT $ \c -> runReaderT (runReaderT m r) (c >>= \a -> tr (f a))
 
-action_ :: ActionT m () -> ApiaryT c m ()
+action_ :: Monad m => ActionT m () -> ApiaryT c m ()
 action_ = action . const
 
-action :: (c -> ActionT m ()) -> ApiaryT c m ()
+action :: Monad m => (c -> ActionT m ()) -> ApiaryT c m ()
 action a = do
-    tr   <- transActionT `fmap` ApiaryT ask
+    tr   <- hoistActionT `fmap` ApiaryT ask
     ApiaryT $ lift ask >>= \g -> (lift . lift . lift) (tell $ g >>= \c -> tr (a c))
 
 apiaryConfig :: ApiaryT c m ApiaryConfig
