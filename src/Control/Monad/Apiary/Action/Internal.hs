@@ -71,9 +71,12 @@ actionStateToResponse as = case actionBody as of
     st = actionStatus  as
     hd = actionHeaders as
 
-newtype ActionT m a = ActionT { unActionT
-    :: forall b. ApiaryConfig -> Request -> ActionState
-    -> (a -> ActionState -> m (Maybe b)) -> m (Maybe b)
+newtype ActionT m a = ActionT { unActionT :: forall b. 
+    ApiaryConfig
+    -> Request
+    -> ActionState
+    -> (a -> ActionState -> m (Maybe b))
+    -> m (Maybe b)
     }
 
 instance Functor (ActionT m) where
