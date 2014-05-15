@@ -70,5 +70,5 @@ module Web.Apiary.Cookie
     ) where
 
 import Web.Cookie (SetCookie(..))
-import Data.Default.Class (def)
+import Data.Default.Class
 import Web.Apiary.Cookie.Internal

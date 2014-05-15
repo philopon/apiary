@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.4.0.0
+version:             0.4.0.1
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -16,7 +16,7 @@ description:
   .
   main :: IO ()
   main = run 3000 . runApiary def $ do
-  &#32;&#32;[capture|/:Int|] . queryFirst' "name" . stdMethod GET . action $ \\age name -> do
+  &#32;&#32;[capture|/:Int|] . queryFirst' &#34;name&#34; . stdMethod GET . action $ \\age name -> do
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
   &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, L.fromStrict name, &#34;!&#60;/h1&#62;&#34;]

@@ -10,12 +10,14 @@ module Control.Monad.Apiary.Filter
     , queryAll, queryAll', queryFirst, queryFirst'
     , function, function'
     -- * Reexport
-    , StdMethod(..)
+    -- StdMethod(..)
+    , module Network.HTTP.Types
     ) where
 
 import Control.Monad
 import Network.Wai
-import Network.HTTP.Types
+import qualified Network.HTTP.Types as Use
+import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
 
@@ -72,11 +74,11 @@ queryFirst' q = function' $ \r -> case mapMaybe snd . filter ((q ==) . fst) $ qu
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
 hasQuery q = function_ (any ((q ==) . fst) . queryString)
 
-method :: Monad m => Method -> ApiaryT c m a -> ApiaryT c m a
+method :: Monad m => Use.Method -> ApiaryT c m a -> ApiaryT c m a
 method m = function_ ((m ==) . requestMethod)
 
 stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
-stdMethod = method . renderStdMethod
+stdMethod = method . Use.renderStdMethod
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: Monad m => ApiaryT c m b -> ApiaryT c m b

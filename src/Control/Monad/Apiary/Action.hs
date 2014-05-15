@@ -27,7 +27,7 @@ module Control.Monad.Apiary.Action
     , redirect
     , redirectPermanently, redirectFound, redirectSeeOther, redirectTemporary
     -- * Reexport
-    , def
+    , module Data.Default.Class
     ) where
 
 import Control.Monad.Apiary.Action.Internal
