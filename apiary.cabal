@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.3.3.0
+version:             0.4.0.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -12,18 +12,19 @@ description:
   import Web.Apiary
   import Network.Wai.Handler.Warp
   import qualified Data.ByteString.Lazy.Char8 as L
+  import Control.Monad
   .
   main :: IO ()
   main = run 3000 . runApiary def $ do
-  &#32;&#32;[capture|/:String|] $ do
-  &#32;&#32;&#32;&#32;stdMethod GET . action $ \\name -> do
+  &#32;&#32;[capture|/:Int|] . queryFirst' "name" . stdMethod GET . action $ \\age name -> do
+  &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
-  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, L.pack name, &#34;!&#60;/h1&#62;&#34;]
+  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, L.fromStrict name, &#34;!&#60;/h1&#62;&#34;]
   @
   .
     * Nestable route handling(ApiaryT Monad; capture, stdMethod and more.).
   .
-    * type safe path capture.
+    * type safe route filter.
   .
   full example & tutorial: <https://github.com/philopon/apiary/blob/master/examples/main.lhs>
 

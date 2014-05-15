@@ -54,7 +54,7 @@ You can get captured elements by action (without underscore) function.
 
 Multiple type capturing. can get by tuple.
 
->     [capture|/div/:Double/:Double|] . action $ \(a,b) -> do
+>     [capture|/div/:Double/:Double|] . action $ \a b -> do
 >         when (b == 0) $ $logInfo "zero div."
 
 You can use MonadPlus instance. when b == 0, 404 page not found.
@@ -78,6 +78,13 @@ when execute 'stop' action, send current status and drop after actions.
 >         when (odd i) $ stop
 >         lbs "cannot stop handler..."
 >
+
+filters can freely nesting.
+
+>     [capture|/greeting/:String|] . 
+>         queryFirst' "first" . queryFirst' "last" . action $ \greed first last -> do
+>             contentType "text/plain"
+>             lbs $ L.unwords [L.pack greed `L.append` "!!", L.fromStrict first, L.fromStrict last]
 
 $ curl localhost:3000
 Hello World.
@@ -110,3 +117,6 @@ $ curl localhost:3000/stop/1
 stop the handler!
 $ curl localhost:3000/stop/2
 cannot stop handler...
+
+curl "localhost:3000/greeting/hi?first=John&last=Smith"
+hi!! John Smith

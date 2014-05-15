@@ -66,7 +66,7 @@ integralE :: Integral i => i -> ExpQ
 integralE = litE . integerL . fromIntegral
 
 capture' :: [T.Text] -> ExpQ
-capture' cap = [| function $ \_ request -> 
+capture' cap = [| function $ \ $(varP $ mkName "cont") request -> 
     $(caseE [|pathInfo request|] 
         [ match pat   (guards >>= \g -> body >>= \b -> normalB (doE $ g ++ b)) []
         , match wildP (normalB  [|mzero|]) []
@@ -87,7 +87,8 @@ capture' cap = [| function $ \_ request ->
                 bindS (varP . mkName $ v ++ "'")
                     [| (readParam $(varE $ mkName v) :: Maybe $(conT ty) ) |])
                     $ filter (isType . fst) varNames
-            rt = tupE $ map (\(_,v) -> varE $ mkName (v ++ "'")) $ filter (isType . fst) varNames
+            rt = foldr (\i b -> varE 'sSnoc `appE` b `appE` i) (varE $ mkName "cont") . reverse .
+                map (varE . mkName . (++ "'") . snd) $ filter (isType . fst) varNames
         return $ ss ++ [noBindS [| return $rt |]]
     lookupType n =  lookupTypeName (T.unpack $ T.tail n) >>= \case
         Nothing -> fail $ "capture': type not found: " ++ T.unpack (T.tail n)
