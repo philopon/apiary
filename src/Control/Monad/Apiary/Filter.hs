@@ -26,7 +26,7 @@ import Control.Monad.Apiary.Internal
 
 -- | raw and most generic filter function.
 function :: Monad m => (SList c -> Request -> Maybe (SList c')) -> ApiaryT c' m b -> ApiaryT c m b
-function f = focus $ \c -> getRequest >>= \r -> case f c r of
+function f = focus $ \r c -> case f c r of
     Nothing -> mzero
     Just c' -> return c'
 

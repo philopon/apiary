@@ -12,13 +12,14 @@ module Control.Monad.Apiary.Internal where
 
 import Network.Wai
 import Control.Applicative
+import Control.Monad
 import Data.Monoid
 
 import Control.Monad.Apiary.Action.Internal
 
 newtype ApiaryT c m a = ApiaryT { unApiaryT :: forall b.
     (forall x . m x -> IO x)
-    -> ActionT IO (SList c)
+    -> (Request -> Maybe (SList c))
     -> ApiaryConfig
     -> (a -> ActionT IO () -> m b)
     -> m b 
@@ -39,6 +40,10 @@ type instance Snoc (x ': xs) a = x ': Snoc xs a
 apply :: Fn xs r -> SList xs -> r
 apply v SNil = v
 apply f (SCons a as) = apply (f a) as
+
+filterToActionT :: Monad m => (Request -> Maybe (SList a))
+                -> ActionT m (SList a)
+filterToActionT f = getRequest >>= maybe mzero return . f
 
 sSnoc :: SList as -> a -> SList (Snoc as a)
 sSnoc SNil         a = SCons a SNil
@@ -65,7 +70,7 @@ instance Monad (ApiaryT c m) where
         in hdr'' `seq` cont b hdr''
 
 runApiaryT :: Monad m => ApiaryConfig -> (forall x. m x -> IO x) -> ApiaryT '[] m a -> Application
-runApiaryT conf run m req = run (unApiaryT m run (return SNil) conf (\_ w -> return w)) >>= \a ->
+runApiaryT conf run m req = run (unApiaryT m run (\_ -> Just SNil) conf (\_ w -> return w)) >>= \a ->
     execActionT conf a req
 
 type Apiary c = ApiaryT c IO
@@ -76,7 +81,7 @@ runApiary conf = runApiaryT conf id
 getRunner :: Monad m => ApiaryT c m (ActionT m a -> ActionT IO a)
 getRunner = ApiaryT $ \run _ _ c -> c (hoistActionT run) mempty
 
-getGuard :: ApiaryT c m (ActionT IO (SList c))
+getGuard :: ApiaryT c m (Request -> Maybe (SList c))
 getGuard = ApiaryT $ \_ grd _ c -> c grd mempty
 
 apiaryConfig :: ApiaryT c m ApiaryConfig
@@ -85,21 +90,20 @@ apiaryConfig = ApiaryT $ \_ _ c cont -> cont c mempty
 addRoute :: ActionT IO () -> ApiaryT c m ()
 addRoute r = ApiaryT $ \_ _ _ cont -> cont () r
 
-focus :: Monad m => (SList c -> ActionT m (SList c')) -> ApiaryT c' m b -> ApiaryT c m b
+focus :: Monad m => (Request -> SList c -> Maybe (SList c')) -> ApiaryT c' m b -> ApiaryT c m b
 focus g m = do
-    tr <- getRunner
     ApiaryT $ \run grd cfg cont ->
-        unApiaryT m run (grd >>= tr . g) cfg cont
+        unApiaryT m run (\r -> grd r >>= \c -> g r c) cfg cont
 
 action :: Monad m => Fn c (ActionT m ()) -> ApiaryT c m ()
 action a = do
     tr  <- getRunner
     grd <- getGuard
-    addRoute $ grd >>= tr . apply a
+    addRoute $ filterToActionT grd >>= tr . apply a
 
 {-# DEPRECATED action_ "use action method." #-}
 action_ :: Monad m => ActionT m () -> ApiaryT c m ()
 action_ a = do
     tr <- getRunner
     grd <- getGuard
-    addRoute $ grd >> tr a
+    addRoute $ filterToActionT grd >> tr a

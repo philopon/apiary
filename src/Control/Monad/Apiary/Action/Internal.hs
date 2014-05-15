@@ -75,7 +75,7 @@ actionStateToResponse as = case actionBody as of
 data Action a 
     = Continue a
     | Pass
-    | Stop ActionState
+    | Stop Response
 
 newtype ActionT m a = ActionT { unActionT :: forall b. 
     ApiaryConfig
@@ -132,7 +132,7 @@ hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
 execActionT config m request = runActionT m config request resp >>= \case
         Pass           -> notFound config request
-        Stop s         -> return $ actionStateToResponse s
+        Stop s         -> return s
         Continue (_,r) -> return $ actionStateToResponse r
   where
     resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "")
@@ -175,7 +175,11 @@ instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
 
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT m a
-stop = ActionT $ \_ _ s _ -> return $ Stop s
+stop = ActionT $ \_ _ s _ -> return $ Stop (actionStateToResponse s)
+
+-- | stop with response. since 0.4.2.0.
+stopWith :: Monad m => Response -> ActionT m a
+stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
