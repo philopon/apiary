@@ -6,12 +6,20 @@
 module Control.Monad.Apiary.Filter
     ( method, stdMethod, root
     , ssl
-    , hasQuery
-    , queryAll, queryAll', queryFirst, queryFirst'
+    -- * query parameter
+    -- ** query getter(always success)
+    , queryMany, queryMany'
+    , maybeQueryFirst, maybeQueryFirst'
+    -- ** query filter
+    , querySome, querySome'
+    , queryFirst, queryFirst'
+    -- * low level
     , function, function'
     -- * Reexport
     -- StdMethod(..)
     , module Network.HTTP.Types
+    -- * deprecated
+    , hasQuery, queryAll, queryAll'
     ) where
 
 import Control.Monad
@@ -43,38 +51,76 @@ function_ f = function $ \c r -> if f r then Just c else Nothing
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
 ssl = function_ isSecure
 
+-- | get [0,) parameters by query parameter allows empty value. since 0.4.3.0.
+queryMany :: Monad m => S.ByteString
+          -> ApiaryT (Snoc as [Maybe S.ByteString]) m b
+          -> ApiaryT as m b
+queryMany q = function' $ Just . map snd . filter ((q ==) . fst) . queryString
+
+-- | filter [1,) parameters by query parameter allows empty value. since 0.4.3.0.
+querySome :: Monad m => S.ByteString
+          -> ApiaryT (Snoc as [Maybe S.ByteString]) m b
+          -> ApiaryT as m b
+querySome q = function' $ \r -> case map snd . filter ((q ==) . fst) $ queryString r of
+    [] -> Nothing
+    as -> Just as
+
 -- | filter by query parameter. since 0.4.0.0.
 queryAll :: Monad m => S.ByteString
          -> ApiaryT (Snoc as [Maybe S.ByteString]) m b -- ^ Nothing == no value paramator.
          -> ApiaryT as m b
-queryAll q = function' $ \r -> case filter ((q ==) . fst) $ queryString r of
+queryAll = querySome
+{-# DEPRECATED queryAll "use querySome" #-}
+
+-- | get [0,) parameters by query parameter not allows empty value. since 0.4.3.0.
+queryMany' :: Monad m => S.ByteString
+           -> ApiaryT (Snoc as [S.ByteString]) m b 
+           -> ApiaryT as m b
+queryMany' q = function' $ Just . mapMaybe snd . filter ((q ==) . fst) . queryString
+
+-- | filter [1,) parameters by query parameter not allows empty value. since 0.4.3.0.
+querySome' :: Monad m => S.ByteString
+           -> ApiaryT (Snoc as [S.ByteString]) m b 
+           -> ApiaryT as m b
+querySome' q = function' $ \r -> case mapMaybe snd . filter ((q ==) . fst) $ queryString r of
     [] -> Nothing
-    as -> Just $ map snd as
+    as -> Just as
 
 -- | filter by query parameter. since 0.4.0.0.
 queryAll' :: Monad m => S.ByteString
           -> ApiaryT (Snoc as [S.ByteString]) m b 
           -> ApiaryT as m b
-queryAll' q = function' $ \r -> case mapMaybe snd . filter ((q ==) . fst) $ queryString r of
-    [] -> Nothing
-    as -> Just as
+queryAll' = querySome'
+{-# DEPRECATED queryAll' "use querySome'" #-}
 
--- | filter by query parameter. since 0.4.0.0.
+-- | get first query parameter allow empty value. since 0.4.3.0,
+maybeQueryFirst :: Monad m => S.ByteString
+                -> ApiaryT (Snoc as (Maybe (Maybe S.ByteString))) m b
+                -> ApiaryT as m b
+maybeQueryFirst q = function' (Just . lookup q . queryString)
+
+-- | filter by query parameter. allow empty value. since 0.4.0.0.
 queryFirst :: Monad m => S.ByteString
            -> ApiaryT (Snoc as (Maybe S.ByteString)) m b
            -> ApiaryT as m b
 queryFirst q = function' (lookup q . queryString)
 
--- | filter by query parameter. since 0.4.0.0.
+-- | get first query parameter not allow empty value. since 0.4.3.0,
+maybeQueryFirst' :: Monad m => S.ByteString
+                 -> ApiaryT (Snoc as (Maybe S.ByteString)) m b
+                 -> ApiaryT as m b
+maybeQueryFirst' q = function' $ Just . listToMaybe . mapMaybe snd . filter ((q ==) . fst) . queryString
+
+-- | filter by query parameter. not allow empty value. since 0.4.0.0.
 queryFirst' :: Monad m => S.ByteString
             -> ApiaryT (Snoc as S.ByteString) m b
             -> ApiaryT as m b
-queryFirst' q = function' $ \r -> case mapMaybe snd . filter ((q ==) . fst) $ queryString r of
-    []  -> Nothing
-    a:_ -> Just a
+queryFirst' q = function' $ listToMaybe . mapMaybe snd . filter ((q ==) . fst) . queryString
 
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
 hasQuery q = function_ (any ((q ==) . fst) . queryString)
+
+{-# DEPRECATED hasQuery "use query* function." #-}
 
 method :: Monad m => Use.Method -> ApiaryT c m a -> ApiaryT c m a
 method m = function_ ((m ==) . requestMethod)
