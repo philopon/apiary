@@ -21,6 +21,8 @@ import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
 
+import Data.Apiary.SList
+
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Internal
 

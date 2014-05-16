@@ -2,6 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GADTs #-}
@@ -14,6 +15,7 @@ import Network.Wai
 import Control.Applicative
 import Control.Monad
 import Data.Monoid
+import Data.Apiary.SList
 
 import Control.Monad.Apiary.Action.Internal
 
@@ -25,29 +27,9 @@ newtype ApiaryT c m a = ApiaryT { unApiaryT :: forall b.
     -> m b 
     }
 
-data SList (as :: [*]) where
-    SNil  :: SList '[]
-    SCons :: a -> SList xs -> SList (a ': xs)
-
-type family Fn (as :: [*]) r
-type instance Fn '[] r = r
-type instance Fn (x ': xs) r = x -> Fn xs r
-
-type family Snoc (as :: [*]) a :: [*]
-type instance Snoc '[] a = '[a]
-type instance Snoc (x ': xs) a = x ': Snoc xs a
-
-apply :: Fn xs r -> SList xs -> r
-apply v SNil = v
-apply f (SCons a as) = apply (f a) as
-
 filterToActionT :: Monad m => (Request -> Maybe (SList a))
                 -> ActionT m (SList a)
 filterToActionT f = getRequest >>= maybe mzero return . f
-
-sSnoc :: SList as -> a -> SList (Snoc as a)
-sSnoc SNil         a = SCons a SNil
-sSnoc (SCons x xs) a = SCons x $ sSnoc xs a
 
 instance Functor (ApiaryT c m) where
     fmap f m = ApiaryT $ \run grd conf cont ->
