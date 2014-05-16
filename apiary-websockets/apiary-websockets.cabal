@@ -3,6 +3,7 @@ version:             0.4.2.0
 x-revision:          1
 synopsis:            websockets supper for apiary web framework.
 description:
+  example: <https://github.com/philopon/apiary/blob/master/examples/websockets.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>

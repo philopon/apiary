@@ -1,8 +1,9 @@
 name:                apiary-cookie
-version:             0.4.1.0
+version:             0.4.2.0
 x-revision:          1
 synopsis:            Cookie support for apiary web framework.
 description:
+  example: <https://github.com/philopon/apiary/blob/master/examples/cookie.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
