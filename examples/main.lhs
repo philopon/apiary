@@ -76,7 +76,7 @@ when execute 'stop' action, send current status and drop after actions.
 >         contentType "text/plain"
 >         lbs "stop the handler!"
 >         when (odd i) $ stop
->         lbs "cannot stop handler..."
+>         lbs "don't stop handler..."
 >
 
 filters can freely nesting.
@@ -97,7 +97,7 @@ $ curl -XPOST localhost:3000/number/1
 POST 2
 curl localhost:3000/number/0x24
 GET 36
-$ curl -XPUT localhost:3000/number/num
+$ curl localhost:3000/number/num
 404 Page Notfound.
 $ curl -XPUT localhost:3000/number/1
 404 Page Notfound.
@@ -116,7 +116,7 @@ File not found
 $ curl localhost:3000/stop/1
 stop the handler!
 $ curl localhost:3000/stop/2
-cannot stop handler...
+don't stop handler...
 
 curl "localhost:3000/greeting/hi?first=John&last=Smith"
 hi!! John Smith

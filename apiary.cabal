@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.4.0.2
+version:             0.4.2.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -12,7 +12,6 @@ description:
   import Web.Apiary
   import Network.Wai.Handler.Warp
   import qualified Data.ByteString.Lazy.Char8 as L
-  import Control.Monad
   .
   main :: IO ()
   main = run 3000 . runApiary def $ do
@@ -44,15 +43,26 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Apiary
                        Web.Apiary.TH
+
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
+                       Control.Monad.Apiary.Filter.Capture
                        Control.Monad.Apiary.Action
-  other-modules:       Web.Apiary.TH.Capture
+
+                       Data.Apiary.SList
+                       Data.Apiary.Param
+
+  other-modules:       Web.Apiary.TH.Internal
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
-  other-extensions:    TemplateHaskell
-                       FlexibleInstances
-                       LambdaCase
+  other-extensions:    KindSignatures
+                     , DataKinds
+                     , TypeOperators
+                     , GADTs
+                     , TypeFamilies
+
+                     , Rank2Types
+                       
   build-depends:       base              >=4.7 && <4.8
                      , template-haskell  >=2.9 && <2.10
                      , transformers      >=0.3 && <0.5

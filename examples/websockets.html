@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>websocket test</title>
+    <script>
+      window.addEventListener('load', function() {
+        var div    = document.getElementById("msg");
+        var host   = "ws://localhost:3000/3";
+        var socket = new WebSocket(host);
+        socket.onopen = function(open) {
+          div.innerHTML += "Open<br>";
+          socket.send("test");
+          socket.onmessage = function(message) {
+            div.innerHTML += "Message: " + message.data + "<br>";
+          }
+          socket.onclose = function(close) {
+            div.innerHTML += "Close<br>";
+          }
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="msg">
+    </div>
+  </bodY>
+</html>
