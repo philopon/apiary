@@ -1,3 +1,5 @@
+[![Build Status](https://secure.travis-ci.org/philopon/apiary.png](https://travis-ci.org/philopon/apiary)
+
 Apiary
 ====
 Simple web framework inspired by scotty.
