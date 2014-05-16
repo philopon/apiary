@@ -1,12 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ImplicitParams #-}
-{-# LANGUAGE Rank2Types #-}
 
 import Web.Apiary
 import Web.Apiary.Database.Persist
@@ -23,10 +21,10 @@ Number
 
 main :: IO ()
 main = withWithSqlPool (withSqlitePool ":memory:" 10) $ do
-    runSql (runMigration migrateAll)
+    runSql $ runMigration migrateAll
     run 3000 . runApiary def $ do
         root . action $ do
-            l <- runSql (selectList ([] :: [Filter Number]) [])
+            l <- runSql $ selectList ([] :: [Filter Number]) []
             lbs $ L.pack (show l)
 
         [capture|/:Int|] $ do
