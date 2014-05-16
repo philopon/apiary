@@ -1,6 +1,4 @@
-[![Build Status](https://secure.travis-ci.org/philopon/apiary.png)](https://travis-ci.org/philopon/apiary)
-
-Apiary
+Apiary [![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary)
 ====
 Simple web framework inspired by scotty.
 

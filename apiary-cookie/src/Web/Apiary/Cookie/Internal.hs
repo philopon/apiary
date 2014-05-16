@@ -19,7 +19,6 @@ import Web.Cookie
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
-import Data.Default.Class
 
 newtype Cookie = Cookie
     { key :: Key

@@ -19,7 +19,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     
   other-modules:       
-  build-depends:       base              >=4.7   && <4.8
+  build-depends:       base              >=4.6   && <4.8
                      , apiary            >=0.4.2 && <0.5
 
   hs-source-dirs:      src
