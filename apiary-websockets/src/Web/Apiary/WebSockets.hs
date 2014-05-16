@@ -1,8 +1,10 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
 module Web.Apiary.WebSockets (
       actionWithWebSockets 
     , actionWithWebSockets'
     -- * Reexport
-    -- | pandingRequest, acceptRequest, rejectrequest
+    -- | PendingConnection,
+    -- pandingRequest, acceptRequest, rejectrequest
     --
     -- receiveData
     --
@@ -11,31 +13,32 @@ module Web.Apiary.WebSockets (
     ) where
 
 import Web.Apiary
+import Data.Apiary.SList
 import qualified Network.Wai.Handler.WebSockets as WS
 import qualified Network.WebSockets as WS
 
 import Network.WebSockets
-    ( pendingRequest, acceptRequest, rejectRequest
+    ( PendingConnection
+    , pendingRequest, acceptRequest, rejectRequest
     , receiveData
     , sendTextData, sendBinaryData, sendClose, sendPing
     )
 
-actionWithWebSockets' :: Monad m 
-                      => WS.ConnectionOptions
-                      -> WS.ServerApp
-                      -> Fn c (ActionT m ())
-                      -> ApiaryT c m ()
+actionWithWebSockets' :: Monad m => WS.ConnectionOptions 
+                      -> Fn xs WS.ServerApp
+                      -> Fn xs (ActionT m ())
+                      -> ApiaryT xs m ()
 actionWithWebSockets' conn srv m = do
     actionWithPreAction pa m
   where
-    pa = do
+    pa args = do
         req <- getRequest
-        case WS.websocketsApp conn srv req of
+        case WS.websocketsApp conn (apply srv args) req of
             Nothing   -> return ()
             Just resp -> stopWith resp
 
 actionWithWebSockets :: Monad m 
-                     => WS.ServerApp
+                     => Fn c WS.ServerApp
                      -> Fn c (ActionT m ())
                      -> ApiaryT c m ()
 actionWithWebSockets = actionWithWebSockets' WS.defaultConnectionOptions
