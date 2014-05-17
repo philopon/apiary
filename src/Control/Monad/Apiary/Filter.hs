@@ -6,11 +6,14 @@
 module Control.Monad.Apiary.Filter
     ( method, stdMethod, root
     , ssl
+    , Control.Monad.Apiary.Filter.httpVersion
+    , http09, http10, http11
     -- * query parameter
     -- ** query getter(always success)
     , queryMany, queryMany'
     , maybeQueryFirst, maybeQueryFirst'
     -- ** query filter
+    , hasQuery
     , querySome, querySome'
     , queryFirst, queryFirst'
     -- * low level
@@ -19,12 +22,12 @@ module Control.Monad.Apiary.Filter
     -- StdMethod(..)
     , module Network.HTTP.Types
     -- * deprecated
-    , hasQuery, queryAll, queryAll'
+    , queryAll, queryAll'
     ) where
 
 import Control.Monad
-import Network.Wai
-import qualified Network.HTTP.Types as Use
+import Network.Wai as Wai
+import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
@@ -50,6 +53,19 @@ function_ f = function $ \c r -> if f r then Just c else Nothing
 
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
 ssl = function_ isSecure
+
+-- | http version filter. since 0.4.4.0.
+httpVersion :: Monad m => HT.HttpVersion  -> ApiaryT c m b -> ApiaryT c m b
+httpVersion v = function_ $ (v ==) . Wai.httpVersion
+
+http09 :: Monad m => ApiaryT c m b -> ApiaryT c m b
+http09 = Control.Monad.Apiary.Filter.httpVersion HT.http09
+
+http10 :: Monad m => ApiaryT c m b -> ApiaryT c m b
+http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
+
+http11 :: Monad m => ApiaryT c m b -> ApiaryT c m b
+http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
 
 -- | get [0,) parameters by query parameter allows empty value. since 0.4.3.0.
 queryMany :: Monad m => S.ByteString
@@ -120,13 +136,11 @@ queryFirst' q = function' $ listToMaybe . mapMaybe snd . filter ((q ==) . fst) .
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
 hasQuery q = function_ (any ((q ==) . fst) . queryString)
 
-{-# DEPRECATED hasQuery "use query* function." #-}
-
-method :: Monad m => Use.Method -> ApiaryT c m a -> ApiaryT c m a
+method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
 method m = function_ ((m ==) . requestMethod)
 
 stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
-stdMethod = method . Use.renderStdMethod
+stdMethod = method . HT.renderStdMethod
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: Monad m => ApiaryT c m b -> ApiaryT c m b
