@@ -32,7 +32,7 @@ instance CaptureElem Equal where
     captureElem (Equal s) p c | s == p    = Just c
                               | otherwise = Nothing
 
-instance Param a => CaptureElem (Fetch a) where
+instance Path a => CaptureElem (Fetch a) where
     type Next (Fetch a) xs = (xs `Snoc` a)
     captureElem (Fetch :: Fetch a) p c = (sSnoc c) <$> (readPath p :: Maybe a)
 
