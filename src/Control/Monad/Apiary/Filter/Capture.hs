@@ -34,7 +34,7 @@ instance CaptureElem Equal where
 
 instance Param a => CaptureElem (Fetch a) where
     type Next (Fetch a) xs = (xs `Snoc` a)
-    captureElem (Fetch :: Fetch a) p c = (sSnoc c) <$> (readParam p :: Maybe a)
+    captureElem (Fetch :: Fetch a) p c = (sSnoc c) <$> (readPath p :: Maybe a)
 
 
 type Capture as = All CaptureElem as
