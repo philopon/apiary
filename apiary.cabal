@@ -46,7 +46,9 @@ library
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
-                       Control.Monad.Apiary.Filter.Capture
+                       Control.Monad.Apiary.Filter.Internal
+                       Control.Monad.Apiary.Filter.Internal.Capture
+                       Control.Monad.Apiary.Filter.Internal.Query
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.SList

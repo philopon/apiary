@@ -4,8 +4,8 @@ module Web.Apiary.TH.Internal where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
-import Control.Monad.Apiary.Filter.Capture hiding(capture, capture')
-import qualified Control.Monad.Apiary.Filter.Capture as Capture
+import Control.Monad.Apiary.Filter.Internal.Capture hiding(capture, capture')
+import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Data.Apiary.SList
 import qualified Data.Text as T
 

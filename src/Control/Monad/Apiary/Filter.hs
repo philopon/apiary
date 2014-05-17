@@ -10,11 +10,7 @@ module Control.Monad.Apiary.Filter (
     , ssl
     , Control.Monad.Apiary.Filter.httpVersion
     , http09, http10, http11
-    -- * filter with stock arguments
-    , query
     , hasQuery
-    -- * low level
-    , function, function'
     -- * Reexport
     -- StdMethod(..)
     , module Network.HTTP.Types
@@ -32,27 +28,13 @@ import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
-import Data.Proxy
 
 import Data.Apiary.SList
-import Data.Apiary.Param
 
 import Control.Monad.Apiary.Action.Internal
+import Control.Monad.Apiary.Filter.Internal
+import Control.Monad.Apiary.Filter.Internal.Query
 import Control.Monad.Apiary.Internal
-
--- | raw and most generic filter function.
-function :: Monad m => (SList c -> Request -> Maybe (SList c')) -> ApiaryT c' m b -> ApiaryT c m b
-function f = focus $ \r c -> case f c r of
-    Nothing -> mzero
-    Just c' -> return c'
-
--- | filter and append argument.
-function' :: Monad m => (Request -> Maybe a) -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
-function' f = function $ \c r -> sSnoc c `fmap` f r
-
--- | filter only(not modify arguments).
-function_ :: Monad m => (Request -> Bool) -> ApiaryT c m b -> ApiaryT c m b
-function_ f = function $ \c r -> if f r then Just c else Nothing
 
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
 ssl = function_ isSecure
@@ -72,36 +54,6 @@ http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
 http11 :: Monad m => ApiaryT c m b -> ApiaryT c m b
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
-
--- | query getter. since 0.5.0.0.
---
--- @
--- query "key" (Proxy :: Proxy (fetcher type))
--- @
---
--- examples:
---
--- @
--- query "key" (Proxy :: Proxy ('First' Int)) -- get first \'key\' query parameter as Int.
--- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
--- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
--- @
--- 
-query :: (QueryElem a, Query w, Monad m)
-      => S.ByteString
-      -> Proxy (w a)
-      -> ApiaryT (QSnoc w as a) m b
-      -> ApiaryT as m b
-query k p = function $ \l r -> readQuery k p (queryString r) l
-
--- | query exists checker.
---
--- @
--- hasQuery q = query' q (Proxy :: Proxy (Check ()))
--- @
---
-hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
-hasQuery q = query q (Proxy :: Proxy (Check ()))
 
 method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
 method m = function_ ((m ==) . requestMethod)

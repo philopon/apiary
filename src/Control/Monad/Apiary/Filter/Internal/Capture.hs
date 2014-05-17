@@ -9,7 +9,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Control.Monad.Apiary.Filter.Capture where
+module Control.Monad.Apiary.Filter.Internal.Capture where
 
 import Network.Wai
 
@@ -19,6 +19,7 @@ import Data.Apiary.Param
 import Data.Apiary.SList
 
 import Control.Monad.Apiary
+import Control.Monad.Apiary.Filter.Internal
 
 data Equal   = Equal T.Text
 data Fetch a = Fetch
