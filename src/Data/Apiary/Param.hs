@@ -4,8 +4,11 @@
 module Data.Apiary.Param where
 
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.ByteString.Char8 as S
+import qualified Data.ByteString.Lazy.Char8 as L
 import Text.Read
 import Data.Int
 import Data.Word
@@ -79,6 +82,14 @@ instance Param T.Text where
 instance Param TL.Text where
     readPath      = Just . TL.fromStrict
     readQuery e s = Just . TL.fromStrict $ e s
+
+instance Param S.ByteString where
+    readPath    = Just . T.encodeUtf8
+    readQuery _ = Just
+
+instance Param L.ByteString where
+    readPath    = Just . TL.encodeUtf8 . TL.fromStrict
+    readQuery _ = Just . L.fromStrict
 
 instance Param String where
     readPath    = Just . T.unpack
