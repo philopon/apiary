@@ -8,8 +8,9 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
-module Control.Monad.Apiary.Filter.Capture where
+module Control.Monad.Apiary.Filter.Internal.Capture where
 
 import Network.Wai
 
@@ -17,11 +18,13 @@ import Control.Applicative
 import qualified Data.Text as T
 import Data.Apiary.Param
 import Data.Apiary.SList
+import Data.Proxy
 
 import Control.Monad.Apiary
+import Control.Monad.Apiary.Filter.Internal
 
 data Equal   = Equal T.Text
-data Fetch a = Fetch
+type Fetch = Proxy
 
 class CaptureElem a where
   type Next a (xs :: [*]) :: [*]
@@ -32,10 +35,9 @@ instance CaptureElem Equal where
     captureElem (Equal s) p c | s == p    = Just c
                               | otherwise = Nothing
 
-instance Param a => CaptureElem (Fetch a) where
+instance Path a => CaptureElem (Fetch a) where
     type Next (Fetch a) xs = (xs `Snoc` a)
-    captureElem (Fetch :: Fetch a) p c = (sSnoc c) <$> (readParam p :: Maybe a)
-
+    captureElem (Proxy :: Fetch a) p c = (sSnoc c) <$> (readPath p :: Maybe a)
 
 type Capture as = All CaptureElem as
 
@@ -52,8 +54,8 @@ capture' _ [] _   = Nothing
 -- | low level (without Template Haskell) capture. since 0.4.2.0
 --
 -- @
--- myCapture :: SList '[Equal, Fetch Int, Fetch String]
--- myCapture = Equal "path" ::: (Fetch :: Fetch Int) ::: (Fetch :: Fetch String) ::: SNil
+-- myCapture :: 'SList' '['Equal', 'Fetch' Int, Fetch String]
+-- myCapture = 'Equal' "path" ':::' 'pInt' ::: 'pString' ::: 'SNil'
 --
 -- capture myCapture . stdMethod GET . action $ \age name -> do
 --     yourAction

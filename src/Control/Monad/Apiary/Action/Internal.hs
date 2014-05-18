@@ -42,7 +42,7 @@ data ApiaryConfig = ApiaryConfig
 instance Default ApiaryConfig where
     def = ApiaryConfig 
         { notFound = \_ -> return $ responseLBS status404 
-            [("Content-Type", "text/plain")] "404 Page Notfound."
+            [("Content-Type", "text/plain")] "404 Page Notfound.\n"
         , defaultStatus = ok200
         , defaultHeader = []
         , rootPattern   = ["", "/", "/index.html", "/index.htm"]
@@ -201,8 +201,12 @@ getRequestHeader h = (lookup h . requestHeaders) `liftM` getRequest
 getQuery' :: Monad m => S.ByteString -> ActionT m (Maybe S.ByteString)
 getQuery' q = getQuery q >>= maybe mzero return
 
+{-# DEPRECATED getQuery' "use qeury derived filter." #-}
+
 getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
 getQuery q = (lookup q . queryString) `liftM` getRequest
+
+{-# DEPRECATED getQuery "use qeury derived filter." #-}
 
 status :: Monad m => Status -> ActionT m ()
 status st = modifyState (\s -> s { actionStatus = st } )

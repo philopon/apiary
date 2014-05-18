@@ -5,5 +5,5 @@ ghc:
 install:
   - >-
     cabal install --only-dependencies --enable-tests
-    . apiary-cookie apiary-persistent apiary-websockets
+    . ./apiary-cookie ./apiary-persistent ./apiary-websockets
 script: bash -eu ./.travis.sh

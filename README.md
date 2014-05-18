@@ -61,25 +61,30 @@ when first path == "path" and second path is readable as Int, filter successed.
 
 ### query parameter
 
-you can route by querySome, querySome', queryFirst, queryFirst'.
+you can route by query function.
 
 ```haskell
-querySome   "query" :: ApiaryT (xs `Snoc` [Maybe ByteString]) m b
-querySome'  "query" :: ApiaryT (xs `Snoc` [      ByteString]) m b
-queryFirst  "query" :: ApiaryT (xs `Snoc`  Maybe ByteString ) m b
-queryFirst' "query" :: ApiaryT (xs `Snoc`        ByteString ) m b
+query :: (Query a, Strategy w, Monad m) => ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b 
 ```
 
-and query getter (always success matching, so useful get optional query parameter)
+example:
 
 ```haskell
-queryMany        "query" :: ApiaryT (xs `Snoc` Maybe [Maybe ByteString]) m b
-queryMany'       "query" :: ApiaryT (xs `Snoc` Maybe [      ByteString]) m b
-maybeQueryFirst  "query" :: ApiaryT (xs `Snoc` Maybe  Maybe ByteString ) m b
-maybeQueryFirst' "query" :: ApiaryT (xs `Snoc` Maybe        ByteString ) m b
+query "key" (Proxy :: Proxy First Int)
 ```
 
-hoge' function not allow empty query value.
+Strategy choose query getting strategy. predefined strategy is First(get first parameter), One(get one parameter), Option(get optional parameter), Many(get zero or more parameters), Some(get one or more parameters), Check(check parameter exists).
+
+query function, little verbose, so there are convinient functions. so, you can write:
+
+```haskell
+("key" =: pDouble)          -- get first Double parameter
+("key" =!: pInt)            -- get one Int parameter
+("key" =?: pMaybe pString)  -- get optional String parameter which can ommit value.
+("key" ?: ())               -- check parameter exists.(not type checked)
+("key" =*: pText)           -- get zero or more Text parameters.
+("key" =*: pLazyByteString) -- get one or more lazy ByteString parameters.
+```
 
 ### filter only routers
 these router is not modify arguments.
@@ -127,15 +132,43 @@ main :: IO ()
 main = run 3000 . runApiary def $ do
     [capture|/:Int|] $ do
         -- freely
-        queryFirst' "query" . maybeQueryFirst' "mbQuery" $ do
+        ("query" =: pString) $ do
             -- nestable
-            stdMethod GET . action $ \int query mbQuery -> do
-                contentType "text/plain"
-                lbs $ L.unlines $ "GET" : map (L.pack) [show int, show query, show mbQuery]
+            ("mbQuery" =?: pDouble) $ do
+                -- filters
+                stdMethod GET . action $ \int query mbQuery -> do
+                    contentType "text/plain"
+                    lbs $ L.unlines $ "GET" : map L.pack [show int, query, show mbQuery]
 
-            stdMethod DELETE . action $ \_ _ _ -> do
-                lbs "DELETE!\n"
+                stdMethod DELETE . action $ \_ _ _ -> do
+                    lbs "DELETE!\n"
+
+            ("mbQuery" =: pLazyByteString) $ do
+
+                action $ \_ _ mbQuery -> do
+                    contentType "text/plain"
+                    lbs . L.unwords $ [mbQuery, "is not Double.\n"]
+
+    -- no filter: default action
     action $ do
         lbs "Hello World!\n"
 ```
 
+```bash
+$ curl localhost:3000
+Hello World!
+$ curl 'localhost:3000/12?query=test'
+GET
+12
+test
+Nothing
+$ curl -XDELETE 'localhost:3000/12?query=test'
+DELETE!
+$ curl 'localhost:3000/12?query=test&mbQuery=42'
+GET
+12
+test
+Just 42.0
+$ curl 'localhost:3000/12?query=test&mbQuery=xxx'
+xxx is not Double.
+```

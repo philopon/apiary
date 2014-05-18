@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.4.3.2
+version:             0.5.0.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:
@@ -15,10 +15,21 @@ description:
   .
   main :: IO ()
   main = run 3000 . runApiary def $ do
-  &#32;&#32;[capture|/:Int|] . queryFirst' &#34;name&#34; . stdMethod GET . action $ \\age name -> do
+  &#32;&#32;[capture|/:Int|] . (&#34;name&#34; =: pLazyByteString) . stdMethod GET . action $ \\age name -> do
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
-  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, L.fromStrict name, &#34;!&#60;/h1&#62;&#34;]
+  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, name, &#34;!&#60;/h1&#62;\\n&#34;]
+  @
+  .
+  @
+  $ curl localhost:3000
+  404 Page Notfound.
+  $ curl 'localhost:3000/20?name=arice'
+  &#60;h1&#62;Hello, arice!&#60;/h1&#62;
+  $ curl 'localhost:3000/15?name=bob'
+  404 Page Notfound.
+  $ curl -XPOST 'localhost:3000/20?name=arice'
+  404 Page Notfound.
   @
   .
     * Nestable route handling(ApiaryT Monad; capture, stdMethod and more.).
@@ -42,19 +53,20 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary
-                       Web.Apiary.TH
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
-                       Control.Monad.Apiary.Filter.Capture
+                       Control.Monad.Apiary.Filter.Internal
+                       Control.Monad.Apiary.Filter.Internal.Capture
+                       Control.Monad.Apiary.Filter.Internal.Query
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.SList
                        Data.Apiary.Param
 
-  other-modules:       Web.Apiary.TH.Internal
-                       Control.Monad.Apiary.Internal
+  other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
+                       Control.Monad.Apiary.Filter.Internal.Capture.TH
   other-extensions:    KindSignatures
                      , DataKinds
                      , TypeOperators
@@ -76,6 +88,7 @@ library
                      , conduit            >=1.1 && <1.2
                      , monad-logger       >=0.3 && <0.4
                      , data-default-class >=0.0 && <0.1
+                     , tagged             >=0.7 && <0.8
 
                      , http-types        >=0.8 && <0.9
                      , mime-types        >=0.1 && <0.2
@@ -89,7 +102,7 @@ library
 test-suite test-framework
   main-is:             main.hs
   type:                exitcode-stdio-1.0
-  build-depends:       base                 >=4.5 && <4.8
+  build-depends:       base                 >=4.6 && <4.8
                      , test-framework       >=0.8 && <0.9
                      , test-framework-hunit >=0.3 && <0.4
                      , wai                  >=2.1 && <2.2

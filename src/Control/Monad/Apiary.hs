@@ -7,9 +7,6 @@ module Control.Monad.Apiary
     , apiaryConfig
     -- * execute action
     , action, action_, actionWithPreAction
-    -- * Reexport
-    , module Control.Monad.Apiary.Filter
     ) where
 
 import Control.Monad.Apiary.Internal
-import Control.Monad.Apiary.Filter
