@@ -58,7 +58,7 @@ instance Strategy Option where
     readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
-           then Just $ sSnoc l (Nothing `asMaybe` p)
+           then Nothing
            else case catMaybes rs of
                []  -> Just $ sSnoc l (Nothing `asMaybe` p)
                a:_ -> Just $ sSnoc l (Just a)
