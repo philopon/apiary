@@ -15,8 +15,12 @@ module Control.Monad.Apiary.Filter (
     , capture
 
     -- ** query matcher
+    , query
+    , pFirst, pOne, pOption, pCheck, pMany, pSome
+    -- *** specified operators
     , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
     , hasQuery
+
 
     -- ** other
     , ssl
@@ -83,81 +87,62 @@ root m = do
 -- | get first matched paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (First Int))
+-- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
 -- @
 (=:) :: (Query a, Monad m)
      => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
-k =: t = query k (asFirst t)
-  where
-    asFirst :: Proxy a -> Proxy (First a)
-    asFirst _ = Proxy
-
+k =: t = query k (pFirst t)
 
 -- | get one matched paramerer. since 0.5.0.0.
 --
 -- when more one parameger given, not matched.
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (One Int))
+-- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
 -- @
 (=!:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
-k =!: t = query k (asOne t)
-  where
-    asOne :: Proxy a -> Proxy (One a)
-    asOne _ = Proxy
+k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
 --
 -- when illegal type parameter given, fail mather(don't give Nothing).
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (Option Int))
+-- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
 -- @
 (=?:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as (Maybe a)) m b -> ApiaryT as m b
-k =?: t = query k (asOption t)
-  where
-    asOption :: Proxy a -> Proxy (Option a)
-    asOption _ = Proxy
+k =?: t = query k (pOption t)
 
 -- | check parameger given and type. since 0.5.0.0.
 --
 -- If you wan't to allow any type, give 'pVoid'.
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (Check Int))
+-- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Proxy :: Proxy (Check Int))
 -- @
 (?:) :: (Query a, Monad m)
      => S.ByteString -> Proxy a -> ApiaryT as m b -> ApiaryT as m b
-k ?: t = query k (asCheck t)
-  where
-    asCheck :: Proxy a -> Proxy (Check a)
-    asCheck _ = Proxy
+k ?: t = query k (pCheck t)
 
 -- | get many paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (Many Int))
+-- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
 -- @
 (=*:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
-k =*: t = query k (asMany t)
-  where
-    asMany :: Proxy a -> Proxy (Many a)
-    asMany _ = Proxy
+k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (Proxy :: Proxy (Some Int))
+-- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
 -- @
 (=+:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
-k =+: t = query k (asSome t)
-  where
-    asSome :: Proxy a -> Proxy (Some a)
-    asSome _ = Proxy
+k =+: t = query k (pSome t)
 
 -- | query exists checker.
 --

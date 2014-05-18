@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.5.0.0
+version:             0.5.1.0
 x-revision:          1
 synopsis:            Simple web framework inspired by scotty.
 description:

@@ -123,3 +123,27 @@ instance Strategy Check where
            else case  catMaybes rs of
                [] -> Nothing
                _  -> Just l
+
+-- | construct Option proxy. since 0.5.1.0.
+pOption :: Proxy a -> Proxy (Option a)
+pOption _ = Proxy
+
+-- | construct First proxy. since 0.5.1.0.
+pFirst :: Proxy a -> Proxy (First a)
+pFirst _ = Proxy
+
+-- | construct One proxy. since 0.5.1.0.
+pOne :: Proxy a -> Proxy (One a)
+pOne _ = Proxy
+
+-- | construct Many proxy. since 0.5.1.0.
+pMany :: Proxy a -> Proxy (Many a)
+pMany _ = Proxy
+
+-- | construct Some proxy. since 0.5.1.0.
+pSome :: Proxy a -> Proxy (Some a)
+pSome _ = Proxy
+
+-- | construct Check proxy. since 0.5.1.0.
+pCheck :: Proxy a -> Proxy (Check a)
+pCheck _ = Proxy
