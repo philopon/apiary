@@ -25,10 +25,10 @@ module Control.Monad.Apiary.Filter (
     -- StdMethod(..)
     , module Network.HTTP.Types
     -- * deprecated
-    , queryAll, queryAll'
-    , querySome, querySome'
-    , queryFirst, queryFirst'
-    , queryMany, queryMany'
+    , queryAll,        queryAll'
+    , querySome,       querySome'
+    , queryFirst,      queryFirst'
+    , queryMany,       queryMany'
     , maybeQueryFirst, maybeQueryFirst'
     ) where
 
@@ -80,6 +80,11 @@ root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ (\r -> rawPathInfo r `elem` rs) m
 
+-- | get first matched paramerer. since 0.5.0.0.
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (First Int))
+-- @
 (=:) :: (Query a, Monad m)
      => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
 k =: t = query k (asFirst t)
@@ -87,6 +92,14 @@ k =: t = query k (asFirst t)
     asFirst :: Proxy a -> Proxy (First a)
     asFirst _ = Proxy
 
+
+-- | get one matched paramerer. since 0.5.0.0.
+--
+-- when more one parameger given, not matched.
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (One Int))
+-- @
 (=!:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
 k =!: t = query k (asOne t)
@@ -94,6 +107,13 @@ k =!: t = query k (asOne t)
     asOne :: Proxy a -> Proxy (One a)
     asOne _ = Proxy
 
+-- | get optional first paramerer. since 0.5.0.0.
+--
+-- when illegal type parameter given, fail mather(don't give Nothing).
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (Option Int))
+-- @
 (=?:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as (Maybe a)) m b -> ApiaryT as m b
 k =?: t = query k (asOption t)
@@ -101,6 +121,13 @@ k =?: t = query k (asOption t)
     asOption :: Proxy a -> Proxy (Option a)
     asOption _ = Proxy
 
+-- | check parameger given and type. since 0.5.0.0.
+--
+-- If you wan't to allow any type, give 'pVoid'.
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (Check Int))
+-- @
 (?:) :: (Query a, Monad m)
      => S.ByteString -> Proxy a -> ApiaryT as m b -> ApiaryT as m b
 k ?: t = query k (asCheck t)
@@ -108,6 +135,11 @@ k ?: t = query k (asCheck t)
     asCheck :: Proxy a -> Proxy (Check a)
     asCheck _ = Proxy
 
+-- | get many paramerer. since 0.5.0.0.
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (Many Int))
+-- @
 (=*:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
 k =*: t = query k (asMany t)
@@ -115,6 +147,11 @@ k =*: t = query k (asMany t)
     asMany :: Proxy a -> Proxy (Many a)
     asMany _ = Proxy
 
+-- | get some paramerer. since 0.5.0.0.
+--
+-- @
+-- "key" =: pInt == query "key" (Proxy :: Proxy (Some Int))
+-- @
 (=+:) :: (Query a, Monad m)
       => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
 k =+: t = query k (asSome t)
@@ -136,7 +173,8 @@ hasQuery q = query q (Proxy :: Proxy (Check ()))
 --------------------------------------------------------------------------------
 
 {-# DEPRECATED queryMany, querySome, queryAll, queryMany', querySome', queryAll'
-  , maybeQueryFirst, queryFirst, maybeQueryFirst', queryFirst' "use query" #-}
+  , maybeQueryFirst, queryFirst, maybeQueryFirst'
+  , queryFirst' "use query related filters" #-}
 
 -- | get [0,) parameters by query parameter allows empty value. since 0.4.3.0.
 queryMany :: Monad m => S.ByteString
