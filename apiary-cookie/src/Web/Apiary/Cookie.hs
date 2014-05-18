@@ -59,6 +59,8 @@ module Web.Apiary.Cookie
     , withCookie
     -- * setter
     , setCookie
+    -- * filter
+    , cookie
     -- * getter
     , getCookies, getCookies'
     , getCookie, getCookie'

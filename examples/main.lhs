@@ -83,7 +83,7 @@ filters can freely nesting.
 
 >     [capture|/greeting/:L.ByteString|] . 
 >         ("first" =: pLazyByteString) . 
->         ("last" =: pLazyByteString) . action $ \greed first last -> do
+>         ("last"  =: pLazyByteString) . action $ \greed first last -> do
 >             contentType "text/plain"
 >             lbs $ L.unwords [greed `L.append` "!!", first, last]
 
