@@ -130,8 +130,8 @@ captureTest = testGroup "capture"
 --------------------------------------------------------------------------------
 
 queryApp f g h = runApiary def $ do
-    (f "foo" pInt)             . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "Int", L.pack $ show i])
-    (g "foo" pString)          . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "String", L.pack $ show i])
+    _ <- (f "foo" pInt)             . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "Int", L.pack $ show i])
+    _ <- (g "foo" pString)          . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "String", L.pack $ show i])
     (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "Maybe String", L.pack $ show i])
 
 queryCheckApp :: Application

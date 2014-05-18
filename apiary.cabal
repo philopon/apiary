@@ -109,8 +109,9 @@ test-suite test-framework
                      , wai-test             >=2.0 && <2.1
                      , apiary
                      , bytestring           >=0.10 && <0.11
+                     , http-types        >=0.8 && <0.9
   hs-source-dirs:      test
-  ghc-options:         -O2 -Wall
+  ghc-options:         -O2 -Wall -fno-warn-missing-signatures
   default-language:    Haskell2010
 
 source-repository head
