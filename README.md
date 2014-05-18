@@ -121,13 +121,21 @@ and interupt and return current response(stop function).
 Example
 ----
 ```haskell
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+import Web.Apiary
+import Network.Wai.Handler.Warp
+import qualified Data.ByteString.Lazy.Char8 as L
+
 main :: IO ()
 main = run 3000 . runApiary def $ do
     [capture|/:Int|] $ do
         -- freely
         ("query" =: pString) $ do
+            -- nestable
             ("mbQuery" =?: pDouble) $ do
-                -- nestable
+                -- filters
                 stdMethod GET . action $ \int query mbQuery -> do
                     contentType "text/plain"
                     lbs $ L.unlines $ "GET" : map L.pack [show int, query, show mbQuery]
@@ -136,11 +144,12 @@ main = run 3000 . runApiary def $ do
                     lbs "DELETE!\n"
 
             ("mbQuery" =: pLazyByteString) $ do
+
                 action $ \_ _ mbQuery -> do
                     contentType "text/plain"
                     lbs . L.unwords $ [mbQuery, "is not Double.\n"]
 
-
+    -- no filter: default action
     action $ do
         lbs "Hello World!\n"
 ```
