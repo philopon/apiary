@@ -18,6 +18,7 @@ import Data.Text.Encoding.Error
 import Text.Read
 import Data.Int
 import Data.Word
+import Data.Proxy
 
 class Path a where
   readPath :: T.Text -> Maybe a
@@ -50,38 +51,81 @@ instance Path String       where readPath    = Just . T.unpack
 
 --------------------------------------------------------------------------------
 
-class QueryElem a where
-    readQueryElem :: Maybe S.ByteString -> Maybe a
+class Query a where
+    readQuery :: Maybe S.ByteString -> Maybe a
 
-instance QueryElem Int     where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Int8    where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Int16   where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Int32   where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Int64   where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Integer where readQueryElem = maybe Nothing (readMaybe . S.unpack)
+instance Query Int     where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Int8    where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Int16   where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Int32   where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Int64   where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Integer where readQuery = maybe Nothing (readMaybe . S.unpack)
 
-instance QueryElem Word   where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Word8  where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Word16 where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Word32 where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Word64 where readQueryElem = maybe Nothing (readMaybe . S.unpack)
+instance Query Word   where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Word8  where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Word16 where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Word32 where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Word64 where readQuery = maybe Nothing (readMaybe . S.unpack)
 
-instance QueryElem Double where readQueryElem = maybe Nothing (readMaybe . S.unpack)
-instance QueryElem Float  where readQueryElem = maybe Nothing (readMaybe . S.unpack)
+instance Query Double where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Float  where readQuery = maybe Nothing (readMaybe . S.unpack)
 
-instance QueryElem T.Text       where readQueryElem = fmap $ T.decodeUtf8With lenientDecode
-instance QueryElem TL.Text      where readQueryElem = fmap (TL.decodeUtf8With lenientDecode . L.fromStrict)
-instance QueryElem S.ByteString where readQueryElem = id
-instance QueryElem L.ByteString where readQueryElem = fmap L.fromStrict
-instance QueryElem String       where readQueryElem = fmap S.unpack
+instance Query T.Text       where readQuery = fmap $ T.decodeUtf8With lenientDecode
+instance Query TL.Text      where readQuery = fmap (TL.decodeUtf8With lenientDecode . L.fromStrict)
+instance Query S.ByteString where readQuery = id
+instance Query L.ByteString where readQuery = fmap L.fromStrict
+instance Query String       where readQuery = fmap S.unpack
 
 -- | allow no parameter. but check parameter type.
-instance QueryElem a => QueryElem (Maybe a) where
-    readQueryElem (Just a) = Just `fmap` readQueryElem (Just a)
-    readQueryElem Nothing  = Just Nothing
+instance Query a => Query (Maybe a) where
+    readQuery (Just a) = Just `fmap` readQuery (Just a)
+    readQuery Nothing  = Just Nothing
 
 -- | always success. for exists check.
-instance QueryElem () where
-    readQueryElem _ = Just ()
+instance Query () where
+    readQuery _ = Just ()
 
+pInt :: Proxy Int
+pInt = Proxy
 
+pInt8 :: Proxy Int8
+pInt8 = Proxy
+pInt16 :: Proxy Int16
+pInt16 = Proxy
+pInt32 :: Proxy Int32
+pInt32 = Proxy
+pInt64 :: Proxy Int64
+pInt64 = Proxy
+pInteger :: Proxy Integer
+pInteger = Proxy
+
+pWord :: Proxy Word
+pWord = Proxy
+pWord8 :: Proxy Word8
+pWord8 = Proxy
+pWord32 :: Proxy Word32
+pWord32 = Proxy
+pWord64 :: Proxy Word64
+pWord64 = Proxy
+
+pDouble :: Proxy Double
+pDouble = Proxy
+pFloat :: Proxy Float
+pFloat = Proxy
+
+pText :: Proxy T.Text
+pText = Proxy
+pLazyText :: Proxy TL.Text
+pLazyText = Proxy
+pByteString :: Proxy S.ByteString
+pByteString = Proxy
+pLazyByteString :: Proxy L.ByteString
+pLazyByteString = Proxy
+pString :: Proxy String
+pString = Proxy
+
+pVoid :: Proxy ()
+pVoid = Proxy
+
+pMaybe :: Proxy a -> Proxy (Maybe a)
+pMaybe _ = Proxy

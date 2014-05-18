@@ -5,12 +5,22 @@
 
 module Control.Monad.Apiary.Filter (
     -- * filters
+    -- ** http method
       method, stdMethod
-    , root
-    , ssl
+    -- ** http version
     , Control.Monad.Apiary.Filter.httpVersion
     , http09, http10, http11
+    -- ** path matcher
+    , root
+    , capture
+
+    -- ** query matcher
+    , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
     , hasQuery
+
+    -- ** other
+    , ssl
+    
     -- * Reexport
     -- StdMethod(..)
     , module Network.HTTP.Types
@@ -28,12 +38,15 @@ import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
+import Data.Proxy
 
 import Data.Apiary.SList
+import Data.Apiary.Param
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Query
+import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
@@ -66,6 +79,59 @@ root :: Monad m => ApiaryT c m b -> ApiaryT c m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ (\r -> rawPathInfo r `elem` rs) m
+
+(=:) :: (Query a, Monad m)
+     => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
+k =: t = query k (asFirst t)
+  where
+    asFirst :: Proxy a -> Proxy (First a)
+    asFirst _ = Proxy
+
+(=!:) :: (Query a, Monad m)
+      => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
+k =!: t = query k (asOne t)
+  where
+    asOne :: Proxy a -> Proxy (One a)
+    asOne _ = Proxy
+
+(=?:) :: (Query a, Monad m)
+      => S.ByteString -> Proxy a -> ApiaryT (Snoc as (Maybe a)) m b -> ApiaryT as m b
+k =?: t = query k (asOption t)
+  where
+    asOption :: Proxy a -> Proxy (Option a)
+    asOption _ = Proxy
+
+(?:) :: (Query a, Monad m)
+     => S.ByteString -> Proxy a -> ApiaryT as m b -> ApiaryT as m b
+k ?: t = query k (asCheck t)
+  where
+    asCheck :: Proxy a -> Proxy (Check a)
+    asCheck _ = Proxy
+
+(=*:) :: (Query a, Monad m)
+      => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
+k =*: t = query k (asMany t)
+  where
+    asMany :: Proxy a -> Proxy (Many a)
+    asMany _ = Proxy
+
+(=+:) :: (Query a, Monad m)
+      => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
+k =+: t = query k (asSome t)
+  where
+    asSome :: Proxy a -> Proxy (Some a)
+    asSome _ = Proxy
+
+-- | query exists checker.
+--
+-- @
+-- hasQuery q = 'query' q (Proxy :: Proxy ('Check' ()))
+-- @
+--
+hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
+hasQuery q = query q (Proxy :: Proxy (Check ()))
+
+
 
 --------------------------------------------------------------------------------
 

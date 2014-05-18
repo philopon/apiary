@@ -81,10 +81,11 @@ when execute 'stop' action, send current status and drop after actions.
 
 filters can freely nesting.
 
->     [capture|/greeting/:String|] . 
->         queryFirst' "first" . queryFirst' "last" . action $ \greed first last -> do
+>     [capture|/greeting/:L.ByteString|] . 
+>         [query|first = L.ByteString |] . 
+>         [query| last = L.ByteString |] . action $ \greed first last -> do
 >             contentType "text/plain"
->             lbs $ L.unwords [L.pack greed `L.append` "!!", L.fromStrict first, L.fromStrict last]
+>             lbs $ L.unwords [greed `L.append` "!!", first, last]
 
 $ curl localhost:3000
 Hello World.

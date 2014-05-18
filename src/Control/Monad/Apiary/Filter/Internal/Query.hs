@@ -3,6 +3,9 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 module Control.Monad.Apiary.Filter.Internal.Query where
 
 import Control.Monad.Apiary
@@ -17,7 +20,7 @@ import qualified Data.ByteString as S
 import Data.Maybe
 import Data.Proxy
 
--- | query getter. since 0.5.0.0.
+-- | low level query getter. since 0.5.0.0.
 --
 -- @
 -- query "key" (Proxy :: Proxy (fetcher type))
@@ -31,37 +34,28 @@ import Data.Proxy
 -- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
 -- @
 -- 
-query :: (QueryElem a, Query w, Monad m)
+query :: (Query a, Strategy w, Monad m)
       => S.ByteString
       -> Proxy (w a)
-      -> ApiaryT (QSnoc w as a) m b
+      -> ApiaryT (SNext w as a) m b
       -> ApiaryT as m b
-query k p = function $ \l r -> readQuery k p (queryString r) l
-
--- | query exists checker.
---
--- @
--- hasQuery q = 'query' q (Proxy :: Proxy ('Check' ()))
--- @
---
-hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
-hasQuery q = query q (Proxy :: Proxy (Check ()))
+query k p = function $ \l r -> readStrategy k p (queryString r) l
 
 --------------------------------------------------------------------------------
 
-class Query (w :: * -> *) where
-  type QSnoc w (as :: [*]) a  :: [*]
-  readQuery :: QueryElem a => S.ByteString -> Proxy (w a)
-            -> HTTP.Query -> SList as -> Maybe (SList (QSnoc w as a))
+class Strategy (w :: * -> *) where
+  type SNext w (as :: [*]) a  :: [*]
+  readStrategy :: Query a => S.ByteString -> Proxy (w a)
+            -> HTTP.Query -> SList as -> Maybe (SList (SNext w as a))
 
-getQuery :: QueryElem a => Proxy (w a) -> S.ByteString -> HTTP.Query -> [Maybe a]
-getQuery _ k = map readQueryElem . map snd . filter ((k ==) . fst)
+getQuery :: Query a => Proxy (w a) -> S.ByteString -> HTTP.Query -> [Maybe a]
+getQuery _ k = map readQuery . map snd . filter ((k ==) . fst)
 
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
 data Option a
-instance Query Option where
-    type QSnoc Option as a = Snoc as (Maybe a)
-    readQuery k p q l =
+instance Strategy Option where
+    type SNext Option as a = Snoc as (Maybe a)
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Just $ sSnoc l (Nothing `asMaybe` p)
@@ -74,9 +68,9 @@ instance Query Option where
 
 -- | get first matched key ( [0,) params to Maybe Type.) since 0.5.0.0.
 data First a
-instance Query First where
-    type QSnoc First as a = Snoc as a
-    readQuery k p q l =
+instance Strategy First where
+    type SNext First as a = Snoc as a
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Nothing
@@ -86,9 +80,9 @@ instance Query First where
 
 -- | get key ( [1] param to Type.) since 0.5.0.0.
 data One a
-instance Query One where
-    type QSnoc One as a = Snoc as a
-    readQuery k p q l =
+instance Strategy One where
+    type SNext One as a = Snoc as a
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Nothing
@@ -98,10 +92,9 @@ instance Query One where
 
 -- | get parameters ( [0,) params to [Type] ) since 0.5.0.0.
 data Many a
-
-instance Query Many where
-    type QSnoc Many as a = Snoc as [a]
-    readQuery k p q l =
+instance Strategy Many where
+    type SNext Many as a = Snoc as [a]
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Nothing
@@ -109,10 +102,9 @@ instance Query Many where
 
 -- | get parameters ( [1,) params to [Type] ) since 0.5.0.0.
 data Some a
-
-instance Query Some where
-    type QSnoc Some as a = Snoc as [a]
-    readQuery k p q l =
+instance Strategy Some where
+    type SNext Some as a = Snoc as [a]
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Nothing
@@ -122,10 +114,9 @@ instance Query Some where
 
 -- | type check ( [0,) params to No argument ) since 0.5.0.0.
 data Check a
-
-instance Query Check where
-    type QSnoc Check as a = as
-    readQuery k p q l =
+instance Strategy Check where
+    type SNext Check as a = as
+    readStrategy k p q l =
         let rs = getQuery p k q
         in if any isNothing rs
            then Nothing

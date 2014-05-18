@@ -1,13 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
-module Web.Apiary.TH.Internal where
+module Control.Monad.Apiary.Filter.Internal.Capture.TH where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
-import Control.Monad.Apiary.Filter.Internal.Capture hiding(capture, capture')
 import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Data.Apiary.SList
 import qualified Data.Text as T
+import Data.Proxy
 
 preCap :: String -> [String]
 preCap ""  = []
@@ -23,9 +23,9 @@ mkCap [] = [|SNil|]
 mkCap ((':':tyStr):as) = do
     -- ty <- lookupTypeName tyStr >>= maybe (fail "") return
     let ty = mkName tyStr
-    [|(Fetch :: Fetch $(conT ty)) ::: $(mkCap as) |]
+    [|(Proxy :: Capture.Fetch $(conT ty)) ::: $(mkCap as) |]
 mkCap (eq:as) = do
-    [|(Equal $(stringE eq)) ::: $(mkCap as) |]
+    [|(Capture.Equal $(stringE eq)) ::: $(mkCap as) |]
 
 applyCapture :: ExpQ -> ExpQ
 applyCapture e = [|Capture.capture $e|]
@@ -37,3 +37,4 @@ capture = QuasiQuoter
     , quoteType = \_ -> error "No quoteType."
     , quoteDec  = \_ -> error "No quoteDec."
     }
+

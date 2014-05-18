@@ -3,7 +3,8 @@ module Web.Apiary
       module Control.Monad.Apiary
     , module Control.Monad.Apiary.Action
     , module Control.Monad.Apiary.Filter
-    , module Web.Apiary.TH
+    , module Data.Apiary.Param
+    -- * reexports
     -- | MonadIO
     , module Control.Monad.Trans
     -- | MonadPlus(..), msum, mfilter, guard
@@ -12,7 +13,7 @@ module Web.Apiary
 
 import Control.Monad.Apiary
 import Control.Monad.Apiary.Action
-import Web.Apiary.TH
+import Data.Apiary.Param
 
 import Control.Monad.Trans(MonadIO(..))
 import Control.Monad (MonadPlus(..), msum, mfilter, guard)
