@@ -82,8 +82,8 @@ when execute 'stop' action, send current status and drop after actions.
 filters can freely nesting.
 
 >     [capture|/greeting/:L.ByteString|] . 
->         [query|first = L.ByteString |] . 
->         [query| last = L.ByteString |] . action $ \greed first last -> do
+>         ("first" =: pLazyByteString) . 
+>         ("last" =: pLazyByteString) . action $ \greed first last -> do
 >             contentType "text/plain"
 >             lbs $ L.unwords [greed `L.append` "!!", first, last]
 

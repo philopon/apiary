@@ -23,4 +23,3 @@ servApp st pc = do
         liftIO $ putStrLn "send"
         threadDelay (10 ^ (6 :: Int))
         go c (succ i)
-

@@ -168,8 +168,6 @@ k =+: t = query k (asSome t)
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
 hasQuery q = query q (Proxy :: Proxy (Check ()))
 
-
-
 --------------------------------------------------------------------------------
 
 {-# DEPRECATED queryMany, querySome, queryAll, queryMany', querySome', queryAll'
@@ -239,5 +237,3 @@ queryFirst' :: Monad m => S.ByteString
             -> ApiaryT (Snoc as S.ByteString) m b
             -> ApiaryT as m b
 queryFirst' q = function' $ listToMaybe . mapMaybe snd . filter ((q ==) . fst) . queryString
-
-

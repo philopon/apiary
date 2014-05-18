@@ -49,7 +49,7 @@ assert404 app req = flip runSession app $ do
     res <- request req
     assertStatus 404 res
     assertContentType "text/plain" res
-    assertBody "404 Page Notfound." res
+    assertBody "404 Page Notfound.\n" res
 
 --------------------------------------------------------------------------------
 
