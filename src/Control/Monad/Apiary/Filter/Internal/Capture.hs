@@ -55,7 +55,7 @@ capture' _ [] _   = Nothing
 --
 -- @
 -- myCapture :: 'SList' '['Equal', 'Fetch' Int, Fetch String]
--- myCapture = 'Equal' "path" ':::' 'pInt' ::: 'pString' ::: 'SNil'
+-- myCapture = 'Equal' \"path\" ':::' 'pInt' ::: 'pString' ::: 'SNil'
 --
 -- capture myCapture . stdMethod GET . action $ \age name -> do
 --     yourAction

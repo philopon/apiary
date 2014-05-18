@@ -61,7 +61,7 @@ when first path == "path" and second path is readable as Int, filter successed.
 
 ### query parameter
 
-you can route by query function.
+you can route using query function.
 
 ```haskell
 query :: (Query a, Strategy w, Monad m) => ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b 
@@ -73,9 +73,16 @@ example:
 query "key" (Proxy :: Proxy First Int)
 ```
 
-Strategy choose query getting strategy. predefined strategy is First(get first parameter), One(get one parameter), Option(get optional parameter), Many(get zero or more parameters), Some(get one or more parameters), Check(check parameter exists).
+Strategy chooses query getting strategy. Predefined strategy is:
 
-query function, little verbose, so there are convinient functions. so, you can write:
+* First(get first parameter)
+* One(get one parameter)
+* Option(get optional parameter)
+* Many(get zero or more parameters)
+* Some(get one or more parameters)
+* Check(check parameter exists).
+
+query function is little verbose, so there are shortcut functions. so, you can write:
 
 ```haskell
 ("key" =: pDouble)          -- get first Double parameter

@@ -31,6 +31,7 @@ library
                      , blaze-builder      >=0.3   && <0.4
                      , data-default-class >=0.0   && <0.1
                      , wai                >=2.1   && <2.2
+                     , tagged             >=0.7   && <0.8
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
