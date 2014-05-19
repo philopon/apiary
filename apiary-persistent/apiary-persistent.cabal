@@ -1,6 +1,5 @@
 name:                apiary-persistent
 version:             0.4.3.2
-x-revision:          1
 synopsis:            persistent support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>

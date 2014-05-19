@@ -2,76 +2,50 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-module Control.Monad.Apiary.Filter.Internal.Query where
+module Control.Monad.Apiary.Filter.Internal.Strategy where
 
-import Control.Monad.Apiary
-import Control.Monad.Apiary.Filter.Internal
-import Data.Apiary.Param
 import Data.Apiary.SList
 
-import Network.Wai
-import qualified Network.HTTP.Types as HTTP
-
-import qualified Data.ByteString as S
 import Data.Maybe
 import Data.Proxy
-
--- | low level query getter. since 0.5.0.0.
---
--- @
--- query "key" (Proxy :: Proxy (fetcher type))
--- @
---
--- examples:
---
--- @
--- query "key" (Proxy :: Proxy ('First' Int)) -- get first \'key\' query parameter as Int.
--- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
--- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
--- @
--- 
-query :: (Query a, Strategy w, Monad m)
-      => S.ByteString
-      -> Proxy (w a)
-      -> ApiaryT (SNext w as a) m b
-      -> ApiaryT as m b
-query k p = function $ \l r -> readStrategy k p (queryString r) l
-
---------------------------------------------------------------------------------
+import Data.Reflection
 
 class Strategy (w :: * -> *) where
   type SNext w (as :: [*]) a  :: [*]
-  readStrategy :: Query a => S.ByteString -> Proxy (w a)
-            -> HTTP.Query -> SList as -> Maybe (SList (SNext w as a))
+  readStrategy :: (v -> Maybe a)
+               -> ((k,v) -> Bool)
+               -> Proxy (w a)
+               -> [(k, v)]
+               -> SList as 
+               -> Maybe (SList (SNext w as a))
 
-getQuery :: Query a => Proxy (w a) -> S.ByteString -> HTTP.Query -> [Maybe a]
-getQuery _ k = map readQuery . map snd . filter ((k ==) . fst)
+getQuery :: (v -> Maybe a) -> Proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
+getQuery readf _ kf = map readf . map snd . filter kf
+
 
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
 data Option a
 instance Strategy Option where
     type SNext Option as a = Snoc as (Maybe a)
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
-           else case catMaybes rs of
-               []  -> Just $ sSnoc l (Nothing `asMaybe` p)
-               a:_ -> Just $ sSnoc l (Just a)
-      where
-        asMaybe :: Maybe a -> Proxy (w a) -> Maybe a
-        asMaybe a _ = asProxyTypeOf a Proxy
+           else Just . sSnoc l $ case catMaybes rs of
+               []  -> Nothing
+               a:_ -> Just a
 
 -- | get first matched key ( [0,) params to Maybe Type.) since 0.5.0.0.
 data First a
 instance Strategy First where
     type SNext First as a = Snoc as a
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
@@ -82,8 +56,8 @@ instance Strategy First where
 data One a
 instance Strategy One where
     type SNext One as a = Snoc as a
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
@@ -94,8 +68,8 @@ instance Strategy One where
 data Many a
 instance Strategy Many where
     type SNext Many as a = Snoc as [a]
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else Just $ sSnoc l (catMaybes rs)
@@ -104,20 +78,38 @@ instance Strategy Many where
 data Some a
 instance Strategy Some where
     type SNext Some as a = Snoc as [a]
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
                [] -> Nothing
                as -> Just $ sSnoc l as
 
+-- | get parameters with upper limit ( [1,n] to [Type]) since 0.6.0.0.
+data LimitSome u a
+instance (Reifies u Int) => Strategy (LimitSome u) where
+    type SNext (LimitSome u) as a = Snoc as [a]
+    readStrategy rf k p q l =
+        let rs = take (reflectLimit p) $ getQuery rf p k q
+        in if any isNothing rs
+           then Nothing
+           else case catMaybes rs of
+               [] -> Nothing
+               as -> Just $ sSnoc l as
+
+reflectLimit :: Reifies n Int => Proxy (LimitSome n a) -> Int
+reflectLimit p = reflect $ asTyInt p
+  where
+    asTyInt :: Proxy (LimitSome u a) -> Proxy u
+    asTyInt _ = Proxy
+
 -- | type check ( [0,) params to No argument ) since 0.5.0.0.
 data Check a
 instance Strategy Check where
     type SNext Check as a = as
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case  catMaybes rs of

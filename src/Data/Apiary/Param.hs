@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -19,6 +20,13 @@ import Text.Read
 import Data.Int
 import Data.Word
 import Data.Proxy
+import Data.String(IsString)
+
+jsToBool :: (IsString a, Eq a) => a -> Bool
+jsToBool = flip notElem jsFalse
+    where
+      jsFalse = ["false", "0", "-0", "", "null", "undefined", "NaN"]
+
 
 class Path a where
   readPath :: T.Text -> Maybe a
@@ -26,6 +34,10 @@ class Path a where
 instance Path Char where
     readPath    s | T.null s  = Nothing
                   | otherwise = Just $ T.head s
+
+-- | javascript boolean.
+-- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
+instance Path Bool where readPath = Just . jsToBool
 
 instance Path Int     where readPath    = readMaybe . T.unpack
 instance Path Int8    where readPath    = readMaybe . T.unpack
@@ -53,6 +65,10 @@ instance Path String       where readPath    = Just . T.unpack
 
 class Query a where
     readQuery :: Maybe S.ByteString -> Maybe a
+
+-- | javascript boolean.
+-- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
+instance Query Bool where readQuery = fmap jsToBool
 
 instance Query Int     where readQuery = maybe Nothing (readMaybe . S.unpack)
 instance Query Int8    where readQuery = maybe Nothing (readMaybe . S.unpack)
@@ -85,9 +101,11 @@ instance Query a => Query (Maybe a) where
 instance Query () where
     readQuery _ = Just ()
 
+pBool :: Proxy Bool
+pBool = Proxy
+
 pInt :: Proxy Int
 pInt = Proxy
-
 pInt8 :: Proxy Int8
 pInt8 = Proxy
 pInt16 :: Proxy Int16
@@ -103,6 +121,8 @@ pWord :: Proxy Word
 pWord = Proxy
 pWord8 :: Proxy Word8
 pWord8 = Proxy
+pWord16 :: Proxy Word16
+pWord16 = Proxy
 pWord32 :: Proxy Word32
 pWord32 = Proxy
 pWord64 :: Proxy Word64

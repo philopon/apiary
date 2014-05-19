@@ -6,7 +6,7 @@ module Control.Monad.Apiary
     -- * getter
     , apiaryConfig
     -- * execute action
-    , action, action_, actionWithPreAction
+    , action, actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal

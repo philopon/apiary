@@ -2,6 +2,9 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Control.Monad.Apiary.Filter (
     -- * filters
@@ -16,24 +19,26 @@ module Control.Monad.Apiary.Filter (
 
     -- ** query matcher
     , query
-    , pFirst, pOne, pOption, pCheck, pMany, pSome
     -- *** specified operators
     , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
     , hasQuery
 
+    -- ** header matcher
+    , hasHeader
+    , eqHeader
+    , headers
+    , header
+    , header'
 
     -- ** other
     , ssl
     
     -- * Reexport
-    -- StdMethod(..)
+    -- | StdMethod(..)
     , module Network.HTTP.Types
-    -- * deprecated
-    , queryAll,        queryAll'
-    , querySome,       querySome'
-    , queryFirst,      queryFirst'
-    , queryMany,       queryMany'
-    , maybeQueryFirst, maybeQueryFirst'
+    -- | Strategy Proxies
+    , module Control.Monad.Apiary.Filter.Internal.Strategy
+
     ) where
 
 import Control.Monad
@@ -41,18 +46,28 @@ import Network.Wai as Wai
 import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
-import Data.Maybe
 import Data.Proxy
+import Data.Reflection
 
 import Data.Apiary.SList
 import Data.Apiary.Param
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Query
+import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
+import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
+-- | filter by HTTP method. since 0.1.0.0.
+method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
+method m = function_ ((m ==) . requestMethod)
+
+-- | filter by HTTP method using StdMethod. since 0.1.0.0.
+stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
+stdMethod = method . HT.renderStdMethod
+
+-- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
 ssl = function_ isSecure
 
@@ -72,17 +87,32 @@ http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
 http11 :: Monad m => ApiaryT c m b -> ApiaryT c m b
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
 
-method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
-method m = function_ ((m ==) . requestMethod)
-
-stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
-stdMethod = method . HT.renderStdMethod
-
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: Monad m => ApiaryT c m b -> ApiaryT c m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ (\r -> rawPathInfo r `elem` rs) m
+
+-- | low level query getter. since 0.5.0.0.
+--
+-- @
+-- query "key" (Proxy :: Proxy (fetcher type))
+-- @
+--
+-- examples:
+--
+-- @
+-- query "key" (Proxy :: Proxy ('First' Int)) -- get first \'key\' query parameter as Int.
+-- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
+-- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
+-- @
+-- 
+query :: (Query a, Strategy.Strategy w, Monad m)
+      => S.ByteString
+      -> Proxy (w a)
+      -> ApiaryT (Strategy.SNext w as a) m b
+      -> ApiaryT as m b
+query k p = function $ \l r -> Strategy.readStrategy readQuery ((k ==) . fst) p (queryString r) l
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
@@ -151,74 +181,41 @@ k =+: t = query k (pSome t)
 -- @
 --
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
-hasQuery q = query q (Proxy :: Proxy (Check ()))
+hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 --------------------------------------------------------------------------------
 
-{-# DEPRECATED queryMany, querySome, queryAll, queryMany', querySome', queryAll'
-  , maybeQueryFirst, queryFirst, maybeQueryFirst'
-  , queryFirst' "use query related filters" #-}
+-- | check whether to exists specified header or not. since 0.6.0.0.
+hasHeader :: Monad m => HT.HeaderName
+          -> ApiaryT as m b -> ApiaryT as m b
+hasHeader n = header' pCheck ((n ==) . fst)
 
--- | get [0,) parameters by query parameter allows empty value. since 0.4.3.0.
-queryMany :: Monad m => S.ByteString
-          -> ApiaryT (Snoc as [Maybe S.ByteString]) m b
-          -> ApiaryT as m b
-queryMany q = function' $ Just . map snd . filter ((q ==) . fst) . queryString
-
--- | filter [1,) parameters by query parameter allows empty value. since 0.4.3.0.
-querySome :: Monad m => S.ByteString
-          -> ApiaryT (Snoc as [Maybe S.ByteString]) m b
-          -> ApiaryT as m b
-querySome q = function' $ \r -> case map snd . filter ((q ==) . fst) $ queryString r of
-    [] -> Nothing
-    as -> Just as
-
--- | filter by query parameter. since 0.4.0.0.
-queryAll :: Monad m => S.ByteString
-         -> ApiaryT (Snoc as [Maybe S.ByteString]) m b -- ^ Nothing == no value paramator.
+-- | check whether to exists specified valued header or not. since 0.6.0.0.
+eqHeader :: Monad m => HT.HeaderName 
+         -> S.ByteString  -- ^ header value
          -> ApiaryT as m b
-queryAll = querySome
+         -> ApiaryT as m b
+eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v')
 
--- | get [0,) parameters by query parameter not allows empty value. since 0.4.3.0.
-queryMany' :: Monad m => S.ByteString
-           -> ApiaryT (Snoc as [S.ByteString]) m b 
-           -> ApiaryT as m b
-queryMany' q = function' $ Just . mapMaybe snd . filter ((q ==) . fst) . queryString
+-- | filter by header and get first. since 0.6.0.0.
+header :: Monad m => HT.HeaderName
+       -> ApiaryT (Snoc as S.ByteString) m b -> ApiaryT as m b
+header n = header' pFirst ((n ==) . fst)
 
--- | filter [1,) parameters by query parameter not allows empty value. since 0.4.3.0.
-querySome' :: Monad m => S.ByteString
-           -> ApiaryT (Snoc as [S.ByteString]) m b 
-           -> ApiaryT as m b
-querySome' q = function' $ \r -> case mapMaybe snd . filter ((q ==) . fst) $ queryString r of
-    [] -> Nothing
-    as -> Just as
+-- | filter by headers up to 100 entries. since 0.6.0.0.
+headers :: Monad m => HT.HeaderName
+        -> ApiaryT (Snoc as [S.ByteString]) m b -> ApiaryT as m b
+headers n = header' limit100 ((n ==) . fst)
+  where
+    limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
+    limit100 _ = Proxy
 
--- | filter by query parameter. since 0.4.0.0.
-queryAll' :: Monad m => S.ByteString
-          -> ApiaryT (Snoc as [S.ByteString]) m b 
-          -> ApiaryT as m b
-queryAll' = querySome'
+-- | low level header filter. since 0.6.0.0.
+header' :: (Strategy.Strategy w, Monad m)
+        => (forall x. Proxy x -> Proxy (w x))
+        -> (HT.Header -> Bool)
+        -> ApiaryT (Strategy.SNext w as S.ByteString) m b
+        -> ApiaryT as m b
+header' pf kf = function $ \l r ->
+    Strategy.readStrategy Just kf (pf pByteString) (requestHeaders r) l
 
--- | get first query parameter allow empty value. since 0.4.3.0,
-maybeQueryFirst :: Monad m => S.ByteString
-                -> ApiaryT (Snoc as (Maybe (Maybe S.ByteString))) m b
-                -> ApiaryT as m b
-maybeQueryFirst q = function' (Just . lookup q . queryString)
-
--- | filter by query parameter. allow empty value. since 0.4.0.0.
-queryFirst :: Monad m => S.ByteString
-           -> ApiaryT (Snoc as (Maybe S.ByteString)) m b
-           -> ApiaryT as m b
-queryFirst q = function' (lookup q . queryString)
-
--- | get first query parameter not allow empty value. since 0.4.3.0,
-maybeQueryFirst' :: Monad m => S.ByteString
-                 -> ApiaryT (Snoc as (Maybe S.ByteString)) m b
-                 -> ApiaryT as m b
-maybeQueryFirst' q = function' $ Just . listToMaybe . mapMaybe snd . filter ((q ==) . fst) . queryString
-
--- | filter by query parameter. not allow empty value. since 0.4.0.0.
-queryFirst' :: Monad m => S.ByteString
-            -> ApiaryT (Snoc as S.ByteString) m b
-            -> ApiaryT as m b
-queryFirst' q = function' $ listToMaybe . mapMaybe snd . filter ((q ==) . fst) . queryString

@@ -181,6 +181,7 @@ stop = ActionT $ \_ _ s _ -> return $ Stop (actionStateToResponse s)
 stopWith :: Monad m => Response -> ActionT m a
 stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 
+-- | get raw request. since 0.1.0.0.
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
 
@@ -190,36 +191,28 @@ getConfig = ActionT $ \c _ s cont -> cont c s
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
--- | when request header is not found, mzero(pass next handler).
-getRequestHeader' :: Monad m => HeaderName -> ActionT m S.ByteString
-getRequestHeader' h = getRequestHeader h >>= maybe mzero return
+-- | get all request headers. since 0.6.0.0.
+getHeaders :: Monad m => ActionT m RequestHeaders
+getHeaders = requestHeaders `liftM` getRequest
 
-getRequestHeader :: Monad m => HeaderName -> ActionT m (Maybe S.ByteString)
-getRequestHeader h = (lookup h . requestHeaders) `liftM` getRequest
-
--- | when query parameter is not found, mzero(pass next handler).
-getQuery' :: Monad m => S.ByteString -> ActionT m (Maybe S.ByteString)
-getQuery' q = getQuery q >>= maybe mzero return
-
-{-# DEPRECATED getQuery' "use qeury derived filter." #-}
-
-getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
-getQuery q = (lookup q . queryString) `liftM` getRequest
-
-{-# DEPRECATED getQuery "use qeury derived filter." #-}
-
+-- | set status code. since 0.1.0.0.
 status :: Monad m => Status -> ActionT m ()
 status st = modifyState (\s -> s { actionStatus = st } )
 
+-- | modify response header. since 0.1.0.0.
 modifyHeader :: Monad m => (ResponseHeaders -> ResponseHeaders) -> ActionT m ()
 modifyHeader f = modifyState (\s -> s {actionHeaders = f $ actionHeaders s } )
 
+-- | add response header. since 0.1.0.0.
 addHeader :: Monad m => HeaderName -> S.ByteString -> ActionT m ()
 addHeader h v = modifyHeader ((h,v):)
 
+-- | set response headers. since 0.1.0.0.
 setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
 setHeaders hs = modifyHeader (const hs)
 
+-- | set content-type header.
+-- if content-type header already exists, replace it. since 0.1.0.0.
 contentType :: Monad m => S.ByteString -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
@@ -252,21 +245,25 @@ redirectSeeOther    = redirect seeOther303
 redirectTemporary   :: Monad m => S.ByteString -> ActionT m a
 redirectTemporary   = redirect temporaryRedirect307
 
--- | set body to file content and detect Content-Type by extension.
+-- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
 file f p = do
     mime <- mimeType <$> getConfig
     contentType (mime f)
     file' f p
 
+-- | set response body file content, without set Content-Type. since 0.1.0.0.
 file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
 file' f p = modifyState (\s -> s { actionBody = File f p } )
 
+-- | set response body builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT m ()
 builder b = modifyState (\s -> s { actionBody = Builder b } )
 
+-- | set response body lazy bytestring. since 0.1.0.0.
 lbs :: Monad m => L.ByteString -> ActionT m ()
 lbs l = modifyState (\s -> s { actionBody = LBS l } )
 
+-- | set response body source. since 0.1.0.0.
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
 source src = modifyState (\s -> s { actionBody = SRC src } )
