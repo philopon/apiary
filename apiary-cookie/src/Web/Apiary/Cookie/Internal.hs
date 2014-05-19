@@ -21,7 +21,7 @@ import Data.Maybe
 import Data.Proxy
 
 import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Query
+import Control.Monad.Apiary.Filter.Internal.Strategy
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
