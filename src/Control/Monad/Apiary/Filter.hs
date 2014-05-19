@@ -2,6 +2,9 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Control.Monad.Apiary.Filter (
     -- * filters
@@ -16,24 +19,32 @@ module Control.Monad.Apiary.Filter (
 
     -- ** query matcher
     , query
-    , pFirst, pOne, pOption, pCheck, pMany, pSome
     -- *** specified operators
     , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
     , hasQuery
 
+    -- ** header matcher
+    , hasHeader
+    , headers
+    , header
+    , header'
 
     -- ** other
     , ssl
     
     -- * Reexport
-    -- StdMethod(..)
+    -- | StdMethod(..)
     , module Network.HTTP.Types
+    -- | Strategy Proxies
+    , module Control.Monad.Apiary.Filter.Internal.Strategy
+
     -- * deprecated
     , queryAll,        queryAll'
     , querySome,       querySome'
     , queryFirst,      queryFirst'
     , queryMany,       queryMany'
     , maybeQueryFirst, maybeQueryFirst'
+
     ) where
 
 import Control.Monad
@@ -43,13 +54,15 @@ import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import Data.Maybe
 import Data.Proxy
+import Data.Reflection
 
 import Data.Apiary.SList
 import Data.Apiary.Param
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Query
+import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
+import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
@@ -83,6 +96,27 @@ root :: Monad m => ApiaryT c m b -> ApiaryT c m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ (\r -> rawPathInfo r `elem` rs) m
+
+-- | low level query getter. since 0.5.0.0.
+--
+-- @
+-- query "key" (Proxy :: Proxy (fetcher type))
+-- @
+--
+-- examples:
+--
+-- @
+-- query "key" (Proxy :: Proxy ('First' Int)) -- get first \'key\' query parameter as Int.
+-- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
+-- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
+-- @
+-- 
+query :: (Query a, Strategy.Strategy w, Monad m)
+      => S.ByteString
+      -> Proxy (w a)
+      -> ApiaryT (Strategy.SNext w as a) m b
+      -> ApiaryT as m b
+query k p = function $ \l r -> Strategy.readStrategy readQuery (k ==) p (queryString r) l
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
@@ -151,7 +185,32 @@ k =+: t = query k (pSome t)
 -- @
 --
 hasQuery :: Monad m => S.ByteString -> ApiaryT c m a -> ApiaryT c m a
-hasQuery q = query q (Proxy :: Proxy (Check ()))
+hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
+
+--------------------------------------------------------------------------------
+
+hasHeader :: Monad m => HT.HeaderName
+          -> ApiaryT as m b -> ApiaryT as m b
+hasHeader = header' pCheck
+
+header :: Monad m => HT.HeaderName
+       -> ApiaryT (Snoc as S.ByteString) m b -> ApiaryT as m b
+header = header' pFirst
+
+headers :: Monad m => HT.HeaderName
+        -> ApiaryT (Snoc as [S.ByteString]) m b -> ApiaryT as m b
+headers = header' limit100
+  where
+    limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
+    limit100 _ = Proxy
+
+header' :: (Strategy.Strategy w, Monad m)
+        => (forall x. Proxy x -> Proxy (w x))
+        -> HT.HeaderName
+        -> ApiaryT (Strategy.SNext w as S.ByteString) m b
+        -> ApiaryT as m b
+header' pf k = function $ \l r ->
+    Strategy.readStrategy Just (k ==) (pf pByteString) (requestHeaders r) l
 
 --------------------------------------------------------------------------------
 
