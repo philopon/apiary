@@ -30,6 +30,16 @@ mkCap (eq:as) = do
 applyCapture :: ExpQ -> ExpQ
 applyCapture e = [|Capture.capture $e|]
 
+-- | capture QuasiQuoter. since 0.1.0.0.
+--
+-- example:
+--
+-- @
+-- [capture|\/path|] -- first path == "path"
+-- [capture|\/int\/:Int|] -- first path == "int" && get 2nd path as Int.
+-- [capture|\/:Int\/:Double|] -- get first path as Int and get 2nd path as Double.
+-- @
+--
 capture :: QuasiQuoter
 capture = QuasiQuoter 
     { quoteExp = applyCapture . mkCap . preCap

@@ -9,9 +9,7 @@
 
 module Web.Apiary.Cookie.Internal where
 
-import Control.Monad
 import Control.Monad.Trans
-import Control.Monad.Trans.Maybe
 
 import Network.Wai
 import Web.Apiary
@@ -57,7 +55,7 @@ cookie :: (Strategy w, Query a, HasCookie, Monad m)
        -> Proxy (w a)
        -> ApiaryT (SNext w as a) m b
        -> ApiaryT as m b
-cookie k p = function $ \l r -> readStrategy readQuery (k ==) p (cookie' r) l
+cookie k p = function $ \l r -> readStrategy readQuery ((k ==) . fst) p (cookie' r) l
 
 cookie' :: HasCookie => Request -> [(S.ByteString, Maybe S.ByteString)]
 cookie' = 
@@ -79,21 +77,3 @@ setCookie sc = do
     let s = toByteString . renderSetCookie $ sc { setCookieValue = v' }
     addHeader "set-cookie" s
 
-{-# DEPRECATED getCookies, getCookies', getCookie, getCookie' "use cookie filter" #-}
--- | get cookies. first Maybe indicate cookie header exists or not, 
--- second Maybe indicate decryption status.
-getCookies :: (Monad m, HasCookie) => ActionT m (Maybe [(S.ByteString, Maybe S.ByteString)])
-getCookies = runMaybeT $ do
-    raw <- MaybeT $ getRequestHeader "cookie"
-    return $ map (\(k,v) -> (k, decrypt (key ?webApiaryCookieCookie) v)) $ parseCookies raw
-
--- | like 'getCookies', but when cookie header isn't exists, pass next handler.
-getCookies' :: (Monad m, HasCookie) => ActionT m [(S.ByteString, Maybe S.ByteString)]
-getCookies' = getCookies >>= maybe mzero return
-
--- | get cookie of specific key.
-getCookie :: (Monad m, HasCookie) => S.ByteString -> ActionT m (Maybe S.ByteString)
-getCookie k = getCookies >>= return . maybe Nothing (join . lookup k)
-
-getCookie' :: (Monad m, HasCookie) => S.ByteString -> ActionT m S.ByteString
-getCookie' k = getCookie k >>= maybe mzero return

@@ -18,14 +18,14 @@ import Data.Reflection
 class Strategy (w :: * -> *) where
   type SNext w (as :: [*]) a  :: [*]
   readStrategy :: (v -> Maybe a)
-               -> (k -> Bool)
+               -> ((k,v) -> Bool)
                -> Proxy (w a)
                -> [(k, v)]
                -> SList as 
                -> Maybe (SList (SNext w as a))
 
-getQuery :: (v -> Maybe a) -> Proxy (w a) -> (k -> Bool) -> [(k, v)] -> [Maybe a]
-getQuery readf _ kf = map readf . map snd . filter (kf . fst)
+getQuery :: (v -> Maybe a) -> Proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
+getQuery readf _ kf = map readf . map snd . filter kf
 
 
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
@@ -103,7 +103,6 @@ reflectLimit p = reflect $ asTyInt p
   where
     asTyInt :: Proxy (LimitSome u a) -> Proxy u
     asTyInt _ = Proxy
-
 
 -- | type check ( [0,) params to No argument ) since 0.5.0.0.
 data Check a

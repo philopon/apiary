@@ -66,6 +66,15 @@ import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCh
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
+-- | filter by HTTP method. since 0.1.0.0.
+method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
+method m = function_ ((m ==) . requestMethod)
+
+-- | filter by HTTP method using StdMethod. since 0.1.0.0.
+stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
+stdMethod = method . HT.renderStdMethod
+
+-- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad m => ApiaryT c m a -> ApiaryT c m a
 ssl = function_ isSecure
 
@@ -84,12 +93,6 @@ http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
 http11 :: Monad m => ApiaryT c m b -> ApiaryT c m b
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
-
-method :: Monad m => HT.Method -> ApiaryT c m a -> ApiaryT c m a
-method m = function_ ((m ==) . requestMethod)
-
-stdMethod :: Monad m => StdMethod -> ApiaryT c m a -> ApiaryT c m a
-stdMethod = method . HT.renderStdMethod
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: Monad m => ApiaryT c m b -> ApiaryT c m b
@@ -116,7 +119,7 @@ query :: (Query a, Strategy.Strategy w, Monad m)
       -> Proxy (w a)
       -> ApiaryT (Strategy.SNext w as a) m b
       -> ApiaryT as m b
-query k p = function $ \l r -> Strategy.readStrategy readQuery (k ==) p (queryString r) l
+query k p = function $ \l r -> Strategy.readStrategy readQuery ((k ==) . fst) p (queryString r) l
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
@@ -189,28 +192,29 @@ hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 --------------------------------------------------------------------------------
 
+-- | check whether to exists specified header or not. since 0.5.2.0.
 hasHeader :: Monad m => HT.HeaderName
           -> ApiaryT as m b -> ApiaryT as m b
-hasHeader = header' pCheck
+hasHeader n = header' pCheck ((n ==) . fst)
 
 header :: Monad m => HT.HeaderName
        -> ApiaryT (Snoc as S.ByteString) m b -> ApiaryT as m b
-header = header' pFirst
+header n = header' pFirst ((n ==) . fst)
 
 headers :: Monad m => HT.HeaderName
         -> ApiaryT (Snoc as [S.ByteString]) m b -> ApiaryT as m b
-headers = header' limit100
+headers n = header' limit100 ((n ==) . fst)
   where
     limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
     limit100 _ = Proxy
 
 header' :: (Strategy.Strategy w, Monad m)
         => (forall x. Proxy x -> Proxy (w x))
-        -> HT.HeaderName
+        -> (HT.Header -> Bool)
         -> ApiaryT (Strategy.SNext w as S.ByteString) m b
         -> ApiaryT as m b
-header' pf k = function $ \l r ->
-    Strategy.readStrategy Just (k ==) (pf pByteString) (requestHeaders r) l
+header' pf kf = function $ \l r ->
+    Strategy.readStrategy Just kf (pf pByteString) (requestHeaders r) l
 
 --------------------------------------------------------------------------------
 
