@@ -57,7 +57,7 @@ cookie :: (Strategy w, Query a, HasCookie, Monad m)
        -> Proxy (w a)
        -> ApiaryT (SNext w as a) m b
        -> ApiaryT as m b
-cookie k p = function $ \l r -> readStrategy k p (cookie' r) l
+cookie k p = function $ \l r -> readStrategy readQuery (k ==) p (cookie' r) l
 
 cookie' :: HasCookie => Request -> [(S.ByteString, Maybe S.ByteString)]
 cookie' = 

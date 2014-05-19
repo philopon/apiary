@@ -14,7 +14,6 @@ import Data.Apiary.Param
 import Data.Apiary.SList
 
 import Network.Wai
-import qualified Network.HTTP.Types as HTTP
 
 import qualified Data.ByteString as S
 import Data.Maybe
@@ -39,39 +38,42 @@ query :: (Query a, Strategy w, Monad m)
       -> Proxy (w a)
       -> ApiaryT (SNext w as a) m b
       -> ApiaryT as m b
-query k p = function $ \l r -> readStrategy k p (queryString r) l
+query k p = function $ \l r -> (readStrategy readQuery) (k ==) p (queryString r) l
 
 --------------------------------------------------------------------------------
 
+--  readQuery :: Maybe S.ByteString -> Maybe a
+
 class Strategy (w :: * -> *) where
   type SNext w (as :: [*]) a  :: [*]
-  readStrategy :: Query a => S.ByteString -> Proxy (w a)
-            -> HTTP.Query -> SList as -> Maybe (SList (SNext w as a))
+  readStrategy :: (v -> Maybe a)
+               -> (k -> Bool)
+               -> Proxy (w a)
+               -> [(k, v)]
+               -> SList as 
+               -> Maybe (SList (SNext w as a))
 
-getQuery :: Query a => Proxy (w a) -> S.ByteString -> HTTP.Query -> [Maybe a]
-getQuery _ k = map readQuery . map snd . filter ((k ==) . fst)
+getQuery :: (v -> Maybe a) -> Proxy (w a) -> (k -> Bool) -> [(k, v)] -> [Maybe a]
+getQuery readf _ kf = map readf . map snd . filter (kf . fst)
 
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
 data Option a
 instance Strategy Option where
     type SNext Option as a = Snoc as (Maybe a)
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
-           else case catMaybes rs of
-               []  -> Just $ sSnoc l (Nothing `asMaybe` p)
-               a:_ -> Just $ sSnoc l (Just a)
-      where
-        asMaybe :: Maybe a -> Proxy (w a) -> Maybe a
-        asMaybe a _ = asProxyTypeOf a Proxy
+           else Just . sSnoc l $ case catMaybes rs of
+               []  -> Nothing
+               a:_ -> Just a
 
 -- | get first matched key ( [0,) params to Maybe Type.) since 0.5.0.0.
 data First a
 instance Strategy First where
     type SNext First as a = Snoc as a
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
@@ -82,8 +84,8 @@ instance Strategy First where
 data One a
 instance Strategy One where
     type SNext One as a = Snoc as a
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
@@ -94,8 +96,8 @@ instance Strategy One where
 data Many a
 instance Strategy Many where
     type SNext Many as a = Snoc as [a]
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else Just $ sSnoc l (catMaybes rs)
@@ -104,8 +106,8 @@ instance Strategy Many where
 data Some a
 instance Strategy Some where
     type SNext Some as a = Snoc as [a]
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
@@ -116,8 +118,8 @@ instance Strategy Some where
 data Check a
 instance Strategy Check where
     type SNext Check as a = as
-    readStrategy k p q l =
-        let rs = getQuery p k q
+    readStrategy rf k p q l =
+        let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case  catMaybes rs of
