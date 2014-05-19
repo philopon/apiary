@@ -19,11 +19,11 @@ numToCode = \case
     201 -> varE 'status201
     n   -> fail $ "unknown HTTP status code:" ++ show n
 
--- | shortcut action. since 0.5.2.0.
+-- | shortcut action. since 0.6.0.0.
 --
 -- @
 -- [act|200 .html|] == [act|200 text/html|] ==
--- action $ \arguments -> do
+-- action $ \\arguments -> do
 --     status 200
 --     contentType "text/html"
 -- @

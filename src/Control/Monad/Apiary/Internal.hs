@@ -87,10 +87,3 @@ actionWithPreAction pa a = do
     tr  <- getRunner
     grd <- getGuard
     addRoute $ filterToActionT grd >>= \c -> (pa c) >> tr (apply a c)
-
-{-# DEPRECATED action_ "use action method." #-}
-action_ :: Monad m => ActionT m () -> ApiaryT c m ()
-action_ a = do
-    tr <- getRunner
-    grd <- getGuard
-    addRoute $ filterToActionT grd >> tr a

@@ -191,28 +191,9 @@ getConfig = ActionT $ \c _ s cont -> cont c s
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
--- | get all request headers. since 0.5.2.0.
+-- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT m RequestHeaders
 getHeaders = requestHeaders `liftM` getRequest
-
-{-# DEPRECATED getRequestHeader, getRequestHeader' "use header filters" #-}
--- | when request header is not found, mzero(pass next handler).
-getRequestHeader' :: Monad m => HeaderName -> ActionT m S.ByteString
-getRequestHeader' h = getRequestHeader h >>= maybe mzero return
-
-getRequestHeader :: Monad m => HeaderName -> ActionT m (Maybe S.ByteString)
-getRequestHeader h = (lookup h . requestHeaders) `liftM` getRequest
-
--- | when query parameter is not found, mzero(pass next handler).
-getQuery' :: Monad m => S.ByteString -> ActionT m (Maybe S.ByteString)
-getQuery' q = getQuery q >>= maybe mzero return
-
-{-# DEPRECATED getQuery' "use qeury derived filter." #-}
-
-getQuery :: Monad m => S.ByteString -> ActionT m (Maybe (Maybe S.ByteString))
-getQuery q = (lookup q . queryString) `liftM` getRequest
-
-{-# DEPRECATED getQuery "use qeury derived filter." #-}
 
 -- | set status code. since 0.1.0.0.
 status :: Monad m => Status -> ActionT m ()

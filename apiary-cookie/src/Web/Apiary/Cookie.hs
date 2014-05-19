@@ -61,9 +61,6 @@ module Web.Apiary.Cookie
     , setCookie
     -- * filter
     , cookie
-    -- * getter
-    , getCookies, getCookies'
-    , getCookie, getCookie'
     -- * Reexport
     -- | SetCookie(..)
     , module Web.Cookie

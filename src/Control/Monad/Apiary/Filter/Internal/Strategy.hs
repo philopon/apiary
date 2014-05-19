@@ -86,7 +86,7 @@ instance Strategy Some where
                [] -> Nothing
                as -> Just $ sSnoc l as
 
--- | get parameters with upper limit ( [1,n] to [Type]) since 0.5.2.0.
+-- | get parameters with upper limit ( [1,n] to [Type]) since 0.6.0.0.
 data LimitSome u a
 instance (Reifies u Int) => Strategy (LimitSome u) where
     type SNext (LimitSome u) as a = Snoc as [a]

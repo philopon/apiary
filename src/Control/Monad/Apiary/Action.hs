@@ -27,10 +27,6 @@ module Control.Monad.Apiary.Action
     , redirectPermanently, redirectFound, redirectSeeOther, redirectTemporary
     -- * Reexport
     , module Data.Default.Class
-
-    -- * deplicated
-    , getRequestHeader, getRequestHeader'
-    , getQuery, getQuery'
     ) where
 
 import Control.Monad.Apiary.Action.Internal

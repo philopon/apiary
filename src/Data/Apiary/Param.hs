@@ -36,7 +36,7 @@ instance Path Char where
                   | otherwise = Just $ T.head s
 
 -- | javascript boolean.
--- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True.
+-- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
 instance Path Bool where readPath = Just . jsToBool
 
 instance Path Int     where readPath    = readMaybe . T.unpack
@@ -67,7 +67,7 @@ class Query a where
     readQuery :: Maybe S.ByteString -> Maybe a
 
 -- | javascript boolean.
--- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True.
+-- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
 instance Query Bool where readQuery = fmap jsToBool
 
 instance Query Int     where readQuery = maybe Nothing (readMaybe . S.unpack)
