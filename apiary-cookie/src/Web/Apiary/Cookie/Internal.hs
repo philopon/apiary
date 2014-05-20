@@ -9,32 +9,18 @@
 
 module Web.Apiary.Cookie.Internal where
 
-import Control.Monad.Trans
-
 import Network.Wai
 import Web.Apiary
-import Web.ClientSession
 import Web.Cookie
 import Data.Maybe
 import Data.Proxy
+import Data.Time
 
 import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
-
-newtype Cookie = Cookie
-    { key :: Key
-    }
-
-newtype CookieConfig = CookieConfig
-    { keyFile :: FilePath }
-
-instance Default CookieConfig where
-    def = CookieConfig defaultKeyFile
-
-type HasCookie = ?webApiaryCookieCookie :: Cookie
 
 cond :: (a -> Bool) -> (a -> b) -> (a -> b) -> a -> b
 cond p t f a = if p a then t a else f a
@@ -46,34 +32,32 @@ cond p t f a = if p a then t a else f a
 -- example:
 --
 -- @
--- cookie "foo" pFirst pInt  -- get first Int parameter from foo.
--- cookie "bar" pOption pDouble  -- get first Double parameter from bar, allows no cookie.
--- cookie "baz" pMany (pMaybe pString)  -- get zero or more baz cookies. allows cookie decrypt failure.
+-- cookie "foo" (pFirst pInt)  -- get first Int parameter from foo.
+-- cookie "bar" (pOption pDouble)  -- get first Double parameter from bar, allows no cookie.
+-- cookie "baz" (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
+-- cookie "baz" (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
 -- @
-cookie :: (Strategy w, Query a, HasCookie, Monad m)
+cookie :: (Strategy w, Query a, Monad m)
        => S.ByteString
        -> Proxy (w a)
        -> ApiaryT (SNext w as a) m b
        -> ApiaryT as m b
-cookie k p = function $ \l r -> readStrategy readQuery ((k ==) . fst) p (cookie' r) l
+cookie k p = function $ \l r -> readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l
 
-cookie' :: HasCookie => Request -> [(S.ByteString, Maybe S.ByteString)]
+cookie' :: Request -> [(S.ByteString, S.ByteString)]
 cookie' = 
-    map (\(k,b) -> (k, decrypt (key ?webApiaryCookieCookie) b)) .
     concatMap parseCookies .
-    take 100 . -- avoid hashdos
     mapMaybe (cond (("cookie" ==) . fst) (Just . snd) (const Nothing)) .
     requestHeaders
 
--- | Give cookie encryption key.
-withCookie :: CookieConfig -> (HasCookie => IO b) -> IO b
-withCookie conf f = do
-    k <- getKey $ keyFile conf
-    let ?webApiaryCookieCookie = Cookie k
-    f
-setCookie :: (MonadIO m, HasCookie) => SetCookie -> ActionT m ()
-setCookie sc = do
-    v' <- liftIO $ encryptIO (key ?webApiaryCookieCookie) (setCookieValue sc) 
-    let s = toByteString . renderSetCookie $ sc { setCookieValue = v' }
-    addHeader "set-cookie" s
+-- | delete cookie. since 0.6.1.0.
+deleteCookie :: Monad m => S.ByteString -> ActionT m ()
+deleteCookie k = setCookie def { setCookieName    = k 
+                               , setCookieExpires = Just $ UTCTime (ModifiedJulianDay 0) 0
+                               , setCookieMaxAge  = Just 0
+                               }
 
+-- | set raw cookie header.
+setCookie :: Monad m => SetCookie -> ActionT m ()
+setCookie =
+    addHeader "set-cookie" . toByteString . renderSetCookie
