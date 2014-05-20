@@ -24,7 +24,7 @@ type instance Fn '[] r = r
 type instance Fn (x ': xs) r = x -> Fn xs r
 
 type family Snoc (as :: [*]) a :: [*]
-type instance Snoc '[] a = '[a]
+type instance Snoc '[] a = a ': '[]
 type instance Snoc (x ': xs) a = x ': Snoc xs a
 
 type family All (c :: * -> Constraint) (as :: [*]) :: Constraint
