@@ -52,9 +52,9 @@ type HasSession = ?webApiaryClientSessionSession :: Session
 cond :: (a -> Bool) -> (a -> b) -> (a -> b) -> a -> b
 cond p t f a = if p a then t a else f a
 
-withSession :: SessionConfig -> (HasSession => IO b) -> IO b
+withSession :: MonadIO m => SessionConfig -> (HasSession => m b) -> m b
 withSession SessionConfig{..} m = do
-    k <- getKey keyFile
+    k <- liftIO $ getKey keyFile
     let ?webApiaryClientSessionSession = Session
             k maxAge path domain httpOnly secure
     m
@@ -72,17 +72,16 @@ encryptValue s = do
     v' <- encryptIO (key ?webApiaryClientSessionSession) (setCookieValue s)
     return $ s { setCookieValue = v' }
     
-setRawSession :: (MonadIO m, HasSession)
-              => Maybe DiffTime -> SetCookie -> ActionT m ()
+setRawSession :: HasSession => Maybe DiffTime -> SetCookie -> Action ()
 setRawSession age s = do
     s' <- liftIO $ encryptValue =<< setMaxAge s age
     setCookie s'
 
-setSessionWith :: (MonadIO m, HasSession)
+setSessionWith :: HasSession
                => (SetCookie -> SetCookie) -- ^ postprocess
                -> S.ByteString -- ^ key
                -> S.ByteString -- ^ value
-               -> ActionT m ()
+               -> Action ()
 setSessionWith f k v = do
     let Session{..} = ?webApiaryClientSessionSession
     setRawSession maxAge' $ f def
@@ -94,13 +93,13 @@ setSessionWith f k v = do
         , setCookieSecure   = secure'
         }
 
-setSession :: (MonadIO m, HasSession)
+setSession :: HasSession
            => S.ByteString -- ^ key
            -> S.ByteString -- ^ value
-           -> ActionT m ()
+           -> Action ()
 setSession = setSessionWith id
 
-session :: (Strategy w, Query a, HasSession, Monad m)
-        => S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b
+session :: (Strategy w, Query a, HasSession)
+        => S.ByteString -> Proxy (w a) -> Apiary (SNext w as a) b -> Apiary as b
 session ky p = function $ \l r -> readStrategy readQuery ((ky ==) . fst) p
     (map (\(k,b) -> (k, decrypt (key ?webApiaryClientSessionSession) b)) $ cookie' r) l
