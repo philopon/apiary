@@ -2,8 +2,5 @@ language: haskell
 ghc:
   - 7.8
   - 7.6
-install:
-  - >-
-    cabal install --only-dependencies --enable-tests
-    . ./apiary-cookie ./apiary-clientsession ./apiary-persistent ./apiary-websockets 
-script: bash -eu ./.travis.sh
+install: bash -eu .travis-install.sh
+script: bash -eu .travis-script.sh

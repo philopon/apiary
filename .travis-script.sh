@@ -11,7 +11,7 @@ cabal configure --enable-tests
 cabal test
 cabal install
 
-for path in apiary-cookie apiary-persistent apiary-websockets apiary-clientsession; do
+for path in `cat submodules`; do
   cd $path
   printHeader $path
   cabal configure --enable-tests
