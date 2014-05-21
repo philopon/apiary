@@ -220,30 +220,55 @@ contentType c = modifyHeader
 -- | redirect handler
 --
 -- set status, location header and stop. since 0.3.3.0.
-redirect :: Monad m
-         => Status
-         -> S.ByteString -- ^ Location redirect to
-         -> ActionT m a
-redirect st url = do
+--
+-- rename from redirect in 0.6.2.0.
+redirectWith :: Monad m
+             => Status
+             -> S.ByteString -- ^ Location redirect to
+             -> ActionT m a
+redirectWith st url = do
     status st
     setHeaders [("location", url)]
     stop
 
+--      HTTP/1.0            HTTP/1.1
+-- 300                      MultipleChoices
+-- 301  MovedPermanently    MovedPermanently
+-- 302  MovedTemporarily    Found
+-- 303                      SeeOther
+-- 304  NotModified         NotModified
+-- 305                      UseProxy
+-- 307                      TemporaryRedirect
+
 -- | redirect with 301 Moved Permanently. since 0.3.3.0.
 redirectPermanently :: Monad m => S.ByteString -> ActionT m a
-redirectPermanently = redirect movedPermanently301
+redirectPermanently = redirectWith movedPermanently301
 
--- | redirect with 302 Found. since 0.3.3.0.
-redirectFound       :: Monad m => S.ByteString -> ActionT m a
-redirectFound       = redirect found302
+-- | redirect with:
+--
+-- 303 See Other (HTTP/1.1)  or
+-- 302 Moved Temporarily (Other)
+-- 
+-- since 0.6.2.0.
+redirect :: Monad m => S.ByteString -> ActionT m b
+redirect to = do
+    v <- httpVersion <$> getRequest
+    if v == http11
+        then redirectWith seeOther303 to
+        else redirectWith status302   to
 
--- | redirect with 303 See Other. since 0.3.3.0.
-redirectSeeOther    :: Monad m => S.ByteString -> ActionT m a
-redirectSeeOther    = redirect seeOther303
-
--- | redirect with 307 Temporary Redirect. since 0.3.3.0.
-redirectTemporary   :: Monad m => S.ByteString -> ActionT m a
-redirectTemporary   = redirect temporaryRedirect307
+-- | redirect with:
+--
+-- 307 Temporary Redirect (HTTP/1.1) or
+-- 302 Moved Temporarily (Other)
+--
+-- since 0.3.3.0.
+redirectTemporary :: Monad m => S.ByteString -> ActionT m a
+redirectTemporary to = do
+    v <- httpVersion <$> getRequest
+    if v == http11
+        then redirectWith temporaryRedirect307 to
+        else redirectWith status302            to
 
 -- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
@@ -267,3 +292,12 @@ lbs l = modifyState (\s -> s { actionBody = LBS l } )
 -- | set response body source. since 0.1.0.0.
 source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
 source src = modifyState (\s -> s { actionBody = SRC src } )
+
+{-# DEPRECATED redirectFound, redirectSeeOther "use redirect" #-}
+-- | redirect with 302 Found. since 0.3.3.0.
+redirectFound       :: Monad m => S.ByteString -> ActionT m a
+redirectFound       = redirectWith found302
+
+-- | redirect with 303 See Other. since 0.3.3.0.
+redirectSeeOther    :: Monad m => S.ByteString -> ActionT m a
+redirectSeeOther    = redirectWith seeOther303
