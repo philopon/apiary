@@ -7,14 +7,13 @@
 > import Network.Wai.Handler.Warp
 > import Control.Monad.Reader
 > import qualified Data.ByteString.Lazy.Char8 as L
-> import Control.Monad.Logger
 > 
 > main :: IO ()
 
 'runApiaryT' create ApplicationM m, when m == IO, equals Application.
 And you can use Monad Transformers with fmap(but cannot share state, so StateT not work.).
 
-> main = run 3000 . runApiaryT def runStdoutLoggingT $ do
+> main = run 3000 . runApiary def $ do
 
 Apiary has 2 Monads, ApiaryT and ActionT.
 ApiaryT is filtering Request, ActionT is processing request.
@@ -55,7 +54,7 @@ You can get captured elements by action (without underscore) function.
 Multiple type capturing. can get by tuple.
 
 >     [capture|/div/:Double/:Double|] . action $ \a b -> do
->         when (b == 0) $ $logInfo "zero div."
+>         when (b == 0) $ liftIO $ putStrLn "zero div."
 
 You can use MonadPlus instance. when b == 0, 404 page not found.
 
@@ -108,7 +107,7 @@ $ curl localhost:3000/div/10/2
 $ curl -XPOST localhost:3000/div/10/2
 5.0
 $ curl localhost:3000/div/10/0
-404 Page Notfound.              # and logging
+404 Page Notfound.              # and show stdout
 
 $ curl localhost:3000/static/main.lhs # show file
 $ curl localhost:3000/static/notfound.hs # show file

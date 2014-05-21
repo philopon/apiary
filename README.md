@@ -33,18 +33,18 @@ routing
 ----
 routing functions can nesting freely. and arguments are stocked on type level.
 
-this is routing monad named ApiaryT.
+this is routing monad named Apiary.
 
 ```haskell
-data ApiaryT c m a
+data Apiary c a
 ```
 
-first argument of ApiaryT is stocked arguments.
+first argument of Apiary is stocked arguments.
 
 initial arguments is empty, so type of runApiary is
 
 ```haskell
-runApiary :: ApiaryConfig IO -> ApiaryT '[] IO a -> Application
+runApiary :: ApiaryConfig -> Apiary '[] a -> Application
 ```
 
 WARNING: type signature of this section is pseudo code for explanation, but value is haskell code.
@@ -54,7 +54,7 @@ WARNING: type signature of this section is pseudo code for explanation, but valu
 capture QuasiQuote: simple path router. :Type = read as Type, otherwise matching string.
 
 ```haskell
-[capture|/path/:Int|] :: ApiaryT (xs `Snoc` Int) m b -> ApiaryT xs m b
+[capture|/path/:Int|] :: Apiary (xs `Snoc` Int) b -> Apiary xs b
 ```
 
 when first path == "path" and second path is readable as Int, filter successed.
@@ -64,7 +64,7 @@ when first path == "path" and second path is readable as Int, filter successed.
 you can route using query function.
 
 ```haskell
-query :: (Query a, Strategy w, Monad m) => ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b 
+query :: (Query a, Strategy w) => ByteString -> Proxy (w a) -> Apiary (SNext w as a) b -> Apiary as b 
 ```
 
 example:
@@ -108,12 +108,12 @@ low level filter functions.
 
 Action
 ----
-ActionT monad is use define create response.
+Action monad is use define create response.
 
-splice ActionT to ApiaryT, using action function.
+splice Action to Apiary, using action function.
 
 ```haskell
-action :: Monad m => Fn c (ActionT m ()) -> ApiaryT c m () 
+action :: Monad m => Fn c (Action ()) -> Apiary c () 
 ```
 
 Fn c is apply stocked arguments.

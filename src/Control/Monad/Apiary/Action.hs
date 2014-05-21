@@ -1,6 +1,6 @@
 module Control.Monad.Apiary.Action 
     (
-      ActionT
+      Action
     , ApiaryConfig(..)
     -- * actions
     , stop, stopWith
@@ -23,10 +23,13 @@ module Control.Monad.Apiary.Action
 
     -- ** monolithic action
     -- *** redirect
-    , redirect
-    , redirectPermanently, redirectFound, redirectSeeOther, redirectTemporary
+    , redirect, redirectPermanently, redirectTemporary
+    , redirectWith
     -- * Reexport
     , module Data.Default.Class
+    
+    -- * deprecated
+    , redirectFound, redirectSeeOther
     ) where
 
 import Control.Monad.Apiary.Action.Internal
