@@ -45,7 +45,7 @@ data SessionConfig = SessionConfig
 
 instance Default SessionConfig where
     def = SessionConfig
-        defaultKeyFile (24 * 60 * 60) Nothing Nothing False False
+        defaultKeyFile (24 * 60 * 60) Nothing Nothing True True
 
 type HasSession = ?webApiaryClientSessionSession :: Session
 
