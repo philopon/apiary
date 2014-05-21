@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.6.2.0
+version:             0.7.0.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -86,7 +86,6 @@ library
                      , bytestring         >=0.10 && <0.11
                      , blaze-builder      >=0.3 && <0.4
                      , conduit            >=1.1 && <1.2
-                     , monad-logger       >=0.3 && <0.4
                      , data-default-class >=0.0 && <0.1
                      , tagged             >=0.7 && <0.8
                      , reflection         >=1.4 && <1.5
