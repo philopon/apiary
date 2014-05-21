@@ -27,7 +27,7 @@ import qualified Data.ByteString as S
 
 data Session = Session
     { key       :: Key
-    , maxAge'   :: DiffTime
+    , maxAge'   :: Maybe DiffTime
     , path'     :: Maybe S.ByteString
     , domain'   :: Maybe S.ByteString
     , httpOnly' :: Bool
@@ -36,7 +36,7 @@ data Session = Session
 
 data SessionConfig = SessionConfig
     { keyFile  :: FilePath
-    , maxAge   :: DiffTime
+    , maxAge   :: Maybe DiffTime
     , path     :: Maybe S.ByteString
     , domain   :: Maybe S.ByteString
     , httpOnly :: Bool
@@ -45,7 +45,7 @@ data SessionConfig = SessionConfig
 
 instance Default SessionConfig where
     def = SessionConfig
-        defaultKeyFile (24 * 60 * 60) Nothing Nothing True True
+        defaultKeyFile (Just (24 * 60 * 60)) Nothing Nothing True True
 
 type HasSession = ?webApiaryClientSessionSession :: Session
 
@@ -59,23 +59,46 @@ withSession SessionConfig{..} m = do
             k maxAge path domain httpOnly secure
     m
 
-setSession :: (MonadIO m, HasSession) 
-           => S.ByteString -- key
-           -> S.ByteString -- value
-           -> ActionT m ()
-setSession k v = do
+setMaxAge :: SetCookie -> Maybe DiffTime -> IO SetCookie
+setMaxAge s (Just a) = do
+    t <- getCurrentTime
+    return s { setCookieExpires = Just $ addUTCTime (realToFrac a) t
+             , setCookieMaxAge  = Just a
+             }
+setMaxAge s Nothing = return s
+
+encryptValue :: HasSession => SetCookie -> IO SetCookie
+encryptValue s = do
+    v' <- encryptIO (key ?webApiaryClientSessionSession) (setCookieValue s)
+    return $ s { setCookieValue = v' }
+    
+setRawSession :: (MonadIO m, HasSession)
+              => Maybe DiffTime -> SetCookie -> ActionT m ()
+setRawSession age s = do
+    s' <- liftIO $ encryptValue =<< setMaxAge s age
+    setCookie s'
+
+setSessionWith :: (MonadIO m, HasSession)
+               => (SetCookie -> SetCookie) -- ^ postprocess
+               -> S.ByteString -- ^ key
+               -> S.ByteString -- ^ value
+               -> ActionT m ()
+setSessionWith f k v = do
     let Session{..} = ?webApiaryClientSessionSession
-    v' <- liftIO $ encryptIO key v
-    t  <- liftIO getCurrentTime
-    setCookie def { setCookieName     = k
-                  , setCookieValue    = v'
-                  , setCookiePath     = path'
-                  , setCookieExpires  = Just $ addUTCTime (realToFrac maxAge') t
-                  , setCookieMaxAge   = Just maxAge'
-                  , setCookieDomain   = domain'
-                  , setCookieHttpOnly = httpOnly'
-                  , setCookieSecure   = secure'
-                  }
+    setRawSession maxAge' $ f def
+        { setCookieName     = k 
+        , setCookieValue    = v
+        , setCookiePath     = path'
+        , setCookieDomain   = domain'
+        , setCookieHttpOnly = httpOnly'
+        , setCookieSecure   = secure'
+        }
+
+setSession :: (MonadIO m, HasSession)
+           => S.ByteString -- ^ key
+           -> S.ByteString -- ^ value
+           -> ActionT m ()
+setSession = setSessionWith id
 
 session :: (Strategy w, Query a, HasSession, Monad m)
         => S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b

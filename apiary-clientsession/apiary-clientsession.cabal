@@ -1,5 +1,5 @@
 name:                apiary-clientsession
-version:             0.6.1.0
+version:             0.6.2.0
 synopsis:            clientsession support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
