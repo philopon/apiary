@@ -31,11 +31,11 @@ description:
   404 Page Notfound.
   @
   .
-    * Nestable route handling(ApiaryT Monad; capture, stdMethod and more.).
+    * Nestable route handling(Apiary Monad; capture, stdMethod and more.).
   .
     * type safe route filter.
   .
-  full example & tutorial: <https://github.com/philopon/apiary/blob/master/examples/main.lhs>
+  more examples: <https://github.com/philopon/apiary/blob/master/examples/>
 
 license:             MIT
 license-file:        LICENSE

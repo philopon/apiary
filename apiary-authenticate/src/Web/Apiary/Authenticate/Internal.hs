@@ -90,20 +90,25 @@ addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
         toByteString (HTTP.encodePathSegments (authPrefix config ++ authReturnToPath config))
 
 
+-- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: HasAuth => Apiary (Snoc as S.ByteString) a -> Apiary as a
 authorized = session (authSessionName $ config ?webApiaryAuthenticateAuth) (pOne pByteString)
 
+-- | get auth config. since 0.7.0.0.
 authConfig :: HasAuth => Action AuthConfig
 authConfig = return (config ?webApiaryAuthenticateAuth)
 
+-- | get providers. since 0.7.0.0.
 authProviders :: HasAuth => Action [(T.Text, Provider)]
 authProviders = providers <$> authConfig
 
+-- | get authenticate routes: (title, route). since 0.7.0.0.
 authRoutes :: HasAuth => Action [(T.Text, S.ByteString)]
 authRoutes = do 
     conf <- authConfig
     return . map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix conf ++ [k])) $ providers conf
 
+-- | delete session. since 0.7.0.0.
 authLogout :: HasAuth => Action ()
 authLogout = do
     conf <- authConfig
