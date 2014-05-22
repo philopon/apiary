@@ -62,13 +62,13 @@ data Auth = Auth
 
 type HasAuth = (?webApiaryAuthenticateAuth :: Auth, HasSession)
 
-withAuth :: (MonadBaseControl IO m, HasSession)
-         => AuthConfig -> (HasAuth => ApiaryT c m ()) -> ApiaryT c m ()
+withAuth :: (MonadBaseControl IO m, HasSession, MonadIO n, Functor n)
+         => AuthConfig -> (HasAuth => ApiaryT' c n m ()) -> ApiaryT' c n m ()
 withAuth = withAuthWith tlsManagerSettings
 
-withAuthWith :: (MonadBaseControl IO m, HasSession)
+withAuthWith :: (MonadBaseControl IO m, HasSession, MonadIO n, Functor n)
              => Client.ManagerSettings -> AuthConfig
-             -> (HasAuth => ApiaryT c m ()) -> ApiaryT c m ()
+             -> (HasAuth => ApiaryT' c n m ()) -> ApiaryT' c n m ()
 withAuthWith s conf m = withManager s $ \mgr -> do
     let ?webApiaryAuthenticateAuth = Auth mgr conf
     addAuthHandler (Auth mgr conf) m
@@ -77,7 +77,7 @@ withAuthWith s conf m = withManager s $ \mgr -> do
 withManager :: MonadBaseControl IO m => Client.ManagerSettings -> (Client.Manager -> m a) -> m a
 withManager conf f = control $ \run -> Client.withManager conf (\mgr -> run $ f mgr)
 
-addAuthHandler :: HasSession => Auth -> ApiaryT c m () -> ApiaryT c m ()
+addAuthHandler :: (Functor n, MonadIO n, HasSession) => Auth -> ApiaryT' c n m () -> ApiaryT' c n m ()
 addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
@@ -97,32 +97,32 @@ authorized :: HasAuth => Apiary (Snoc as S.ByteString) a -> Apiary as a
 authorized = session (authSessionName $ config ?webApiaryAuthenticateAuth) (pOne pByteString)
 
 -- | get auth config. since 0.7.0.0.
-authConfig :: HasAuth => Action AuthConfig
+authConfig :: (Monad m, HasAuth) => ActionT m AuthConfig
 authConfig = return (config ?webApiaryAuthenticateAuth)
 
 -- | get providers. since 0.7.0.0.
-authProviders :: HasAuth => Action [(T.Text, Provider)]
+authProviders :: (Monad m, HasAuth) => ActionT m [(T.Text, Provider)]
 authProviders = providers <$> authConfig
 
 -- | get authenticate routes: (title, route). since 0.7.0.0.
-authRoutes :: HasAuth => Action [(T.Text, S.ByteString)]
+authRoutes :: (Monad m, HasAuth) => ActionT m [(T.Text, S.ByteString)]
 authRoutes = do 
     conf <- authConfig
     return . map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix conf ++ [k])) $ providers conf
 
 -- | delete session. since 0.7.0.0.
-authLogout :: HasAuth => Action ()
+authLogout :: (Monad m,  HasAuth) => ActionT m ()
 authLogout = do
     conf <- authConfig
     deleteCookie (authSessionName conf)
 
-authAction :: Client.Manager -> T.Text -> T.Text
-           -> Maybe T.Text -> [(T.Text, T.Text)] -> Action ()
+authAction :: MonadIO m => Client.Manager -> T.Text -> T.Text
+           -> Maybe T.Text -> [(T.Text, T.Text)] -> ActionT m ()
 authAction mgr uri returnTo realm param = do
     fw <- liftIO . runResourceT $ getForwardUrl uri returnTo realm param mgr
     redirect $ T.encodeUtf8 fw
 
-returnAction :: HasSession => Client.Manager -> S.ByteString -> S.ByteString -> Action ()
+returnAction :: (MonadIO m, HasSession) => Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
 returnAction mgr key to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr

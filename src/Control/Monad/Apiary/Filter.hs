@@ -60,35 +60,36 @@ import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
 -- | filter by HTTP method. since 0.1.0.0.
-method :: HT.Method -> ApiaryT c m a -> ApiaryT c m a
+method :: (Functor n, Monad n) => HT.Method -> ApiaryT' c n m a -> ApiaryT' c n m a
 method m = function_ ((m ==) . requestMethod)
 
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.
-stdMethod :: StdMethod -> ApiaryT c m a -> ApiaryT c m a
+stdMethod :: (Functor n, Monad n) => StdMethod -> ApiaryT' c n m a -> ApiaryT' c n m a
 stdMethod = method . HT.renderStdMethod
 
 -- | filter by ssl accessed. since 0.1.0.0.
-ssl :: ApiaryT c m a -> ApiaryT c m a
+ssl :: (Functor n, Monad n) => ApiaryT' c n m a -> ApiaryT' c n m a
 ssl = function_ isSecure
 
 -- | http version filter. since 0.5.0.0.
-httpVersion :: HT.HttpVersion  -> ApiaryT c m b -> ApiaryT c m b
+httpVersion :: (Functor n, Monad n) => HT.HttpVersion
+            -> ApiaryT' c n m b -> ApiaryT' c n m b
 httpVersion v = function_ $ (v ==) . Wai.httpVersion
 
 -- | http/0.9 only accepted fiter. since 0.5.0.0.
-http09 :: ApiaryT c m b -> ApiaryT c m b
+http09 :: (Functor n, Monad n) => ApiaryT' c n m b -> ApiaryT' c n m b
 http09 = Control.Monad.Apiary.Filter.httpVersion HT.http09
 
 -- | http/1.0 only accepted fiter. since 0.5.0.0.
-http10 :: ApiaryT c m b -> ApiaryT c m b
+http10 :: (Functor n, Monad n) => ApiaryT' c n m b -> ApiaryT' c n m b
 http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
 
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
-http11 :: ApiaryT c m b -> ApiaryT c m b
+http11 :: (Functor n, Monad n) => ApiaryT' c n m b -> ApiaryT' c n m b
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
-root :: ApiaryT c m b -> ApiaryT c m b
+root :: (Functor n, Monad n) => ApiaryT' c n m b -> ApiaryT' c n m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ (\r -> rawPathInfo r `elem` rs) m
@@ -107,11 +108,11 @@ root m = do
 -- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
 -- @
 -- 
-query :: (Query a, Strategy.Strategy w)
+query :: (Query a, Strategy.Strategy w, Functor n, Monad n)
       => S.ByteString
       -> Proxy (w a)
-      -> ApiaryT (Strategy.SNext w as a) m b
-      -> ApiaryT as m b
+      -> ApiaryT' (Strategy.SNext w as a) n m b
+      -> ApiaryT' as n m b
 query k p = function $ \l r -> Strategy.readStrategy readQuery ((k ==) . fst) p (queryString r) l
 
 -- | get first matched paramerer. since 0.5.0.0.
@@ -119,7 +120,8 @@ query k p = function $ \l r -> Strategy.readStrategy readQuery ((k ==) . fst) p 
 -- @
 -- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
 -- @
-(=:) :: Query a => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
+(=:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+     -> ApiaryT' (Snoc as a) n m b -> ApiaryT' as n m b
 k =: t = query k (pFirst t)
 
 -- | get one matched paramerer. since 0.5.0.0.
@@ -129,7 +131,8 @@ k =: t = query k (pFirst t)
 -- @
 -- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
 -- @
-(=!:) :: Query a => S.ByteString -> Proxy a -> ApiaryT (Snoc as a) m b -> ApiaryT as m b
+(=!:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+      -> ApiaryT' (Snoc as a) n m b -> ApiaryT' as n m b
 k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
@@ -139,7 +142,8 @@ k =!: t = query k (pOne t)
 -- @
 -- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
 -- @
-(=?:) :: Query a => S.ByteString -> Proxy a -> ApiaryT (Snoc as (Maybe a)) m b -> ApiaryT as m b
+(=?:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+      -> ApiaryT' (Snoc as (Maybe a)) n m b -> ApiaryT' as n m b
 k =?: t = query k (pOption t)
 
 -- | check parameger given and type. since 0.5.0.0.
@@ -149,7 +153,8 @@ k =?: t = query k (pOption t)
 -- @
 -- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Proxy :: Proxy (Check Int))
 -- @
-(?:) :: Query a => S.ByteString -> Proxy a -> ApiaryT as m b -> ApiaryT as m b
+(?:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+     -> ApiaryT' as n m b -> ApiaryT' as n m b
 k ?: t = query k (pCheck t)
 
 -- | get many paramerer. since 0.5.0.0.
@@ -157,7 +162,8 @@ k ?: t = query k (pCheck t)
 -- @
 -- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
 -- @
-(=*:) :: Query a => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
+(=*:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+      -> ApiaryT' (Snoc as [a]) n m b -> ApiaryT' as n m b
 k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
@@ -165,7 +171,8 @@ k =*: t = query k (pMany t)
 -- @
 -- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
 -- @
-(=+:) :: Query a => S.ByteString -> Proxy a -> ApiaryT (Snoc as [a]) m b -> ApiaryT as m b
+(=+:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+      -> ApiaryT' (Snoc as [a]) n m b -> ApiaryT' as n m b
 k =+: t = query k (pSome t)
 
 -- | query exists checker.
@@ -174,39 +181,41 @@ k =+: t = query k (pSome t)
 -- hasQuery q = 'query' q (Proxy :: Proxy ('Check' ()))
 -- @
 --
-hasQuery :: S.ByteString -> ApiaryT c m a -> ApiaryT c m a
+hasQuery :: (Functor n, Monad n) => S.ByteString -> ApiaryT' c n m a -> ApiaryT' c n m a
 hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 --------------------------------------------------------------------------------
 
 -- | check whether to exists specified header or not. since 0.6.0.0.
-hasHeader :: HT.HeaderName -> ApiaryT as m b -> ApiaryT as m b
+hasHeader :: (Functor n, Monad n) => HT.HeaderName -> ApiaryT' as n m b -> ApiaryT' as n m b
 hasHeader n = header' pCheck ((n ==) . fst)
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
-eqHeader :: HT.HeaderName 
+eqHeader :: (Functor n, Monad n)
+         => HT.HeaderName 
          -> S.ByteString  -- ^ header value
-         -> ApiaryT as m b
-         -> ApiaryT as m b
+         -> ApiaryT' as n m b
+         -> ApiaryT' as n m b
 eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v')
 
 -- | filter by header and get first. since 0.6.0.0.
-header :: HT.HeaderName
-       -> ApiaryT (Snoc as S.ByteString) m b -> ApiaryT as m b
+header :: (Functor n, Monad n) => HT.HeaderName
+       -> ApiaryT' (Snoc as S.ByteString) n m b -> ApiaryT' as n m b
 header n = header' pFirst ((n ==) . fst)
 
 -- | filter by headers up to 100 entries. since 0.6.0.0.
-headers :: HT.HeaderName -> ApiaryT (Snoc as [S.ByteString]) m b -> ApiaryT as m b
+headers :: (Functor n, Monad n) => HT.HeaderName
+        -> ApiaryT' (Snoc as [S.ByteString]) n m b -> ApiaryT' as n m b
 headers n = header' limit100 ((n ==) . fst)
   where
     limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
     limit100 _ = Proxy
 
 -- | low level header filter. since 0.6.0.0.
-header' :: (Strategy.Strategy w)
+header' :: (Strategy.Strategy w, Functor n, Monad n)
         => (forall x. Proxy x -> Proxy (w x))
         -> (HT.Header -> Bool)
-        -> ApiaryT (Strategy.SNext w as S.ByteString) m b
-        -> ApiaryT as m b
+        -> ApiaryT' (Strategy.SNext w as S.ByteString) n m b
+        -> ApiaryT' as n m b
 header' pf kf = function $ \l r ->
     Strategy.readStrategy Just kf (pf pByteString) (requestHeaders r) l

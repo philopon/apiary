@@ -1,6 +1,6 @@
 module Control.Monad.Apiary.Action 
     (
-      Action
+      ActionT
     , ApiaryConfig(..)
     -- * actions
     , stop, stopWith

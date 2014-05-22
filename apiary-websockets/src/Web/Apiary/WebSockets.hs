@@ -24,10 +24,11 @@ import Network.WebSockets
     , sendTextData, sendBinaryData, sendClose, sendPing
     )
 
-actionWithWebSockets' :: WS.ConnectionOptions 
+actionWithWebSockets' :: (Monad n, Functor n)
+                      => WS.ConnectionOptions 
                       -> Fn xs WS.ServerApp
-                      -> Fn xs (Action ())
-                      -> ApiaryT xs m ()
+                      -> Fn xs (ActionT n ())
+                      -> ApiaryT' xs n m ()
 actionWithWebSockets' conn srv m = do
     actionWithPreAction pa m
   where
@@ -37,7 +38,8 @@ actionWithWebSockets' conn srv m = do
             Nothing   -> return ()
             Just resp -> stopWith resp
 
-actionWithWebSockets :: Fn c WS.ServerApp
-                     -> Fn c (Action ())
-                     -> ApiaryT c m ()
+actionWithWebSockets :: (Functor n, Monad n)
+                     => Fn c WS.ServerApp
+                     -> Fn c (ActionT n ())
+                     -> ApiaryT' c n m ()
 actionWithWebSockets = actionWithWebSockets' WS.defaultConnectionOptions

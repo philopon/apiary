@@ -1,7 +1,8 @@
 module Control.Monad.Apiary
-    ( ApiaryT, Apiary
+    ( ApiaryT', ApiaryT, Apiary
     , runApiary
     , runApiaryT
+    , runApiaryT'
     -- * getter
     , apiaryConfig
     -- * execute action

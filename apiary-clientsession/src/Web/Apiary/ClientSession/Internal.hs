@@ -72,16 +72,16 @@ encryptValue s = do
     v' <- encryptIO (key ?webApiaryClientSessionSession) (setCookieValue s)
     return $ s { setCookieValue = v' }
     
-setRawSession :: HasSession => Maybe DiffTime -> SetCookie -> Action ()
+setRawSession :: (MonadIO m, HasSession) => Maybe DiffTime -> SetCookie -> ActionT m ()
 setRawSession age s = do
     s' <- liftIO $ encryptValue =<< setMaxAge s age
     setCookie s'
 
-setSessionWith :: HasSession
+setSessionWith :: (MonadIO m, HasSession)
                => (SetCookie -> SetCookie) -- ^ postprocess
                -> S.ByteString -- ^ key
                -> S.ByteString -- ^ value
-               -> Action ()
+               -> ActionT m ()
 setSessionWith f k v = do
     let Session{..} = ?webApiaryClientSessionSession
     setRawSession maxAge' $ f def
@@ -93,13 +93,13 @@ setSessionWith f k v = do
         , setCookieSecure   = secure'
         }
 
-setSession :: HasSession
+setSession :: (MonadIO m, HasSession)
            => S.ByteString -- ^ key
            -> S.ByteString -- ^ value
-           -> Action ()
+           -> ActionT m ()
 setSession = setSessionWith id
 
-session :: (Strategy w, Query a, HasSession)
-        => S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b
+session :: (Strategy w, Query a, HasSession, Monad n, Functor n)
+        => S.ByteString -> Proxy (w a) -> ApiaryT' (SNext w as a) n m b -> ApiaryT' as n m b
 session ky p = function $ \l r -> readStrategy readQuery ((ky ==) . fst) p
     (map (\(k,b) -> (k, decrypt (key ?webApiaryClientSessionSession) b)) $ cookie' r) l
