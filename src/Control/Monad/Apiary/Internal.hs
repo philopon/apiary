@@ -61,19 +61,18 @@ instance MonadIO m => MonadIO (ApiaryT c m) where
 instance MonadBase b m => MonadBase b (ApiaryT c m) where
     liftBase m = ApiaryT $ \_ _ c -> liftBase m >>= \a -> c a empty
 
-apiary :: Monad m
-       => (Action (SList c) -> ApiaryConfig -> m (a,Action ())) -> ApiaryT c m a
-apiary f = ApiaryT $ \grd conf cont -> f grd conf >>= \(a,w) -> cont a w
+apiaryT :: Monad m
+        => (Action (SList c) -> ApiaryConfig -> m (a,Action ()))
+        -> ApiaryT c m a
+apiaryT f = ApiaryT $ \grd conf cont -> f grd conf >>= \(a,w) -> cont a w
 
-run :: Monad m
-    => ApiaryT c m a -> Action (SList c) -> ApiaryConfig -> m (a, Action ())
-run m grd conf = unApiaryT m grd conf $ \a w -> return (a,w)
 
 instance MonadTransControl (ApiaryT c) where
     newtype StT (ApiaryT c) a = StTApiary { unStTApiary :: (a, Action ()) }
-    liftWith f = apiary $ \g c ->
-        liftM (\a -> (a, empty)) (f $ \t -> liftM StTApiary $ run t g c)
-    restoreT m = apiary $ \_ _ -> liftM unStTApiary m
+    liftWith f = apiaryT $ \g c ->
+        liftM (\a -> (a, empty)) 
+        (f $ \t -> liftM StTApiary $ unApiaryT t g c (\a w -> return (a,w)))
+    restoreT m = apiaryT $ \_ _ -> liftM unStTApiary m
 
 instance MonadBaseControl b m => MonadBaseControl b (ApiaryT c m) where
     newtype StM (ApiaryT c m) a = StMApiary { unStMApiary :: ComposeSt (ApiaryT c) m a }
@@ -83,11 +82,11 @@ instance MonadBaseControl b m => MonadBaseControl b (ApiaryT c m) where
 type Apiary c = ApiaryT c Identity
 
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
-runApiary conf m = runIdentity $ runApiaryT conf m
+runApiary conf = runIdentity . runApiaryT conf
 
 runApiaryT :: Monad m => ApiaryConfig -> ApiaryT '[] m a -> m Application
-runApiaryT conf m = unApiaryT m (return SNil) conf (\_ w -> return w) >>= \a ->
-    return $ \req -> execAction conf a req
+runApiaryT conf m = unApiaryT m (return SNil) conf (\_ w -> return w) >>=
+    return . execAction conf
 
 getGuard :: ApiaryT c m (Action (SList c))
 getGuard = ApiaryT $ \grd _ c -> c grd empty

@@ -100,6 +100,6 @@ setSession :: HasSession
 setSession = setSessionWith id
 
 session :: (Strategy w, Query a, HasSession)
-        => S.ByteString -> Proxy (w a) -> Apiary (SNext w as a) b -> Apiary as b
+        => S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) m b -> ApiaryT as m b
 session ky p = function $ \l r -> readStrategy readQuery ((ky ==) . fst) p
     (map (\(k,b) -> (k, decrypt (key ?webApiaryClientSessionSession) b)) $ cookie' r) l

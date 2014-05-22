@@ -27,7 +27,7 @@ import Network.WebSockets
 actionWithWebSockets' :: WS.ConnectionOptions 
                       -> Fn xs WS.ServerApp
                       -> Fn xs (Action ())
-                      -> Apiary xs ()
+                      -> ApiaryT xs m ()
 actionWithWebSockets' conn srv m = do
     actionWithPreAction pa m
   where
@@ -39,5 +39,5 @@ actionWithWebSockets' conn srv m = do
 
 actionWithWebSockets :: Fn c WS.ServerApp
                      -> Fn c (Action ())
-                     -> Apiary c ()
+                     -> ApiaryT c m ()
 actionWithWebSockets = actionWithWebSockets' WS.defaultConnectionOptions

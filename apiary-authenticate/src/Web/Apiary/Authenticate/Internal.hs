@@ -62,11 +62,13 @@ data Auth = Auth
 
 type HasAuth = (?webApiaryAuthenticateAuth :: Auth, HasSession)
 
-withAuth :: HasSession => AuthConfig -> (HasAuth => Apiary c ()) -> Apiary c ()
+withAuth :: (MonadBaseControl IO m, HasSession)
+         => AuthConfig -> (HasAuth => ApiaryT c m ()) -> ApiaryT c m ()
 withAuth = withAuthWith tlsManagerSettings
 
-withAuthWith :: HasSession => Client.ManagerSettings -> AuthConfig
-             -> (HasAuth => Apiary c ()) -> Apiary c ()
+withAuthWith :: (MonadBaseControl IO m, HasSession)
+             => Client.ManagerSettings -> AuthConfig
+             -> (HasAuth => ApiaryT c m ()) -> ApiaryT c m ()
 withAuthWith s conf m = withManager s $ \mgr -> do
     let ?webApiaryAuthenticateAuth = Auth mgr conf
     addAuthHandler (Auth mgr conf) m
@@ -75,7 +77,7 @@ withAuthWith s conf m = withManager s $ \mgr -> do
 withManager :: MonadBaseControl IO m => Client.ManagerSettings -> (Client.Manager -> m a) -> m a
 withManager conf f = control $ \run -> Client.withManager conf (\mgr -> run $ f mgr)
 
-addAuthHandler :: HasSession => Auth -> Apiary c () -> Apiary c ()
+addAuthHandler :: HasSession => Auth -> ApiaryT c m () -> ApiaryT c m ()
 addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
