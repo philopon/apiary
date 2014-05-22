@@ -18,6 +18,7 @@ import Network.Wai
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
+import Control.Monad.Identity
 import Control.Monad.Trans.Control
 import Control.Monad.Base
 import Data.Monoid
@@ -25,76 +26,90 @@ import Data.Apiary.SList
 
 import Control.Monad.Apiary.Action.Internal
 
-newtype Apiary c a = Apiary { unApiary :: forall b.
+newtype ApiaryT c m a = ApiaryT { unApiaryT :: forall b.
     Action (SList c)
     -> ApiaryConfig
-    -> (a -> Action () -> IO b)
-    -> IO b 
+    -> (a -> Action () -> m b)
+    -> m b 
     }
 
-instance Functor (Apiary c) where
-    fmap f m = Apiary $ \grd conf cont ->
-        unApiary m grd conf $ \a hdr -> hdr `seq` cont (f a) hdr
+instance Functor (ApiaryT m c) where
+    fmap f m = ApiaryT $ \grd conf cont ->
+        unApiaryT m grd conf $ \a hdr -> hdr `seq` cont (f a) hdr
 
-instance Applicative (Apiary c) where
-    pure x = Apiary $ \_ _ cont -> cont x mempty
-    mf <*> ma = Apiary $ \grd conf cont ->
-        unApiary mf grd conf $ \f hdr  ->
-        unApiary ma grd conf $ \a hdr' ->
+instance Applicative (ApiaryT m c) where
+    pure x = ApiaryT $ \_ _ cont -> cont x mempty
+    mf <*> ma = ApiaryT $ \grd conf cont ->
+        unApiaryT mf grd conf $ \f hdr  ->
+        unApiaryT ma grd conf $ \a hdr' ->
         let hdr'' = hdr <> hdr'
         in hdr'' `seq` cont (f a) hdr''
 
-instance Monad (Apiary c) where
-    return x = Apiary $ \_ _ cont -> cont x mempty
-    m >>= k = Apiary $ \grd conf cont ->
-        unApiary    m  grd conf $ \a hdr  ->
-        unApiary (k a) grd conf $ \b hdr' -> 
+instance Monad (ApiaryT m c) where
+    return x = ApiaryT $ \_ _ cont -> cont x mempty
+    m >>= k = ApiaryT $ \grd conf cont ->
+        unApiaryT    m  grd conf $ \a hdr  ->
+        unApiaryT (k a) grd conf $ \b hdr' -> 
         let hdr'' = hdr <> hdr'
         in hdr'' `seq` cont b hdr''
 
-instance MonadIO (Apiary c) where
-    liftIO m = Apiary $ \_ _ c -> m >>= \a -> c a mempty
+instance MonadTrans (ApiaryT c) where
+    lift m = ApiaryT $ \_ _ c -> m >>= \a -> c a mempty
 
-instance MonadBase IO (Apiary c) where
-    liftBase = liftIO
+instance MonadIO m => MonadIO (ApiaryT c m) where
+    liftIO m = ApiaryT $ \_ _ c -> liftIO m >>= \a -> c a mempty
 
-apiary :: (Action (SList c) -> ApiaryConfig -> IO (a,Action ())) -> Apiary c a
-apiary f = Apiary $ \grd conf cont -> f grd conf >>= \(a,w) -> cont a w
+instance MonadBase b m => MonadBase b (ApiaryT c m) where
+    liftBase m = ApiaryT $ \_ _ c -> liftBase m >>= \a -> c a mempty
 
-run :: Apiary c a -> Action (SList c) -> ApiaryConfig -> IO (a, Action ())
-run m grd conf = unApiary m grd conf $ \a w -> return (a,w)
+apiary :: Monad m
+       => (Action (SList c) -> ApiaryConfig -> m (a,Action ())) -> ApiaryT c m a
+apiary f = ApiaryT $ \grd conf cont -> f grd conf >>= \(a,w) -> cont a w
 
-instance MonadBaseControl IO (Apiary c) where
-    newtype StM (Apiary c) a = StMApiary { unStMApiary :: (a, Action ()) }
-    liftBaseWith f = apiary $ \g c ->
-        liftM (\a -> (a, mempty)) (f $ \t -> liftM StMApiary $ run t g c)
-    restoreM m = apiary $ \_ _ -> return (unStMApiary m)
+run :: Monad m
+    => ApiaryT c m a -> Action (SList c) -> ApiaryConfig -> m (a, Action ())
+run m grd conf = unApiaryT m grd conf $ \a w -> return (a,w)
+
+instance MonadTransControl (ApiaryT c) where
+    newtype StT (ApiaryT c) a = StTApiary { unStTApiary :: (a, Action ()) }
+    liftWith f = apiary $ \g c ->
+        liftM (\a -> (a, mempty)) (f $ \t -> liftM StTApiary $ run t g c)
+    restoreT m = apiary $ \_ _ -> liftM unStTApiary m
+
+instance MonadBaseControl b m => MonadBaseControl b (ApiaryT c m) where
+    newtype StM (ApiaryT c m) a = StMApiary { unStMApiary :: ComposeSt (ApiaryT c) m a }
+    liftBaseWith = defaultLiftBaseWith StMApiary
+    restoreM     = defaultRestoreM   unStMApiary
+
+type Apiary c = ApiaryT c Identity
 
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
-runApiary conf m req = unApiary m (return SNil) conf (\_ w -> return w) >>= \a ->
-    execAction conf a req
+runApiary conf m = runIdentity $ runApiaryT conf m
 
-getGuard :: Apiary c (Action (SList c))
-getGuard = Apiary $ \grd _ c -> c grd mempty
+runApiaryT :: Monad m => ApiaryConfig -> ApiaryT '[] m a -> m Application
+runApiaryT conf m = unApiaryT m (return SNil) conf (\_ w -> return w) >>= \a ->
+    return $ \req -> execAction conf a req
 
-apiaryConfig :: Apiary c ApiaryConfig
-apiaryConfig = Apiary $ \_ c cont -> cont c mempty
+getGuard :: ApiaryT c m (Action (SList c))
+getGuard = ApiaryT $ \grd _ c -> c grd mempty
 
-addRoute :: Action () -> Apiary c ()
-addRoute r = Apiary $ \_ _ cont -> cont () r
+apiaryConfig :: ApiaryT c m ApiaryConfig
+apiaryConfig = ApiaryT $ \_ c cont -> cont c mempty
+
+addRoute :: Action () -> ApiaryT c m ()
+addRoute r = ApiaryT $ \_ _ cont -> cont () r
 
 -- | filter by action. since 0.6.1.0.
-focus :: (SList c -> Action (SList c')) -> Apiary c' a -> Apiary c a
+focus :: (SList c -> Action (SList c')) -> ApiaryT c' m a -> ApiaryT c m a
 focus g m = do
-    Apiary $ \grd cfg cont ->
-        unApiary m (grd >>= g) cfg cont
+    ApiaryT $ \grd cfg cont -> unApiaryT m (grd >>= g) cfg cont
 
-action :: Fn c (Action ()) -> Apiary c ()
+action :: Fn c (Action ()) -> ApiaryT c m ()
 action = actionWithPreAction (const $ return ())
 
 -- | execute action before main action. since v0.4.2.0
 actionWithPreAction :: (SList xs -> Action a)
-                    -> Fn xs (Action ()) -> Apiary xs ()
+                    -> Fn xs (Action ()) -> ApiaryT xs m ()
 actionWithPreAction pa a = do
     grd <- getGuard
     addRoute $ grd >>= \c -> (pa c) >> apply a c
