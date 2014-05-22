@@ -9,14 +9,10 @@
 > import qualified Data.ByteString.Lazy.Char8 as L
 > 
 > main :: IO ()
-
-'runApiaryT' create ApplicationM m, when m == IO, equals Application.
-And you can use Monad Transformers with fmap(but cannot share state, so StateT not work.).
-
 > main = run 3000 . runApiary def $ do
 
-Apiary has 2 Monads, ApiaryT and ActionT.
-ApiaryT is filtering Request, ActionT is processing request.
+Apiary has 2 Monads, Apiary and Action.
+Apiary is filtering Request, Action is processing request.
 
 'root' filter catchs root like path, in default, 
 It's 'host:port', 'host:port/', 'host:port/index.htm', 'host:port/index.html'.
