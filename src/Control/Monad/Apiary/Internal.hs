@@ -21,7 +21,6 @@ import Control.Monad.Trans
 import Control.Monad.Identity
 import Control.Monad.Trans.Control
 import Control.Monad.Base
-import Data.Monoid
 import Data.Apiary.SList
 
 import Control.Monad.Apiary.Action.Internal
@@ -38,29 +37,29 @@ instance Functor (ApiaryT m c) where
         unApiaryT m grd conf $ \a hdr -> hdr `seq` cont (f a) hdr
 
 instance Applicative (ApiaryT m c) where
-    pure x = ApiaryT $ \_ _ cont -> cont x mempty
+    pure x = ApiaryT $ \_ _ cont -> cont x empty
     mf <*> ma = ApiaryT $ \grd conf cont ->
         unApiaryT mf grd conf $ \f hdr  ->
         unApiaryT ma grd conf $ \a hdr' ->
-        let hdr'' = hdr <> hdr'
+        let hdr'' = hdr <|> hdr'
         in hdr'' `seq` cont (f a) hdr''
 
 instance Monad (ApiaryT m c) where
-    return x = ApiaryT $ \_ _ cont -> cont x mempty
+    return x = ApiaryT $ \_ _ cont -> cont x empty
     m >>= k = ApiaryT $ \grd conf cont ->
         unApiaryT    m  grd conf $ \a hdr  ->
         unApiaryT (k a) grd conf $ \b hdr' -> 
-        let hdr'' = hdr <> hdr'
+        let hdr'' = hdr <|> hdr'
         in hdr'' `seq` cont b hdr''
 
 instance MonadTrans (ApiaryT c) where
-    lift m = ApiaryT $ \_ _ c -> m >>= \a -> c a mempty
+    lift m = ApiaryT $ \_ _ c -> m >>= \a -> c a empty
 
 instance MonadIO m => MonadIO (ApiaryT c m) where
-    liftIO m = ApiaryT $ \_ _ c -> liftIO m >>= \a -> c a mempty
+    liftIO m = ApiaryT $ \_ _ c -> liftIO m >>= \a -> c a empty
 
 instance MonadBase b m => MonadBase b (ApiaryT c m) where
-    liftBase m = ApiaryT $ \_ _ c -> liftBase m >>= \a -> c a mempty
+    liftBase m = ApiaryT $ \_ _ c -> liftBase m >>= \a -> c a empty
 
 apiary :: Monad m
        => (Action (SList c) -> ApiaryConfig -> m (a,Action ())) -> ApiaryT c m a
@@ -73,7 +72,7 @@ run m grd conf = unApiaryT m grd conf $ \a w -> return (a,w)
 instance MonadTransControl (ApiaryT c) where
     newtype StT (ApiaryT c) a = StTApiary { unStTApiary :: (a, Action ()) }
     liftWith f = apiary $ \g c ->
-        liftM (\a -> (a, mempty)) (f $ \t -> liftM StTApiary $ run t g c)
+        liftM (\a -> (a, empty)) (f $ \t -> liftM StTApiary $ run t g c)
     restoreT m = apiary $ \_ _ -> liftM unStTApiary m
 
 instance MonadBaseControl b m => MonadBaseControl b (ApiaryT c m) where
@@ -91,10 +90,10 @@ runApiaryT conf m = unApiaryT m (return SNil) conf (\_ w -> return w) >>= \a ->
     return $ \req -> execAction conf a req
 
 getGuard :: ApiaryT c m (Action (SList c))
-getGuard = ApiaryT $ \grd _ c -> c grd mempty
+getGuard = ApiaryT $ \grd _ c -> c grd empty
 
 apiaryConfig :: ApiaryT c m ApiaryConfig
-apiaryConfig = ApiaryT $ \_ c cont -> cont c mempty
+apiaryConfig = ApiaryT $ \_ c cont -> cont c empty
 
 addRoute :: Action () -> ApiaryT c m ()
 addRoute r = ApiaryT $ \_ _ cont -> cont () r

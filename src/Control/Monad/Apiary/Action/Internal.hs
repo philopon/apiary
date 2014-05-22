@@ -17,7 +17,6 @@ import Control.Monad.Trans.Control
 import Network.Wai
 import Network.Mime
 import Data.Default.Class
-import Data.Monoid
 import Network.HTTP.Types
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
@@ -136,10 +135,6 @@ instance MonadPlus Action where
         Continue a -> return $ Continue a
         Stop stp   -> return $ Stop stp
         Pass       -> runAction n c r s
-
-instance Monoid (Action ()) where
-    mempty  = mzero
-    mappend = mplus
 
 instance MonadBase IO Action where
     liftBase = liftIO
