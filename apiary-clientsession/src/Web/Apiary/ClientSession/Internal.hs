@@ -100,6 +100,6 @@ setSession :: (MonadIO m, HasSession)
 setSession = setSessionWith id
 
 session :: (Strategy w, Query a, HasSession, Monad n, Functor n)
-        => S.ByteString -> Proxy (w a) -> ApiaryT' (SNext w as a) n m b -> ApiaryT' as n m b
+        => S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session ky p = function $ \l r -> readStrategy readQuery ((ky ==) . fst) p
     (map (\(k,b) -> (k, decrypt (key ?webApiaryClientSessionSession) b)) $ cookie' r) l

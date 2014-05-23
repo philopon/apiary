@@ -28,7 +28,7 @@ actionWithWebSockets' :: (Monad n, Functor n)
                       => WS.ConnectionOptions 
                       -> Fn xs WS.ServerApp
                       -> Fn xs (ActionT n ())
-                      -> ApiaryT' xs n m ()
+                      -> ApiaryT xs n m ()
 actionWithWebSockets' conn srv m = do
     actionWithPreAction pa m
   where
@@ -41,5 +41,5 @@ actionWithWebSockets' conn srv m = do
 actionWithWebSockets :: (Functor n, Monad n)
                      => Fn c WS.ServerApp
                      -> Fn c (ActionT n ())
-                     -> ApiaryT' c n m ()
+                     -> ApiaryT c n m ()
 actionWithWebSockets = actionWithWebSockets' WS.defaultConnectionOptions

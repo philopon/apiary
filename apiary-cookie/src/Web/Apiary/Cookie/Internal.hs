@@ -40,8 +40,8 @@ cond p t f a = if p a then t a else f a
 cookie :: (Strategy w, Query a, Functor n, Monad n)
        => S.ByteString
        -> Proxy (w a)
-       -> ApiaryT' (SNext w as a) n m b
-       -> ApiaryT' as n m b
+       -> ApiaryT (SNext w as a) n m b
+       -> ApiaryT as n m b
 cookie k p = function $ \l r -> readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l
 
 cookie' :: Request -> [(S.ByteString, S.ByteString)]

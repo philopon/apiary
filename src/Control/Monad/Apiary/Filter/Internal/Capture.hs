@@ -61,5 +61,5 @@ capture' _ [] _   = Nothing
 --     yourAction
 -- @
 capture :: (Functor n, Monad n) => Capture as => SList as 
-        -> ApiaryT' (CaptureResult xs as) n m b -> ApiaryT' xs n m b
+        -> ApiaryT (CaptureResult xs as) n m b -> ApiaryT xs n m b
 capture cap = function $ \bf req -> capture' cap (pathInfo req) bf
