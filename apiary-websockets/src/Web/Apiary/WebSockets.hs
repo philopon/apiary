@@ -1,6 +1,7 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 module Web.Apiary.WebSockets (
-      actionWithWebSockets 
+    webSockets, webSockets'
+    , actionWithWebSockets 
     , actionWithWebSockets'
     -- * Reexport
     -- | PendingConnection,
@@ -24,19 +25,30 @@ import Network.WebSockets
     , sendTextData, sendBinaryData, sendClose, sendPing
     )
 
+wsToApp :: Monad m => WS.ConnectionOptions 
+        -> Fn xs WS.ServerApp -> SList xs -> ActionT m ()
+wsToApp conn srv args = getRequest >>= \req ->
+    case WS.websocketsApp conn (apply srv args) req of
+        Nothing -> return ()
+        Just r  -> stopWith r
+
+-- | websocket only action. since 0.8.0.0.
+webSockets' :: (Monad n, Functor n) => WS.ConnectionOptions
+            -> Fn xs WS.ServerApp -> ApiaryT xs n m ()
+webSockets' conn srv = action' $ wsToApp conn srv
+
+-- | websocket only action. since 0.8.0.0.
+webSockets :: (Monad n, Functor n)
+           => Fn xs WS.ServerApp -> ApiaryT xs n m ()
+webSockets = webSockets' WS.defaultConnectionOptions
+
 actionWithWebSockets' :: (Monad n, Functor n)
                       => WS.ConnectionOptions 
                       -> Fn xs WS.ServerApp
                       -> Fn xs (ActionT n ())
                       -> ApiaryT xs n m ()
-actionWithWebSockets' conn srv m = do
-    actionWithPreAction pa m
-  where
-    pa args = do
-        req <- getRequest
-        case WS.websocketsApp conn (apply srv args) req of
-            Nothing   -> return ()
-            Just resp -> stopWith resp
+actionWithWebSockets' conn srv m =
+    action' $ \a -> wsToApp conn srv a >> apply m a
 
 actionWithWebSockets :: (Functor n, Monad n)
                      => Fn c WS.ServerApp
