@@ -1,5 +1,6 @@
-apiary-cookie
+apiary-logger
 apiary-persistent
 apiary-websockets
+apiary-cookie
 apiary-clientsession
 apiary-authenticate
