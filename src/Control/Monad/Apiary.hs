@@ -5,7 +5,9 @@ module Control.Monad.Apiary
     -- * getter
     , apiaryConfig
     -- * execute action
-    , action, actionWithPreAction
+    , action, action'
+    -- * deprecated
+    , actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal

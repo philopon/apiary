@@ -94,7 +94,7 @@ library
                      , mime-types        >=0.1 && <0.2
                      , wai               >=2.1 && <2.2
                      , warp              >=2.1 && <2.2
-                     , monad-logger      >=0.3 && <0.4
+                     , exceptions        >=0.6 && <0.7
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

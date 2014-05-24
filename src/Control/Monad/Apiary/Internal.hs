@@ -107,12 +107,19 @@ focus :: (Functor n, Monad n) => (SList c -> ActionT n (SList c'))
       -> ApiaryT c' n m a -> ApiaryT c n m a
 focus g m = ApiaryT $ \grd cfg cont -> unApiaryT m (grd >>= g) cfg cont
 
+-- | splice ActionT ApiaryT.
 action :: (Functor n, Monad n) => Fn c (ActionT n ()) -> ApiaryT c n m ()
-action = actionWithPreAction (const $ return ())
+action a = action' $ apply a
 
+{-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since v0.4.2.0
 actionWithPreAction :: (Functor n, Monad n) => (SList xs -> ActionT n a)
                     -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
 actionWithPreAction pa a = do
+    action' $ \c -> pa c >> apply a c
+
+-- | like action. but not apply arguments. since 0.8.0.0.
+action' :: (Functor n, Monad n) => (SList c -> ActionT n ()) -> ApiaryT c n m ()
+action' a = do
     grd <- getGuard
-    addRoute $ grd >>= \c -> (pa c) >> apply a c
+    addRoute $ grd >>= \c -> a c

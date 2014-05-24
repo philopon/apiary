@@ -14,6 +14,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Base
 import Control.Monad.Reader
+import Control.Monad.Catch
 import Control.Monad.Trans.Control
 import Network.Wai
 import Network.Mime
@@ -24,7 +25,6 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import Data.Conduit
-import qualified Control.Monad.Logger as Logger
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
@@ -110,6 +110,10 @@ instance MonadTrans ActionT where
     lift m = ActionT $ \_ _ st cont ->
         m >>= \a -> cont a st
 
+instance MonadThrow m => MonadThrow (ActionT m) where
+    throwM e = ActionT $ \_ _ st cont ->
+        throwM e >>= \a -> cont a st
+
 runActionT :: Monad m => ActionT m a
            -> ApiaryConfig -> Request -> ActionState
            -> m (Action (a, ActionState))
@@ -166,9 +170,6 @@ instance MonadReader r m => MonadReader r (ActionT m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
-instance Logger.MonadLogger m => Logger.MonadLogger (ActionT m) where
-    monadLoggerLog loc src lv msg = lift $ Logger.monadLoggerLog loc src lv msg
-
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT m a
 stop = ActionT $ \_ _ s _ -> return $ Stop (actionStateToResponse s)
@@ -215,17 +216,16 @@ contentType c = modifyHeader
 
 -- | redirect handler
 --
--- set status, location header and stop. since 0.3.3.0.
+-- set status and add location header. since 0.3.3.0.
 --
 -- rename from redirect in 0.6.2.0.
 redirectWith :: Monad m
              => Status
              -> S.ByteString -- ^ Location redirect to
-             -> ActionT m a
+             -> ActionT m ()
 redirectWith st url = do
     status st
-    setHeaders [("location", url)]
-    stop
+    addHeader "location" url
 
 --      HTTP/1.0            HTTP/1.1
 -- 300                      MultipleChoices
@@ -237,7 +237,7 @@ redirectWith st url = do
 -- 307                      TemporaryRedirect
 
 -- | redirect with 301 Moved Permanently. since 0.3.3.0.
-redirectPermanently :: Monad m => S.ByteString -> ActionT m a
+redirectPermanently :: Monad m => S.ByteString -> ActionT m ()
 redirectPermanently = redirectWith movedPermanently301
 
 -- | redirect with:
@@ -246,7 +246,7 @@ redirectPermanently = redirectWith movedPermanently301
 -- 302 Moved Temporarily (Other)
 -- 
 -- since 0.6.2.0.
-redirect :: Monad m => S.ByteString -> ActionT m b
+redirect :: Monad m => S.ByteString -> ActionT m ()
 redirect to = do
     v <- httpVersion <$> getRequest
     if v == http11
@@ -259,7 +259,7 @@ redirect to = do
 -- 302 Moved Temporarily (Other)
 --
 -- since 0.3.3.0.
-redirectTemporary :: Monad m => S.ByteString -> ActionT m a
+redirectTemporary :: Monad m => S.ByteString -> ActionT m ()
 redirectTemporary to = do
     v <- httpVersion <$> getRequest
     if v == http11
@@ -291,9 +291,9 @@ source src = modifyState (\s -> s { actionBody = SRC src } )
 
 {-# DEPRECATED redirectFound, redirectSeeOther "use redirect" #-}
 -- | redirect with 302 Found. since 0.3.3.0.
-redirectFound       :: Monad m => S.ByteString -> ActionT m a
+redirectFound       :: Monad m => S.ByteString -> ActionT m ()
 redirectFound       = redirectWith found302
 
 -- | redirect with 303 See Other. since 0.3.3.0.
-redirectSeeOther    :: Monad m => S.ByteString -> ActionT m a
+redirectSeeOther    :: Monad m => S.ByteString -> ActionT m ()
 redirectSeeOther    = redirectWith seeOther303
