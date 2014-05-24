@@ -2,6 +2,7 @@ name:                apiary-logger
 version:             0.8.0.0
 synopsis:            fast-logger support for apiary web framework.
 description:
+  example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
