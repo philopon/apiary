@@ -1,0 +1,50 @@
+name:                examples
+version:             0.8.0.0
+synopsis:            
+description:
+license:             MIT
+license-file:        LICENSE
+author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
+maintainer:          HirotomoMoriwaki<philopon.dependence@gmail.com>
+Homepage:            https://github.com/philopon/apiary
+Bug-reports:         https://github.com/philopon/apiary/issues
+copyright:           (c) 2014 Hirotomo Moriwaki
+category:            Web
+build-type:          Simple
+stability:           experimental
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+executable main
+  main-is:             main.lhs
+  build-depends:       base, apiary, warp, mtl, bytestring
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+executable qiita
+  main-is:             qiita.hs
+  build-depends:       base, apiary, warp, bytestring
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+executable persistent
+  main-is:             persistent.hs
+  build-depends:       base, apiary, warp, persistent-sqlite, persistent-template, apiary-persistent, apiary-logger, bytestring, monad-logger
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+executable auth
+  main-is:             auth.hs
+  build-depends:       base, apiary, warp, apiary-cookie, apiary-clientsession, bytestring, text, apiary-authenticate
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+executable websockets
+  main-is:             websockets.hs
+  build-depends:       base, apiary, warp, apiary-websockets, text
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: git://github.com/philopon/apiary.git

@@ -21,7 +21,5 @@ for path in `cat submodules`; do
 done
 
 printHeader "build examples"
-for hs in `ls examples/*.hs`; do
-  echo $hs 
-  ghc -O2 -threaded $hs
-done
+cd examples
+cabal install .

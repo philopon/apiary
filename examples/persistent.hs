@@ -31,7 +31,7 @@ main = withLogger def $
         -- logging by Given logging setting from 'withLogger'. 
         -- so logging stderr(buffered).
         -- you can change this behaviour by first argument of withLogger.
-        runGivenLoggerT . runSql' $ runMigration migrateAll
+        runGivenLoggerT . runSql $ runMigration migrateAll
 
         run 3000 . runApiary def $ do
             root . action $ do
@@ -39,7 +39,7 @@ main = withLogger def $
                 -- logging.
                 logging "root accessed.\n"
 
-                l <- runSql' $ selectList ([] :: [Filter Number]) []
+                l <- runSql $ selectList ([] :: [Filter Number]) []
                 lbs $ L.pack (show l)
 
             [capture|/:Int|] $ do
@@ -47,12 +47,12 @@ main = withLogger def $
 
                     -- if you want to do local logging action.
                     -- logging stdout immediately.
-                    c <- runStdoutLoggingT . runSql' $ count [NumberNumber ==. i]
+                    c <- runStdoutLoggingT . runSql $ count [NumberNumber ==. i]
                     lbs $ L.pack (show c)
 
                 stdMethod POST . action $ \i -> do
-                    _ <- runSql' $ insert (Number i)
+                    _ <- runSql $ insert (Number i)
                     return ()
 
                 stdMethod DELETE . action $ \i -> do
-                    runSql' $ deleteWhere [NumberNumber ==. i]
+                    runSql $ deleteWhere [NumberNumber ==. i]
