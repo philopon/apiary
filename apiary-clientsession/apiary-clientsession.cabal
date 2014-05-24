@@ -29,6 +29,7 @@ library
                      , tagged             >=0.7   && <0.8
                      , time               >=1.4   && <1.5
                      , data-default-class >=0.0   && <0.1
+                     , reflection         >=1.4   && <1.5
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
