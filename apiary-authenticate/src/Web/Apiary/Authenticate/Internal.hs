@@ -8,13 +8,13 @@
 
 module Web.Apiary.Authenticate.Internal where
 
-import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Control.Applicative
 
 import Data.Maybe
 import Data.List
 import Data.Default.Class
+import Data.Reflection
 import qualified Data.ByteString.Char8 as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -60,26 +60,21 @@ data Auth = Auth
     , config  :: AuthConfig
     }
 
-type HasAuth = (?webApiaryAuthenticateAuth :: Auth, HasSession)
+type HasAuth = (Given Auth, HasSession)
 
-withAuth :: (MonadBaseControl IO m, HasSession, MonadIO n, Functor n)
-         => AuthConfig -> (HasAuth => ApiaryT c n m ()) -> ApiaryT c n m ()
+withAuth :: HasSession => AuthConfig -> (HasAuth => IO a) -> IO a
 withAuth = withAuthWith tlsManagerSettings
 
-withAuthWith :: (MonadBaseControl IO m, HasSession, MonadIO n, Functor n)
-             => Client.ManagerSettings -> AuthConfig
-             -> (HasAuth => ApiaryT c n m ()) -> ApiaryT c n m ()
-withAuthWith s conf m = withManager s $ \mgr -> do
-    let ?webApiaryAuthenticateAuth = Auth mgr conf
-    addAuthHandler (Auth mgr conf) m
+withAuthWith :: HasSession => Client.ManagerSettings
+             -> AuthConfig -> (HasAuth => IO a) -> IO a
+withAuthWith s conf m = Client.withManager s $ \mgr -> 
+    give (Auth mgr conf) m
 
-
-withManager :: MonadBaseControl IO m => Client.ManagerSettings -> (Client.Manager -> m a) -> m a
-withManager conf f = control $ \run -> Client.withManager conf (\mgr -> run $ f mgr)
-
-addAuthHandler :: (Functor n, MonadIO n, HasSession) => Auth -> ApiaryT c n m () -> ApiaryT c n m ()
-addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
+-- | default auth handlers. since 0.8.0.0.
+authHandler :: (Functor n, MonadIO n, HasAuth) => ApiaryT c n m ()
+authHandler = retH >> mapM_ (uncurry go) (providers config)
   where
+    Auth{..}  = given
     pfxPath p = function (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
     retH = pfxPath (authPrefix config ++ authReturnToPath config) . stdMethod GET . action $
@@ -94,11 +89,11 @@ addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: HasAuth => Apiary (Snoc as S.ByteString) a -> Apiary as a
-authorized = session (authSessionName $ config ?webApiaryAuthenticateAuth) (pOne pByteString)
+authorized = session (authSessionName $ config given) (pOne pByteString)
 
 -- | get auth config. since 0.7.0.0.
 authConfig :: (Monad m, HasAuth) => ActionT m AuthConfig
-authConfig = return (config ?webApiaryAuthenticateAuth)
+authConfig = return (config given)
 
 -- | get providers. since 0.7.0.0.
 authProviders :: (Monad m, HasAuth) => ActionT m [(T.Text, Provider)]
