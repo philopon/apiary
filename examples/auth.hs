@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Encoding as T
 
 main :: IO ()
-main = withSession def { path = Just "/", secure = False} $ run 3000 . runApiary def $ withAuth def $ do
+main = withSession def { path = Just "/", secure = False} $ withAuth def $ run 3000 . runApiary def $ do
 
     root . stdMethod GET $ do
         authorized . action $ \s -> do
@@ -28,3 +28,5 @@ main = withSession def { path = Just "/", secure = False} $ run 3000 . runApiary
         authLogout
         setCookie def { setCookieName = "message", setCookieValue = "logout done, bye." }
         redirect "/"
+
+    authHandler

@@ -19,3 +19,7 @@ for path in `cat submodules`; do
   cabal install
   cd ..
 done
+
+printHeader "build examples"
+cd examples
+cabal install .

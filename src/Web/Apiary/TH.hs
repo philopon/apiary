@@ -9,6 +9,7 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as S
+import Data.Apiary.SList
 import Network.Mime
 
 numToCode :: Int -> ExpQ
@@ -88,7 +89,8 @@ parseAct s =
 act' :: String -> ExpQ
 act' s = 
     let (code, mime) = parseAct s
-         in [| actionWithPreAction (\_ -> do 
-             status $(numToCode code)
-             contentType $(stringE mime)
-             )|]
+    in [| \a -> action' (\l -> do 
+        status $(numToCode code)
+        contentType $(stringE mime)
+        apply a l
+        )|]

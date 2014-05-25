@@ -9,8 +9,8 @@ import Control.Concurrent
 
 main :: IO ()
 main = run 3000 . runApiary def $ do
-    [capture|/:Int|] . actionWithWebSockets servApp $ \_ -> do
-        file "websockets.html" Nothing
+    [capture|/:Int|] . webSockets $ servApp
+    root . action $ file "websockets.html" Nothing
 
 servApp :: Int -> PendingConnection -> IO ()
 servApp st pc = do

@@ -37,11 +37,11 @@ cond p t f a = if p a then t a else f a
 -- cookie "baz" (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
 -- cookie "baz" (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
 -- @
-cookie :: (Strategy w, Query a)
+cookie :: (Strategy w, Query a, Functor n, Monad n)
        => S.ByteString
        -> Proxy (w a)
-       -> Apiary (SNext w as a) b
-       -> Apiary as b
+       -> ApiaryT (SNext w as a) n m b
+       -> ApiaryT as n m b
 cookie k p = function $ \l r -> readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l
 
 cookie' :: Request -> [(S.ByteString, S.ByteString)]
@@ -51,13 +51,13 @@ cookie' =
     requestHeaders
 
 -- | delete cookie. since 0.6.1.0.
-deleteCookie :: S.ByteString -> Action ()
+deleteCookie :: Monad m => S.ByteString -> ActionT m ()
 deleteCookie k = setCookie def { setCookieName    = k 
                                , setCookieExpires = Just $ UTCTime (ModifiedJulianDay 0) 0
                                , setCookieMaxAge  = Just 0
                                }
 
 -- | set raw cookie header.
-setCookie :: SetCookie -> Action ()
+setCookie :: Monad m => SetCookie -> ActionT m ()
 setCookie =
     addHeader "set-cookie" . toByteString . renderSetCookie

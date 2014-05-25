@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.7.0.0
+version:             0.8.0.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -94,6 +94,7 @@ library
                      , mime-types        >=0.1 && <0.2
                      , wai               >=2.1 && <2.2
                      , warp              >=2.1 && <2.2
+                     , exceptions        >=0.6 && <0.7
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

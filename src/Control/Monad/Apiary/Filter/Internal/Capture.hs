@@ -60,5 +60,6 @@ capture' _ [] _   = Nothing
 -- capture myCapture . stdMethod GET . action $ \age name -> do
 --     yourAction
 -- @
-capture :: Capture as => SList as -> Apiary (CaptureResult xs as) b -> Apiary xs b
+capture :: (Functor n, Monad n) => Capture as => SList as 
+        -> ApiaryT (CaptureResult xs as) n m b -> ApiaryT xs n m b
 capture cap = function $ \bf req -> capture' cap (pathInfo req) bf

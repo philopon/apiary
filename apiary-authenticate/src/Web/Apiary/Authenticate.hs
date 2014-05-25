@@ -2,6 +2,7 @@ module Web.Apiary.Authenticate (
     AuthConfig(..), Provider(..)
     , HasAuth
     , withAuth, withAuthWith
+    , authHandler
     -- * filter
     , authorized
     -- * action

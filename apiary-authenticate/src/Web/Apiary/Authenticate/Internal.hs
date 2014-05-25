@@ -8,13 +8,13 @@
 
 module Web.Apiary.Authenticate.Internal where
 
-import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
 import Control.Applicative
 
 import Data.Maybe
 import Data.List
 import Data.Default.Class
+import Data.Reflection
 import qualified Data.ByteString.Char8 as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -60,24 +60,21 @@ data Auth = Auth
     , config  :: AuthConfig
     }
 
-type HasAuth = (?webApiaryAuthenticateAuth :: Auth, HasSession)
+type HasAuth = (Given Auth, HasSession)
 
-withAuth :: HasSession => AuthConfig -> (HasAuth => Apiary c ()) -> Apiary c ()
+withAuth :: HasSession => AuthConfig -> (HasAuth => IO a) -> IO a
 withAuth = withAuthWith tlsManagerSettings
 
-withAuthWith :: HasSession => Client.ManagerSettings -> AuthConfig
-             -> (HasAuth => Apiary c ()) -> Apiary c ()
-withAuthWith s conf m = withManager s $ \mgr -> do
-    let ?webApiaryAuthenticateAuth = Auth mgr conf
-    addAuthHandler (Auth mgr conf) m
+withAuthWith :: HasSession => Client.ManagerSettings
+             -> AuthConfig -> (HasAuth => IO a) -> IO a
+withAuthWith s conf m = Client.withManager s $ \mgr -> 
+    give (Auth mgr conf) m
 
-
-withManager :: MonadBaseControl IO m => Client.ManagerSettings -> (Client.Manager -> m a) -> m a
-withManager conf f = control $ \run -> Client.withManager conf (\mgr -> run $ f mgr)
-
-addAuthHandler :: HasSession => Auth -> Apiary c () -> Apiary c ()
-addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
+-- | default auth handlers. since 0.8.0.0.
+authHandler :: (Functor n, MonadIO n, HasAuth) => ApiaryT c n m ()
+authHandler = retH >> mapM_ (uncurry go) (providers config)
   where
+    Auth{..}  = given
     pfxPath p = function (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
     retH = pfxPath (authPrefix config ++ authReturnToPath config) . stdMethod GET . action $
@@ -92,35 +89,35 @@ addAuthHandler Auth{..} m = m >> retH >> mapM_ (uncurry go) (providers config)
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: HasAuth => Apiary (Snoc as S.ByteString) a -> Apiary as a
-authorized = session (authSessionName $ config ?webApiaryAuthenticateAuth) (pOne pByteString)
+authorized = session (authSessionName $ config given) (pOne pByteString)
 
 -- | get auth config. since 0.7.0.0.
-authConfig :: HasAuth => Action AuthConfig
-authConfig = return (config ?webApiaryAuthenticateAuth)
+authConfig :: (Monad m, HasAuth) => ActionT m AuthConfig
+authConfig = return (config given)
 
 -- | get providers. since 0.7.0.0.
-authProviders :: HasAuth => Action [(T.Text, Provider)]
+authProviders :: (Monad m, HasAuth) => ActionT m [(T.Text, Provider)]
 authProviders = providers <$> authConfig
 
 -- | get authenticate routes: (title, route). since 0.7.0.0.
-authRoutes :: HasAuth => Action [(T.Text, S.ByteString)]
+authRoutes :: (Monad m, HasAuth) => ActionT m [(T.Text, S.ByteString)]
 authRoutes = do 
     conf <- authConfig
     return . map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix conf ++ [k])) $ providers conf
 
 -- | delete session. since 0.7.0.0.
-authLogout :: HasAuth => Action ()
+authLogout :: (Monad m,  HasAuth) => ActionT m ()
 authLogout = do
     conf <- authConfig
     deleteCookie (authSessionName conf)
 
-authAction :: Client.Manager -> T.Text -> T.Text
-           -> Maybe T.Text -> [(T.Text, T.Text)] -> Action ()
+authAction :: MonadIO m => Client.Manager -> T.Text -> T.Text
+           -> Maybe T.Text -> [(T.Text, T.Text)] -> ActionT m ()
 authAction mgr uri returnTo realm param = do
     fw <- liftIO . runResourceT $ getForwardUrl uri returnTo realm param mgr
     redirect $ T.encodeUtf8 fw
 
-returnAction :: HasSession => Client.Manager -> S.ByteString -> S.ByteString -> Action ()
+returnAction :: (MonadIO m, HasSession) => Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
 returnAction mgr key to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr

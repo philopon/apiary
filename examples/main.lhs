@@ -78,8 +78,7 @@ filters can freely nesting.
 
 >     [capture|/greeting/:L.ByteString|] . 
 >         ("first" =: pLazyByteString) . 
->         ("last"  =: pLazyByteString) . action $ \greed first last -> do
->             contentType "text/plain"
+>         ("last"  =: pLazyByteString) . [act|200 .txt|] $ \greed first last -> do
 >             lbs $ L.unwords [greed `L.append` "!!", first, last]
 
 $ curl localhost:3000
