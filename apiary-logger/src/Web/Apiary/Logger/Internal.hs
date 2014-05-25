@@ -59,7 +59,7 @@ withLogger LogConfig{..} m = bracket
     (\l -> give l m)
 
 withLogger' :: LogConfig
-            -> (((HasLogger => r) -> r) -> IO a) -> IO a
+            -> ((forall r. (HasLogger => r) -> r) -> IO a) -> IO a
 withLogger' LogConfig{..} m = bracket
     (newLogger bufferSize logDest)
     closeLog
