@@ -23,7 +23,7 @@ Number
 
 main :: IO ()
 -- give logging setting.
-main = withLogger def $
+main = withLogger def $ withLogger' def {bufferSize = 0 } $ \immediate -> 
 
     -- give sql setting.
     withWithSqlPool (withSqlitePool ":memory:" 10) $ do
@@ -51,7 +51,7 @@ main = withLogger def $
                     lbs $ L.pack (show c)
 
                 stdMethod POST . action $ \i -> do
-                    _ <- runSql $ insert (Number i)
+                    _ <- immediate $ runSql $ insert (Number i)
                     return ()
 
                 stdMethod DELETE . action $ \i -> do

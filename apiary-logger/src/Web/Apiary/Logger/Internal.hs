@@ -58,6 +58,13 @@ withLogger LogConfig{..} m = bracket
     closeLog
     (\l -> give l m)
 
+withLogger' :: LogConfig
+            -> (((HasLogger => r) -> r) -> IO a) -> IO a
+withLogger' LogConfig{..} m = bracket
+    (newLogger bufferSize logDest)
+    closeLog
+    (\l -> m (give l))
+
 logging :: (MonadIO m, HasLogger) => LogStr -> ActionT m ()
 logging msg = liftIO $ pushLog given msg
 

@@ -3,6 +3,7 @@ module Web.Apiary.Logger (
     LogDest(..), LogConfig(..), HasLogger
     -- * initialize
     , withLogger
+    , withLogger'
     -- * action
     , logging
     -- * wrapper
