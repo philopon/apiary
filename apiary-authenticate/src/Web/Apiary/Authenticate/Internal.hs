@@ -5,17 +5,24 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Web.Apiary.Authenticate.Internal where
 
 import Control.Monad.Trans.Resource
 import Control.Applicative
 
+import GHC.Generics(Generic)
+import Data.Binary
+import Data.Data
 import Data.Maybe
 import Data.List
 import Data.Default.Class
 import Data.Reflection
 import qualified Data.ByteString.Char8 as S
+import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Blaze.ByteString.Builder
@@ -88,8 +95,8 @@ authHandler = retH >> mapM_ (uncurry go) (providers config)
 
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
-authorized :: HasAuth => Apiary (Snoc as S.ByteString) a -> Apiary as a
-authorized = session (authSessionName $ config given) (pOne pByteString)
+authorized :: HasAuth => Apiary (Snoc as OpenId) a -> Apiary as a
+authorized = session (authSessionName $ config given) (pOne (Proxy :: Proxy OpenId))
 
 -- | get auth config. since 0.7.0.0.
 authConfig :: (Monad m, HasAuth) => ActionT m AuthConfig
@@ -117,11 +124,36 @@ authAction mgr uri returnTo realm param = do
     fw <- liftIO . runResourceT $ getForwardUrl uri returnTo realm param mgr
     redirect $ T.encodeUtf8 fw
 
+data OpenId_ a = OpenId_
+    { opLocal :: a
+    , params  :: [(a, a)]
+    , claimed :: Maybe a
+    } deriving (Show, Read, Eq, Ord, Data, Typeable, Generic, Functor)
+instance Binary (OpenId_ S.ByteString)
+
+instance Binary (OpenId_ T.Text) where
+    get   = fmap (fmap T.decodeUtf8) (get :: Get (OpenId_ S.ByteString))
+    put g = put (fmap T.encodeUtf8 g)
+
+instance Query (OpenId_ T.Text) where
+    readQuery Nothing  = Nothing
+    readQuery (Just s) = case decodeOrFail (L.fromStrict s) of
+        Right (s',_,a) | L.null s' -> Just a
+        _                          -> Nothing
+
+type OpenId = OpenId_ T.Text
+
+toOpenId :: OpenIdResponse -> OpenId
+toOpenId r = OpenId_ 
+    (identifier $ oirOpLocal r)
+    (oirParams r)
+    (identifier <$> oirClaimed r)
+
 returnAction :: (MonadIO m, HasSession) => Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
 returnAction mgr key to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr
-    setSession key (T.encodeUtf8 . identifier $ oirOpLocal r)
+    setSession key . L.toStrict $ encode (toOpenId r)
     redirect to
   where
     queryElem (_, Nothing) = Nothing

@@ -1,5 +1,6 @@
 module Web.Apiary.Authenticate (
     AuthConfig(..), Provider(..)
+    , OpenId_(..), OpenId
     , HasAuth
     , withAuth, withAuthWith
     , authHandler
