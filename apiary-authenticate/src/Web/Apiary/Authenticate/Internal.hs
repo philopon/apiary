@@ -19,6 +19,7 @@ import Data.Binary
 import Data.Data
 import Data.Maybe
 import Data.List
+import Data.Proxy
 import Data.Default.Class
 import Data.Reflection
 import qualified Data.ByteString.Char8 as S
