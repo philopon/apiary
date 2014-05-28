@@ -1,5 +1,5 @@
 name:                apiary-clientsession
-version:             0.8.0.0
+version:             0.8.1.0
 synopsis:            clientsession support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
@@ -18,6 +18,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary.ClientSession
+                       Web.Apiary.ClientSession.Explicit
   other-modules:       Web.Apiary.ClientSession.Internal
   other-extensions:    
   build-depends:       base               >=4.6   && <4.8
@@ -30,6 +31,11 @@ library
                      , time               >=1.4   && <1.5
                      , data-default-class >=0.0   && <0.1
                      , reflection         >=1.4   && <1.5
+                     , binary             >=0.7   && <0.8
+                     , crypto-random      >=0.0   && <0.1
+                     , cprng-aes          >=0.5   && <0.6
+                     , base64-bytestring  >=1.0   && <1.1
+                     , wai                >=2.1   && <2.2
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
