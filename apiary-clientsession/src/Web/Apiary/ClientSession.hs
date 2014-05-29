@@ -18,7 +18,6 @@ module Web.Apiary.ClientSession
     , module Web.Apiary.Cookie
     ) where
 
-import Network.Wai
 import Data.Default.Class
 import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
@@ -47,6 +46,5 @@ session :: (Functor n, MonadIO n, Strategy w, Query a, HasSession)
 session = I.session given
 
 checkToken :: (Functor n, MonadIO n, HasSession)
-           => (Request -> Maybe S.ByteString) -- ^ token accessor
-           -> ApiaryT c n m a -> ApiaryT c n m a
+           => ApiaryT c n m a -> ApiaryT c n m a
 checkToken = I.checkToken given

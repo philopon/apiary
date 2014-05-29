@@ -14,12 +14,14 @@ import Control.Applicative
 import Control.Arrow
 
 import Network.Wai
+import qualified Network.HTTP.Types as HTTP
 
 import Web.Apiary hiding (Default(..))
 import Web.Apiary.Cookie
 import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
 import Data.Proxy
+import Data.Maybe
 import Data.Time
 import Data.Default.Class
 import Data.Binary
@@ -35,6 +37,7 @@ import Control.Monad.Apiary.Filter.Internal.Strategy
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 
+
 data Session = Session
     { key       :: Key
     , tokenGen  :: IORef AESRNG
@@ -42,19 +45,24 @@ data Session = Session
     }
 
 data SessionConfig = SessionConfig
-    { keyFile         :: FilePath
-    , maxAge          :: DiffTime
-    , path            :: Maybe S.ByteString
-    , domain          :: Maybe S.ByteString
-    , httpOnly        :: Bool
-    , secure          :: Bool
-    , csrfTokenKey    :: S.ByteString
-    , csrfTokenLength :: Int
+    { keyFile               :: FilePath
+    , maxAge                :: DiffTime
+    , path                  :: Maybe S.ByteString
+    , domain                :: Maybe S.ByteString
+    , httpOnly              :: Bool
+    , secure                :: Bool
+
+    , angularXsrfCookieName :: Maybe S.ByteString
+    , csrfTokenCookieName   :: S.ByteString
+
+    , csrfTokenCheckingName :: Either HTTP.HeaderName S.ByteString
+    , csrfTokenLength       :: Int
     }
 
 instance Default SessionConfig where
     def = SessionConfig
-        defaultKeyFile (24 * 60 * 60) Nothing Nothing True True "_token" 40
+        defaultKeyFile (24 * 60 * 60) Nothing Nothing True True
+        Nothing "_token" (Right "_token") 40
 
 withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
 withSession cfg@SessionConfig{..} m = do
@@ -108,12 +116,19 @@ newToken len gen = do
     swap (a,b) = (b,a)
 
 -- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64)
--- ,set it session, and return value. since 0.8.1.0
+-- ,set it session, set XSRF-TOKEN header(when angularCsrf), and return value. since 0.8.1.0
 csrfToken :: MonadIO m => Session -> ActionT m S.ByteString
-csrfToken s@Session{..} = do
+csrfToken Session{..} = do
     tok <- liftIO $ newToken (csrfTokenLength config) tokenGen 
-    setSession s (csrfTokenKey config) tok
+    sc <- liftIO $ mkSessionCookie config key (csrfTokenCookieName config) tok
+    setCookie sc
+    maybe (return ()) (setCookie . ngCookie sc tok) (angularXsrfCookieName config)
     return tok
+  where
+    ngCookie sc tok k = sc { setCookieName     = k
+                           , setCookieValue    = tok
+                           , setCookieHttpOnly = False
+                           }
 
 session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
         -> S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
@@ -127,12 +142,23 @@ session sess k p = focus $ \l -> do
 -- | check csrf token. since 0.8.1.0.
 checkToken :: (Functor n, MonadIO n)
            => Session
-           -> (Request -> Maybe S.ByteString) -- ^ token accessor
-           -> ApiaryT c n m a -> ApiaryT c n m a
-checkToken sess@Session{..} f = focus $ \l -> do
+           -> ApiaryT c n m a
+           -> ApiaryT c n m a
+checkToken sess@Session{..} = focus $ \l -> do
     r <- getRequest
-    t <- liftIO getCurrentTime
-    let mbtok = getSessionValue sess t =<< 
-                lookup (csrfTokenKey config) (cookie' r)
+    p <- getReqParams
 
-    if f r == mbtok then return l else empty
+    t <- liftIO getCurrentTime
+    let stok = getSessionValue sess t =<< 
+               lookup (csrfTokenCookieName config) (cookie' r)
+    guard (isJust stok)
+    
+    qtok <- case csrfTokenCheckingName config of
+        Right name ->
+            return $ lookup name $ reqParams pByteString r p []
+        Left name ->
+            return . lookup name $ requestHeaders r
+    guard (isJust qtok)
+
+    if qtok == stok then return l else empty
+
