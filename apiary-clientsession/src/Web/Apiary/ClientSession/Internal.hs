@@ -9,6 +9,7 @@
 
 module Web.Apiary.ClientSession.Internal where
 
+import Control.Monad
 import Control.Monad.Trans
 import Control.Applicative
 import Control.Arrow
@@ -153,11 +154,9 @@ checkToken sess@Session{..} = focus $ \l -> do
                lookup (csrfTokenCookieName config) (cookie' r)
     guard (isJust stok)
     
-    qtok <- case csrfTokenCheckingName config of
-        Right name ->
-            return $ lookup name $ reqParams pByteString r p []
-        Left name ->
-            return . lookup name $ requestHeaders r
+    qtok <- return . join $ case csrfTokenCheckingName config of
+        Right name -> lookup name $ reqParams pByteString r p []
+        Left name  -> lookup name $ map (\(k,v) -> (k, Just v)) $ requestHeaders r
     guard (isJust qtok)
 
     if qtok == stok then return l else empty
