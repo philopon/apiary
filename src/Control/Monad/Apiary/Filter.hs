@@ -120,7 +120,7 @@ query key p = focus $ \l -> do
     (q,f) <- getRequestBody
 
     maybe mzero return $
-        Strategy.readStrategy Just ((key ==) . fst) p 
+        Strategy.readStrategy id ((key ==) . fst) p 
         (reqParams (Proxy :: Proxy a) r q f) l
 
 -- | get first matched paramerer. since 0.5.0.0.

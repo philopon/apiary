@@ -11,8 +11,6 @@
 
 module Data.Apiary.Param where
 
-import Control.Applicative
-
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
@@ -25,7 +23,6 @@ import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.String(IsString)
-import Data.Maybe
 
 import Network.Wai
 import Network.Wai.Parse
@@ -162,11 +159,11 @@ pFile :: Proxy (File L.ByteString)
 pFile = Proxy
 
 class ReqParam a where
-  reqParams :: Proxy a -> Request -> [Param] -> [File L.ByteString] -> [(S.ByteString, a)]
+  reqParams :: Proxy a -> Request -> [Param] -> [File L.ByteString] -> [(S.ByteString, Maybe a)]
 
 instance ReqParam (FileInfo L.ByteString) where
-    reqParams _ _ _ f = f
+    reqParams _ _ _ f = map (\(k,v) -> (k, Just v)) f
 
 instance Query a => ReqParam a where
-    reqParams _ r p _ = mapMaybe (\(k,v) -> (k,) <$> readQuery v) (queryString r) ++
-        mapMaybe (\(k,v) -> (k,) <$> readQuery (Just v)) p
+    reqParams _ r p _ = map (\(k,v) -> (k, readQuery v)) (queryString r) ++
+        map (\(k,v) -> (k, readQuery $ Just v)) p
