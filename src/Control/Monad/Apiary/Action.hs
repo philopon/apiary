@@ -8,6 +8,8 @@ module Control.Monad.Apiary.Action
     -- ** getter
     , getRequest
     , getHeaders
+    , getReqParams
+    , getReqFiles
 
     -- ** setter
     , status

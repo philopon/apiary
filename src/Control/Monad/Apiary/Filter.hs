@@ -5,6 +5,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Control.Monad.Apiary.Filter (
     -- * filters
@@ -42,6 +43,7 @@ module Control.Monad.Apiary.Filter (
     ) where
 
 import Control.Monad
+import Control.Monad.Trans
 import Network.Wai as Wai
 import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
@@ -107,20 +109,26 @@ root m = do
 -- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
 -- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
 -- @
--- 
-query :: (Query a, Strategy.Strategy w, Functor n, Monad n)
+query :: forall a as w n m b. 
+      (ReqParam a, Strategy.Strategy w, Functor n, MonadIO n)
       => S.ByteString
       -> Proxy (w a)
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
-query k p = function $ \l r -> Strategy.readStrategy readQuery ((k ==) . fst) p (queryString r) l
+query key p = focus $ \l -> do
+    r     <- getRequest
+    (q,f) <- getRequestBody
+
+    maybe mzero return $
+        Strategy.readStrategy Just ((key ==) . fst) p 
+        (reqParams (Proxy :: Proxy a) r q f) l
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
 -- @
 -- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
 -- @
-(=:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(=:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
      -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 k =: t = query k (pFirst t)
 
@@ -131,7 +139,7 @@ k =: t = query k (pFirst t)
 -- @
 -- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
 -- @
-(=!:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(=!:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
       -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 k =!: t = query k (pOne t)
 
@@ -142,7 +150,7 @@ k =!: t = query k (pOne t)
 -- @
 -- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
 -- @
-(=?:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(=?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
       -> ApiaryT (Snoc as (Maybe a)) n m b -> ApiaryT as n m b
 k =?: t = query k (pOption t)
 
@@ -153,7 +161,7 @@ k =?: t = query k (pOption t)
 -- @
 -- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Proxy :: Proxy (Check Int))
 -- @
-(?:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
      -> ApiaryT as n m b -> ApiaryT as n m b
 k ?: t = query k (pCheck t)
 
@@ -162,7 +170,7 @@ k ?: t = query k (pCheck t)
 -- @
 -- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
 -- @
-(=*:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(=*:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
 k =*: t = query k (pMany t)
 
@@ -171,7 +179,7 @@ k =*: t = query k (pMany t)
 -- @
 -- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
 -- @
-(=+:) :: (Functor n, Monad n, Query a) => S.ByteString -> Proxy a 
+(=+:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
 k =+: t = query k (pSome t)
 
@@ -181,7 +189,7 @@ k =+: t = query k (pSome t)
 -- hasQuery q = 'query' q (Proxy :: Proxy ('Check' ()))
 -- @
 --
-hasQuery :: (Functor n, Monad n) => S.ByteString -> ApiaryT c n m a -> ApiaryT c n m a
+hasQuery :: (Functor n, MonadIO n) => S.ByteString -> ApiaryT c n m a -> ApiaryT c n m a
 hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 --------------------------------------------------------------------------------

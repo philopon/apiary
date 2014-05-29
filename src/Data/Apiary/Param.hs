@@ -6,8 +6,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE OverlappingInstances #-}
 
 module Data.Apiary.Param where
+
+import Control.Applicative
 
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -21,6 +25,10 @@ import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.String(IsString)
+import Data.Maybe
+
+import Network.Wai
+import Network.Wai.Parse
 
 jsToBool :: (IsString a, Eq a) => a -> Bool
 jsToBool = flip notElem jsFalse
@@ -149,3 +157,16 @@ pVoid = Proxy
 
 pMaybe :: Proxy a -> Proxy (Maybe a)
 pMaybe _ = Proxy
+
+pFile :: Proxy (File L.ByteString)
+pFile = Proxy
+
+class ReqParam a where
+  reqParams :: Proxy a -> Request -> [Param] -> [File L.ByteString] -> [(S.ByteString, a)]
+
+instance ReqParam (FileInfo L.ByteString) where
+    reqParams _ _ _ f = f
+
+instance Query a => ReqParam a where
+    reqParams _ r p _ = mapMaybe (\(k,v) -> (k,) <$> readQuery v) (queryString r) ++
+        mapMaybe (\(k,v) -> (k,) <$> readQuery (Just v)) p

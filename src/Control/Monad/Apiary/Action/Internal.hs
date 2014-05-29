@@ -17,6 +17,7 @@ import Control.Monad.Reader
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
 import Network.Wai
+import Network.Wai.Parse
 import Network.Mime
 import Data.Default.Class
 import Network.HTTP.Types
@@ -53,6 +54,7 @@ data ActionState
         { actionStatus  :: Status
         , actionHeaders :: ResponseHeaders
         , actionBody    :: Body
+        , actionReqBody :: Maybe ([Param], [File L.ByteString])
         }
 
 data Body 
@@ -139,7 +141,7 @@ execActionT config m request = runActionT m config request resp >>= \case
         Stop s         -> return s
         Continue (_,r) -> return $ actionStateToResponse r
   where
-    resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "")
+    resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "") Nothing
 
 instance (Monad m, Functor m) => Alternative (ActionT m) where
     empty = mzero
@@ -181,6 +183,21 @@ stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 -- | get raw request. since 0.1.0.0.
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
+
+getRequestBody :: MonadIO m => ActionT m ([Param], [File L.ByteString])
+getRequestBody = ActionT $ \_ r s c -> case actionReqBody s of
+    Just b  -> c b s
+    Nothing -> do
+        b <- liftIO $ parseRequestBody lbsBackEnd r
+        c b s { actionReqBody = Just b }
+
+-- | parse request body and return params. since 0.9.0.0.
+getReqParams :: MonadIO m => ActionT m [Param]
+getReqParams = fst <$> getRequestBody
+
+-- | parse request body and return files. since 0.9.0.0.
+getReqFiles :: MonadIO m => ActionT m [File L.ByteString]
+getReqFiles = snd <$> getRequestBody
 
 getConfig :: Monad m => ActionT m ApiaryConfig
 getConfig = ActionT $ \c _ s cont -> cont c s

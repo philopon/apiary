@@ -93,6 +93,7 @@ library
                      , http-types        >=0.8 && <0.9
                      , mime-types        >=0.1 && <0.2
                      , wai               >=2.1 && <2.2
+                     , wai-extra         >=2.1 && <2.2
                      , warp              >=2.1 && <2.2
                      , exceptions        >=0.6 && <0.7
 
