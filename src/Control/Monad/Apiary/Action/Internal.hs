@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -25,7 +26,10 @@ import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
+
+#ifndef WAI3
 import Data.Conduit
+#endif
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
@@ -39,10 +43,16 @@ data ApiaryConfig = ApiaryConfig
     , mimeType      :: FilePath -> S.ByteString
     }
 
+defNotFound :: Application
+#ifdef WAI3
+defNotFound _ f = f $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+#else
+defNotFound _ = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+#endif
+
 instance Default ApiaryConfig where
     def = ApiaryConfig 
-        { notFound = \_ -> return $ responseLBS status404 
-            [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+        { notFound      = defNotFound
         , defaultStatus = ok200
         , defaultHeader = []
         , rootPattern   = ["", "/", "/index.html", "/index.htm"]
@@ -57,18 +67,26 @@ data ActionState
         , actionReqBody :: Maybe ([Param], [File L.ByteString])
         }
 
+#ifndef WAI3
+type StreamingBody = Source IO (Flush Builder)
+#endif
+
 data Body 
     = File FilePath (Maybe FilePart)
     | Builder Builder
     | LBS L.ByteString
-    | SRC (Source IO (Flush Builder))
+    | Str StreamingBody
 
 actionStateToResponse :: ActionState -> Response
 actionStateToResponse as = case actionBody as of
     File f p  -> responseFile st hd f p
     Builder b -> responseBuilder st hd b
     LBS l     -> responseLBS st hd l
-    SRC    s  -> responseSource st hd s
+#ifdef WAI3
+    Str    s  -> responseStream st hd s
+#else
+    Str    s  -> responseSource st hd s
+#endif
   where
     st = actionStatus  as
     hd = actionHeaders as
@@ -136,12 +154,22 @@ hoistActionT :: (Monad m, Monad n)
 hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
+
+#ifdef WAI3
+execActionT config m request send = runActionT m config request resp >>= \case
+        Pass           -> notFound config request send
+        Stop s         -> send s
+        Continue (_,r) -> send $ actionStateToResponse r
+  where
+    resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "") Nothing
+#else
 execActionT config m request = runActionT m config request resp >>= \case
         Pass           -> notFound config request
         Stop s         -> return s
         Continue (_,r) -> return $ actionStateToResponse r
   where
     resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "") Nothing
+#endif
 
 instance (Monad m, Functor m) => Alternative (ActionT m) where
     empty = mzero
@@ -302,9 +330,13 @@ builder b = modifyState (\s -> s { actionBody = Builder b } )
 lbs :: Monad m => L.ByteString -> ActionT m ()
 lbs l = modifyState (\s -> s { actionBody = LBS l } )
 
--- | set response body source. since 0.1.0.0.
-source :: Monad m => Source IO (Flush Builder) -> ActionT m ()
-source src = modifyState (\s -> s { actionBody = SRC src } )
+-- | set response body source. since 0.9.0.0.
+stream :: Monad m => StreamingBody -> ActionT m ()
+stream str = modifyState (\s -> s { actionBody = Str str })
+
+{-# DEPRECATED source "use stream" #-}
+source :: Monad m => StreamingBody -> ActionT m ()
+source = stream
 
 {-# DEPRECATED redirectFound, redirectSeeOther "use redirect" #-}
 -- | redirect with 302 Found. since 0.3.3.0.
