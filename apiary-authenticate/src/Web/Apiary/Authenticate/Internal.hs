@@ -28,7 +28,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Blaze.ByteString.Builder
 
-import qualified Network.Wai as Wai
+import qualified Web.Apiary.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Client as Client
 import Network.HTTP.Client.TLS(tlsManagerSettings)

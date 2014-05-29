@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.8.0.0
+version:             0.9.0.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -52,6 +52,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary
+                       Web.Apiary.Wai
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter

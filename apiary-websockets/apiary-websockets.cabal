@@ -20,7 +20,7 @@ library
   exposed-modules:     Web.Apiary.WebSockets
   other-modules:       
   build-depends:       base               >=4.6   && <4.8
-                     , apiary             >=0.8   && <0.9
+                     , apiary             >=0.8   && <0.10
                      , wai-websockets     >=2.1   && <2.2
                      , websockets         >=0.8   && <0.9
 

@@ -14,7 +14,7 @@ import Control.Monad.Trans
 import Control.Applicative
 import Control.Arrow
 
-import Network.Wai
+import Web.Apiary.Wai
 import qualified Network.HTTP.Types as HTTP
 
 import Web.Apiary hiding (Default(..))

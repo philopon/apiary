@@ -9,7 +9,7 @@
 
 module Web.Apiary.Cookie.Internal where
 
-import Network.Wai
+import Web.Apiary.Wai
 import Web.Apiary
 import Web.Cookie
 import Data.Maybe
