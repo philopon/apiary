@@ -22,18 +22,16 @@ import Database.Persist.Sql
 import Control.Monad.Trans.Resource
 import Data.Reflection
 
-type HasPersist = Given ApiaryPersistState
+type HasPersist = Given Persist
 
-newtype ApiaryPersistState = ApiaryPersistState
+newtype Persist = Persist
     { getPool    :: ConnectionPool
     }
 
 runSql :: (MonadBaseControl IO m, HasPersist) => SqlPersistT (ResourceT m) a -> m a
-runSql a =
-    runResourceT $
-    runSqlPool a (getPool given)
+runSql a = runResourceT $ runSqlPool a (getPool given)
 
 withWithSqlPool :: (forall a. (ConnectionPool -> m a) -> m a)
                 -> (HasPersist => m b) -> m b
 withWithSqlPool with m = with $ \pool -> 
-    give (ApiaryPersistState pool) m
+    give (Persist pool) m
