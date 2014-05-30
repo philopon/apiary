@@ -18,11 +18,12 @@ module Web.Apiary.ClientSession
     , module Web.Apiary.Cookie
     ) where
 
+import Web.Apiary
+
 import Data.Default.Class
 import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
 import Data.Reflection
-import Control.Monad.Trans
 import qualified Data.ByteString as S
 import Web.Apiary
 import Control.Monad.Apiary.Filter.Internal.Strategy

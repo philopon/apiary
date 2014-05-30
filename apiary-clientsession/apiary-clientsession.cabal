@@ -22,7 +22,6 @@ library
   other-modules:       Web.Apiary.ClientSession.Internal
   other-extensions:    
   build-depends:       base               >=4.6   && <4.8
-                     , mtl                >=2.1   && <2.3
                      , bytestring         >=0.10  && <0.11
                      , apiary             >=0.9   && <0.10
                      , apiary-cookie      >=0.9   && <0.10

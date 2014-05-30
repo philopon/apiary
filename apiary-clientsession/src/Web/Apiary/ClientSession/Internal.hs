@@ -10,7 +10,6 @@
 module Web.Apiary.ClientSession.Internal where
 
 import Control.Monad
-import Control.Monad.Trans
 import Control.Applicative
 import Control.Arrow
 
