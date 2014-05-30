@@ -34,13 +34,12 @@ main = withLogger def $ withLogger' def {bufferSize = 0 } $ \immediate ->
         runGivenLoggerT . runSql $ runMigration migrateAll
 
         run 3000 . runApiary def $ do
-            root . action $ do
+            root . sql (selectList ([] :: [Filter Number]) []) . action $ \q -> do
 
                 -- logging.
                 logging "root accessed.\n"
 
-                l <- runSql $ selectList ([] :: [Filter Number]) []
-                lbs $ L.pack (show l)
+                lbs $ L.pack (show q)
 
             [capture|/:Int|] $ do
                 stdMethod GET . action $ \i -> do
