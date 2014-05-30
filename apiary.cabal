@@ -99,12 +99,10 @@ library
   if flag(wai3)
     build-depends:     wai               >=3.0 && <3.1
                      , wai-extra         >=3.0 && <3.1
-                     , warp              >=3.0 && <3.1
     cpp-options:       -DWAI3
   else
     build-depends:     wai               >=2.1 && <2.2
                      , wai-extra         >=2.1 && <2.2
-                     , warp              >=2.1 && <2.2
                      , conduit           >=1.1 && <1.2
 
   hs-source-dirs:      src
