@@ -5,4 +5,5 @@ for p in `cat submodules`; do
   path=("${path[@]}" "./$p")
 done
 
-cabal install --only-dependencies --enable-tests "${path[@]}"
+cabal install 'transformers >= 0.2 && < 0.4'
+cabal install  --only-dependencies --enable-tests "${path[@]}"
