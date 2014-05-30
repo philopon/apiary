@@ -27,7 +27,6 @@ class Strategy (w :: * -> *) where
 getQuery :: (v -> Maybe a) -> Proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
 getQuery readf _ kf = map readf . map snd . filter kf
 
-
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
 data Option a
 instance Strategy Option where

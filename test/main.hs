@@ -153,7 +153,7 @@ queryFirstTest = testGroup "First"
   where app = queryApp (=:) (=:) (=:)
 
 queryOneTest :: Test
-queryOneTest = testGroup "First"
+queryOneTest = testGroup "One"
     [ testReq "GET /" $ assert404 app
     , testReq "GET /?foo" $ assertPlain200 "foo Maybe String Nothing" app
     , testReq "GET /?foo&foo=3" $ assert404 app
@@ -165,7 +165,7 @@ queryOneTest = testGroup "First"
   where app = queryApp (=!:) (=!:) (=!:)
 
 queryOptionTest :: Test
-queryOptionTest = testGroup "First"
+queryOptionTest = testGroup "Option"
     [ testReq "GET /" $ assertPlain200 "foo Int Nothing" app
     , testReq "GET /?foo" $ assertPlain200 "foo Maybe String Just Nothing" app
     , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String Just Nothing" app
@@ -177,7 +177,7 @@ queryOptionTest = testGroup "First"
   where app = queryApp (=?:) (=?:) (=?:)
 
 queryCheckTest :: Test
-queryCheckTest = testGroup "First"
+queryCheckTest = testGroup "Check"
     [ testReq "GET /" $ assert404 app
     , testReq "GET /?foo" $ assertPlain200 "foo Maybe String" app
     , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String" app
@@ -189,7 +189,7 @@ queryCheckTest = testGroup "First"
   where app = queryCheckApp
 
 queryManyTest :: Test
-queryManyTest = testGroup "First"
+queryManyTest = testGroup "Many"
     [ testReq "GET /" $ assertPlain200 "foo Int []" app
     , testReq "GET /?foo" $ assertPlain200 "foo Maybe String [Nothing]" app
     , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String [Nothing,Just \"3\"]" app
@@ -201,7 +201,7 @@ queryManyTest = testGroup "First"
   where app = queryApp (=*:) (=*:) (=*:)
 
 querySomeTest :: Test
-querySomeTest = testGroup "First"
+querySomeTest = testGroup "Some"
     [ testReq "GET /" $ assert404 app
     , testReq "GET /?foo" $ assertPlain200 "foo Maybe String [Nothing]" app
     , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String [Nothing,Just \"3\"]" app

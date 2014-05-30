@@ -15,12 +15,11 @@ main = withSession def { path = Just "/", secure = False} $ withAuth def $ run 3
     root . stdMethod GET $ do
         authorized . action $ \s -> do
             contentType "text/html"
-            lbs $ L.unwords ["your id:", L.fromStrict s, "\n<a href=\"/logout\">logout</a>"]
+            lbs $ L.unwords ["your id:", L.pack $ show s, "\n<a href=\"/logout\">logout</a>"]
 
         cookie "message" (pOption pByteString) . action $ \mbmsg -> do
             contentType "text/html"
-            rs <- authRoutes
-            let elm = concatMap (\(n,r) -> ["<div><a href=\"", r, "\">", T.encodeUtf8 n, "</a></div>"]) rs
+            let elm = concatMap (\(n,r) -> ["<div><a href=\"", r, "\">", T.encodeUtf8 n, "</a></div>"]) authRoutes
             lbs $ L.fromChunks $ maybe [] (\m -> ["<h1>", m, "</h1>"]) mbmsg ++ elm
             deleteCookie "message"
 
