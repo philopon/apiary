@@ -21,7 +21,8 @@ module Control.Monad.Apiary.Action
     , file'
     , builder
     , lbs
-    , source
+    , stream
+    , StreamingBody
 
     -- ** monolithic action
     -- *** redirect
@@ -31,7 +32,7 @@ module Control.Monad.Apiary.Action
     , module Data.Default.Class
     
     -- * deprecated
-    , redirectFound, redirectSeeOther
+    , redirectFound, redirectSeeOther, source
     ) where
 
 import Control.Monad.Apiary.Action.Internal

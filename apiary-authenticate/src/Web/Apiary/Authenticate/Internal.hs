@@ -72,7 +72,6 @@ withAuthWith :: Session -> Client.ManagerSettings
 withAuthWith sess s conf m = Client.withManager s $ \mgr -> 
     m (Auth mgr conf sess)
 
--- | default auth handlers. since 0.8.0.0.
 authHandler :: (Functor n, MonadIO n) => Auth -> ApiaryT c n m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
@@ -87,7 +86,6 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
         toByteString (HTTP.encodePathSegments (authPrefix config ++ authReturnToPath config))
 
--- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: Auth -> Apiary (Snoc as OpenId) a -> Apiary as a
 authorized Auth{..} = session authSession (authSessionName config) (pOne (Proxy :: Proxy OpenId))
 
@@ -97,13 +95,11 @@ authConfig = config
 authProviders :: Auth -> [(T.Text, Provider)]
 authProviders = providers . config
 
--- | get authenticate routes: (title, route). since 0.7.0.0.
 authRoutes :: Auth -> [(T.Text, S.ByteString)]
 authRoutes auth =
     map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix (config auth) ++ [k])) $
     providers (config auth)
 
--- | delete session. since 0.7.0.0.
 authLogout :: Monad m => Auth -> ActionT m ()
 authLogout auth = deleteCookie (authSessionName $ config auth)
 

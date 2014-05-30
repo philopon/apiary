@@ -25,7 +25,6 @@ import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
 import Data.Reflection
 import qualified Data.ByteString as S
-import Web.Apiary
 import Control.Monad.Apiary.Filter.Internal.Strategy
 import Data.Proxy
 
@@ -38,6 +37,11 @@ setSession :: (MonadIO m, HasSession)
            => S.ByteString -> S.ByteString -> ActionT m ()
 setSession = I.setSession given
 
+-- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64),
+--
+-- set it client session cookie, set XSRF-TOKEN header(when Just angularXsrfCookieName),
+--
+-- and return value. since 0.9.0.0.
 csrfToken :: (MonadIO m, HasSession) => ActionT m S.ByteString
 csrfToken = I.csrfToken given
 
@@ -46,6 +50,7 @@ session :: (Functor n, MonadIO n, Strategy w, Query a, HasSession)
         -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session = I.session given
 
+-- | check csrf token. since 0.9.0.0.
 checkToken :: (Functor n, MonadIO n, HasSession)
            => ApiaryT c n m a -> ApiaryT c n m a
 checkToken = I.checkToken given

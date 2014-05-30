@@ -115,8 +115,6 @@ newToken len gen = do
   where 
     swap (a,b) = (b,a)
 
--- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64)
--- ,set it session, set XSRF-TOKEN header(when angularCsrf), and return value. since 0.8.1.0
 csrfToken :: MonadIO m => Session -> ActionT m S.ByteString
 csrfToken Session{..} = do
     tok <- liftIO $ newToken (csrfTokenLength config) tokenGen 
@@ -139,7 +137,6 @@ session sess k p = focus $ \l -> do
             (map (second $ getSessionValue sess t) $ cookie' r) l
     maybe empty return mbr
 
--- | check csrf token. since 0.8.1.0.
 checkToken :: (Functor n, MonadIO n)
            => Session
            -> ApiaryT c n m a
