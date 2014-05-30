@@ -16,6 +16,7 @@ import Data.Data
 import Data.Maybe
 import Data.List
 import Data.Default.Class
+import Data.Proxy -- for ghc-7.6
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T

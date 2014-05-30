@@ -19,8 +19,7 @@ main = withSession def { path = Just "/", secure = False} $ withAuth def $ run 3
 
         cookie "message" (pOption pByteString) . action $ \mbmsg -> do
             contentType "text/html"
-            rs <- authRoutes
-            let elm = concatMap (\(n,r) -> ["<div><a href=\"", r, "\">", T.encodeUtf8 n, "</a></div>"]) rs
+            let elm = concatMap (\(n,r) -> ["<div><a href=\"", r, "\">", T.encodeUtf8 n, "</a></div>"]) authRoutes
             lbs $ L.fromChunks $ maybe [] (\m -> ["<h1>", m, "</h1>"]) mbmsg ++ elm
             deleteCookie "message"
 
