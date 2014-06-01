@@ -2,7 +2,11 @@ name:                apiary-clientsession
 version:             0.9.0.0
 synopsis:            clientsession support for apiary web framework.
 description:
-  example: <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
+  examples:
+    .
+    <https://github.com/philopon/apiary/blob/master/examples/csrf.hs>
+    .
+    <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>

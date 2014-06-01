@@ -1,5 +1,5 @@
 name:                apiary-
-version:             0.8.0.0
+version:             0.9.0.0
 synopsis:            
 description:
 license:             MIT
@@ -19,7 +19,7 @@ library
   exposed-modules:     
   other-modules:       
   build-depends:       base              >=4.6   && <4.8
-                     , apiary            >=0.8   && <0.9
+                     , apiary            >=0.9   && <0.10
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
