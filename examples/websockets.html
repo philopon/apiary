@@ -5,23 +5,32 @@
     <script>
       window.addEventListener('load', function() {
         var div    = document.getElementById("msg");
-        var host   = "ws://localhost:3000/3";
-        var socket = new WebSocket(host);
-        socket.onopen = function(open) {
-          div.innerHTML += "Open<br>";
-          socket.send("test");
-          socket.onmessage = function(message) {
-            div.innerHTML += "Message: " + message.data + "<br>";
-          }
-          socket.onclose = function(close) {
-            div.innerHTML += "Close<br>";
+
+        var action = function() {
+          var n      = document.getElementById("num").value;
+          var host   = "ws://localhost:3000/" + n;
+          var socket = new WebSocket(host);
+          socket.onopen = function(open) {
+            div.innerHTML += "Open<br>";
+            socket.send("test");
+            socket.onmessage = function(message) {
+              div.innerHTML += "Message: " + message.data + "<br>";
+            }
+            socket.onclose = function(close) {
+              div.innerHTML += "Close<br>";
+            }
           }
         }
+
+        document.getElementById("start_button")
+          .addEventListener("click", action, false);
+
       });
     </script>
   </head>
   <body>
-    <div id="msg">
-    </div>
+    <input id="num" type="number">
+    <button type="button" id="start_button">start</button>
+    <div id="msg"></div>
   </bodY>
 </html>
