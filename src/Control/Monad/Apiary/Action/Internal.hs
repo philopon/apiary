@@ -80,12 +80,6 @@ initialState conf = ActionState
 type StreamingBody = Source IO (Flush Builder)
 #endif
 
-data Body 
-    = File FilePath (Maybe FilePart)
-    | Builder Builder
-    | LBS L.ByteString
-    | Str StreamingBody
-
 data Action a 
     = Continue a
     | Pass
@@ -129,11 +123,26 @@ instance MonadThrow m => MonadThrow (ActionT m) where
     throwM e = ActionT $ \_ _ st cont ->
         throwM e >>= \a -> cont a st
 
+instance MonadCatch m => MonadCatch (ActionT m) where
+    catch m h = actionT $ \conf req st -> 
+        catch (runActionT m conf req st) (\e -> runActionT (h e) conf req st)
+
+instance MonadMask m => MonadMask (ActionT m) where
+    mask a = actionT $ \conf req st ->
+        mask $ \u -> runActionT (a $ q u) conf req st
+      where
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+    uninterruptibleMask a = actionT $ \conf req st ->
+        uninterruptibleMask $ \u -> runActionT (a $ q u) conf req st
+      where
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+
 runActionT :: Monad m => ActionT m a
            -> ApiaryConfig -> Request -> ActionState
            -> m (Action (a, ActionState))
 runActionT m conf req st = unActionT m conf req st $ \a st' ->
     st' `seq` return (Continue (a, st'))
+{-# INLINE runActionT #-}
 
 actionT :: Monad m 
         => (ApiaryConfig -> Request -> ActionState -> m (Action (a, ActionState)))
@@ -142,6 +151,7 @@ actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
     Pass             -> return Pass
     Stop s           -> return $ Stop s
     Continue (a,st') -> st' `seq` cont a st'
+{-# INLINE actionT #-}
 
 -- | n must be Monad, so cant be MFunctor.
 hoistActionT :: (Monad m, Monad n)
