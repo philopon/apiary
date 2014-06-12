@@ -120,7 +120,7 @@ test-suite test-framework
                      , http-types           >=0.8  && <0.9
   if flag(wai3)
     build-depends:     wai               >=3.0 && <3.1
-                     , wai-test          >=3.0 && <3.1
+                     , wai-extra         >=3.0 && <3.1
   else
     build-depends:     wai               >=2.1 && <2.2
                      , wai-test          >=2.0 && <2.1
