@@ -345,7 +345,7 @@ lbs l = response (\s h -> responseLBS s h l)
 
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT m ()
-#ifdef wai3
+#ifdef WAI3
 stream str = response (\s h -> responseStream s h str)
 #else
 stream str = response (\s h -> responseSource s h str)
