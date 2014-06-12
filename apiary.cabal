@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.9.0.0
+version:             0.10.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -52,7 +52,7 @@ cabal-version:       >=1.10
 
 flag wai3
   description: use wai-3.0
-  default: False
+  default: True
 
 library
   exposed-modules:     Web.Apiary
