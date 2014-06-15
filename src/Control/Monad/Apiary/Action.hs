@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Control.Monad.Apiary.Action 
     (
       ActionT
@@ -22,7 +24,11 @@ module Control.Monad.Apiary.Action
     , builder
     , lbs
     , stream
+    , response
+
+#ifndef WAI3
     , StreamingBody
+#endif
 
     -- ** monolithic action
     -- *** redirect

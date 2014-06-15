@@ -1,5 +1,5 @@
 name:                apiary-cookie
-version:             0.9.0.0
+version:             0.10.0
 synopsis:            Cookie support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
@@ -22,11 +22,13 @@ library
   other-extensions:    
   build-depends:       base               >=4.6   && <4.8
                      , bytestring         >=0.10  && <0.11
-                     , apiary             >=0.9   && <0.10
+                     , apiary             >=0.9   && <0.11
                      , cookie             >=0.4   && <0.5
                      , blaze-builder      >=0.3   && <0.4
-                     , tagged             >=0.7   && <0.8
                      , time               >=1.4   && <1.5
+
+  if impl(ghc < 7.8)
+    build-depends:     tagged             >=0.7 && <0.8
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

@@ -7,6 +7,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -61,35 +62,23 @@ instance Default ApiaryConfig where
 
 data ActionState 
     = ActionState
-        { actionStatus  :: Status
-        , actionHeaders :: ResponseHeaders
-        , actionBody    :: Body
-        , actionReqBody :: Maybe ([Param], [File L.ByteString])
+        { actionResponse :: Response
+        , actionStatus   :: Status
+        , actionHeaders  :: ResponseHeaders
+        , actionReqBody  :: Maybe ([Param], [File L.ByteString])
         }
+
+initialState :: ApiaryConfig -> ActionState
+initialState conf = ActionState
+    { actionResponse = responseLBS (defaultStatus conf) (defaultHeader conf) ""
+    , actionStatus   = defaultStatus conf
+    , actionHeaders  = defaultHeader conf
+    , actionReqBody  = Nothing
+    }
 
 #ifndef WAI3
 type StreamingBody = Source IO (Flush Builder)
 #endif
-
-data Body 
-    = File FilePath (Maybe FilePart)
-    | Builder Builder
-    | LBS L.ByteString
-    | Str StreamingBody
-
-actionStateToResponse :: ActionState -> Response
-actionStateToResponse as = case actionBody as of
-    File f p  -> responseFile st hd f p
-    Builder b -> responseBuilder st hd b
-    LBS l     -> responseLBS st hd l
-#ifdef WAI3
-    Str    s  -> responseStream st hd s
-#else
-    Str    s  -> responseSource st hd s
-#endif
-  where
-    st = actionStatus  as
-    hd = actionHeaders as
 
 data Action a 
     = Continue a
@@ -134,11 +123,26 @@ instance MonadThrow m => MonadThrow (ActionT m) where
     throwM e = ActionT $ \_ _ st cont ->
         throwM e >>= \a -> cont a st
 
+instance MonadCatch m => MonadCatch (ActionT m) where
+    catch m h = actionT $ \conf req st -> 
+        catch (runActionT m conf req st) (\e -> runActionT (h e) conf req st)
+
+instance MonadMask m => MonadMask (ActionT m) where
+    mask a = actionT $ \conf req st ->
+        mask $ \u -> runActionT (a $ q u) conf req st
+      where
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+    uninterruptibleMask a = actionT $ \conf req st ->
+        uninterruptibleMask $ \u -> runActionT (a $ q u) conf req st
+      where
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+
 runActionT :: Monad m => ActionT m a
            -> ApiaryConfig -> Request -> ActionState
            -> m (Action (a, ActionState))
 runActionT m conf req st = unActionT m conf req st $ \a st' ->
     st' `seq` return (Continue (a, st'))
+{-# INLINE runActionT #-}
 
 actionT :: Monad m 
         => (ApiaryConfig -> Request -> ActionState -> m (Action (a, ActionState)))
@@ -147,6 +151,7 @@ actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
     Pass             -> return Pass
     Stop s           -> return $ Stop s
     Continue (a,st') -> st' `seq` cont a st'
+{-# INLINE actionT #-}
 
 -- | n must be Monad, so cant be MFunctor.
 hoistActionT :: (Monad m, Monad n)
@@ -156,19 +161,15 @@ hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
 
 #ifdef WAI3
-execActionT config m request send = runActionT m config request resp >>= \case
+execActionT config m request send = runActionT m config request (initialState config) >>= \case
         Pass           -> notFound config request send
         Stop s         -> send s
-        Continue (_,r) -> send $ actionStateToResponse r
-  where
-    resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "") Nothing
+        Continue (_,r) -> send $ actionResponse r
 #else
-execActionT config m request = runActionT m config request resp >>= \case
+execActionT config m request = runActionT m config request (initialState config) >>= \case
         Pass           -> notFound config request
         Stop s         -> return s
-        Continue (_,r) -> return $ actionStateToResponse r
-  where
-    resp = ActionState (defaultStatus config) (defaultHeader config) (LBS "") Nothing
+        Continue (_,r) -> return $ actionResponse r
 #endif
 
 instance (Monad m, Functor m) => Alternative (ActionT m) where
@@ -202,7 +203,7 @@ instance MonadReader r m => MonadReader r (ActionT m) where
 
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT m a
-stop = ActionT $ \_ _ s _ -> return $ Stop (actionStateToResponse s)
+stop = ActionT $ \_ _ s _ -> return $ Stop (actionResponse s)
 
 -- | stop with response. since 0.4.2.0.
 stopWith :: Monad m => Response -> ActionT m a
@@ -318,21 +319,37 @@ file f p = do
     contentType (mime f)
     file' f p
 
+-- | Raw response constructor. since 0.10.
+--
+-- example(use pipes-wai)
+--
+-- @
+-- producer :: Monad m => Producer (Flush Builder) IO () -> ActionT m ()
+-- producer = response (\s h -> responseProducer s h)
+-- @
+--
+response :: Monad m => (Status -> ResponseHeaders -> Response) -> ActionT m ()
+response f = modifyState (\s -> s { actionResponse = f (actionStatus s) (actionHeaders s)} )
+
 -- | set response body file content, without set Content-Type. since 0.1.0.0.
 file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file' f p = modifyState (\s -> s { actionBody = File f p } )
+file' f p = response (\s h -> responseFile s h f p)
 
 -- | set response body builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT m ()
-builder b = modifyState (\s -> s { actionBody = Builder b } )
+builder b = response (\s h -> responseBuilder s h b)
 
 -- | set response body lazy bytestring. since 0.1.0.0.
 lbs :: Monad m => L.ByteString -> ActionT m ()
-lbs l = modifyState (\s -> s { actionBody = LBS l } )
+lbs l = response (\s h -> responseLBS s h l)
 
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT m ()
-stream str = modifyState (\s -> s { actionBody = Str str })
+#ifdef WAI3
+stream str = response (\s h -> responseStream s h str)
+#else
+stream str = response (\s h -> responseSource s h str)
+#endif
 
 {-# DEPRECATED source "use stream" #-}
 source :: Monad m => StreamingBody -> ActionT m ()
