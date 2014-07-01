@@ -14,9 +14,9 @@ import qualified Data.ByteString.Char8 as S
 
 testReq :: String -> (Request -> IO ()) -> Test
 testReq str f = 
-    let (meth, other)   = break (== ' ') str
-        (path, version) = break (== ' ') (tail other)
-    in testCase str $ f (setPath (setVersion version $ (defaultRequest { requestMethod = S.pack meth })) (S.pack path))
+    let (meth, other) = break (== ' ') str
+        (p,  version) = break (== ' ') (tail other)
+    in testCase str $ f (setPath (setVersion version $ (defaultRequest { requestMethod = S.pack meth })) (S.pack p))
   where
     setVersion [] r = r
     setVersion v r | v == " HTTP/1.1" = r { Network.Wai.httpVersion = HTTP.http11 }
