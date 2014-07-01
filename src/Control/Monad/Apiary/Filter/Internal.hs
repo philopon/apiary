@@ -24,3 +24,5 @@ function' f = function $ \c r -> sSnoc c `fmap` f r
 function_ :: (Functor n, Monad n) => (Request -> Bool) 
           -> ApiaryT c n m b -> ApiaryT c n m b
 function_ f = function $ \c r -> if f r then Just c else Nothing
+
+

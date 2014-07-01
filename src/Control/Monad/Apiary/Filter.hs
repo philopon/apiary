@@ -17,6 +17,8 @@ module Control.Monad.Apiary.Filter (
     -- ** path matcher
     , root
     , capture
+    , Capture.path
+    , Capture.fetch
 
     -- ** query matcher
     , query
@@ -58,6 +60,7 @@ import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
 import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
 import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
+import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 

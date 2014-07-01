@@ -32,6 +32,8 @@ jsToBool = flip notElem jsFalse
     where
       jsFalse = ["false", "0", "-0", "", "null", "undefined", "NaN"]
 
+readPathAs :: Path a => proxy a -> T.Text -> Maybe a
+readPathAs _ t = readPath t
 
 class Path a where
   readPath :: T.Text -> Maybe a

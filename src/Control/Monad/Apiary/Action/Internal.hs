@@ -66,14 +66,16 @@ data ActionState
         , actionStatus   :: Status
         , actionHeaders  :: ResponseHeaders
         , actionReqBody  :: Maybe ([Param], [File L.ByteString])
+        , actionPathInfo :: [T.Text]
         }
 
-initialState :: ApiaryConfig -> ActionState
-initialState conf = ActionState
+initialState :: ApiaryConfig -> Request -> ActionState
+initialState conf req = ActionState
     { actionResponse = responseLBS (defaultStatus conf) (defaultHeader conf) ""
     , actionStatus   = defaultStatus conf
     , actionHeaders  = defaultHeader conf
     , actionReqBody  = Nothing
+    , actionPathInfo = pathInfo req
     }
 
 #ifndef WAI3
@@ -88,6 +90,7 @@ data Action a
 data ApiaryReader = ApiaryReader
     { readerConfig      :: ApiaryConfig
     , readerRequest     :: Request
+    , readerCurrentPath :: [T.Text]
     }
 
 newtype ActionT m a = ActionT { unActionT :: forall b. 
@@ -168,7 +171,7 @@ execActionT config m request send =
 #else
 execActionT config m request = let send = return in
 #endif
-    runActionT m (ApiaryReader config request) (initialState config) >>= \case
+    runActionT m (ApiaryReader config request $ pathInfo request) (initialState config request) >>= \case
 #ifdef WAI3
         Pass           -> notFound config request send
 #else
@@ -241,6 +244,9 @@ getConfig = readerConfig <$> askAction
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT $ \_ s c -> c () (f s)
+
+getState :: ActionT m ActionState
+getState = ActionT $ \_ s c -> c s s
 
 -- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT m RequestHeaders
