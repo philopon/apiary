@@ -87,74 +87,69 @@ data Action a
     | Pass
     | Stop Response
 
-data ApiaryReader = ApiaryReader
-    { readerConfig      :: ApiaryConfig
-    , readerRequest     :: Request
-    , readerCurrentPath :: [T.Text]
-    }
-
 newtype ActionT m a = ActionT { unActionT :: forall b. 
-    ApiaryReader
+    ApiaryConfig
+    -> Request
     -> ActionState
     -> (a -> ActionState -> m (Action b))
     -> m (Action b)
     }
 
 instance Functor (ActionT m) where
-    fmap f m = ActionT $ \rdr st cont ->
-        unActionT m rdr st (\a s' -> s' `seq` cont (f a) s')
+    fmap f m = ActionT $ \conf req st cont ->
+        unActionT m conf req st (\a s' -> s' `seq` cont (f a) s')
 
 instance Applicative (ActionT m) where
-    pure x = ActionT $ \_ st cont -> cont x st
-    mf <*> ma = ActionT $ \rdr st cont ->
-        unActionT mf rdr st  $ \f st'  ->
-        unActionT ma rdr st' $ \a st'' ->
+    pure x = ActionT $ \_ _ st cont -> cont x st
+    mf <*> ma = ActionT $ \conf req st cont ->
+        unActionT mf conf req st  $ \f st'  ->
+        unActionT ma conf req st' $ \a st'' ->
         st' `seq` st'' `seq` cont (f a) st''
 
 instance Monad m => Monad (ActionT m) where
-    return x = ActionT $ \_ st cont -> cont x st
-    m >>= k  = ActionT $ \rdr st cont ->
-        unActionT m rdr st $ \a st' ->
-        st' `seq` unActionT (k a) rdr st' cont
-    fail _ = ActionT $ \_ _ _ -> return Pass
+    return x = ActionT $ \_ _ st cont -> cont x st
+    m >>= k  = ActionT $ \conf req st cont ->
+        unActionT m conf req st $ \a st' ->
+        st' `seq` unActionT (k a) conf req st' cont
+    fail _ = ActionT $ \_ _ _ _ -> return Pass
 
 instance MonadIO m => MonadIO (ActionT m) where
-    liftIO m = ActionT $ \_ st cont ->
+    liftIO m = ActionT $ \_ _ st cont ->
         liftIO m >>= \a -> cont a st
 
 instance MonadTrans ActionT where
-    lift m = ActionT $ \_ st cont ->
+    lift m = ActionT $ \_ _ st cont ->
         m >>= \a -> cont a st
 
 instance MonadThrow m => MonadThrow (ActionT m) where
-    throwM e = ActionT $ \_ st cont ->
+    throwM e = ActionT $ \_ _ st cont ->
         throwM e >>= \a -> cont a st
 
 instance MonadCatch m => MonadCatch (ActionT m) where
-    catch m h = actionT $ \rdr st -> 
-        catch (runActionT m rdr st) (\e -> runActionT (h e) rdr st)
+    catch m h = actionT $ \conf req st -> 
+        catch (runActionT m conf req st) (\e -> runActionT (h e) conf req st)
 
 instance MonadMask m => MonadMask (ActionT m) where
-    mask a = actionT $ \rdr st ->
-        mask $ \u -> runActionT (a $ q u) rdr st
+    mask a = actionT $ \conf req st ->
+        mask $ \u -> runActionT (a $ q u) conf req st
       where
-        q u m = actionT $ \rdr st -> u (runActionT m rdr st)
-    uninterruptibleMask a = actionT $ \rdr st ->
-        uninterruptibleMask $ \u -> runActionT (a $ q u) rdr st
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+    uninterruptibleMask a = actionT $ \conf req st ->
+        uninterruptibleMask $ \u -> runActionT (a $ q u) conf req st
       where
-        q u m = actionT $ \rdr st -> u (runActionT m rdr st)
+        q u m = actionT $ \conf req st -> u (runActionT m conf req st)
 
 runActionT :: Monad m => ActionT m a
-           -> ApiaryReader -> ActionState
+           -> ApiaryConfig -> Request -> ActionState
            -> m (Action (a, ActionState))
-runActionT m rdr st = unActionT m rdr st $ \a st' ->
+runActionT m conf req st = unActionT m conf req st $ \a st' ->
     st' `seq` return (Continue (a, st'))
 {-# INLINE runActionT #-}
 
 actionT :: Monad m 
-        => (ApiaryReader -> ActionState -> m (Action (a, ActionState)))
+        => (ApiaryConfig -> Request -> ActionState -> m (Action (a, ActionState)))
         -> ActionT m a
-actionT f = ActionT $ \rdr st cont -> f rdr st >>= \case
+actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
     Pass             -> return Pass
     Stop s           -> return $ Stop s
     Continue (a,st') -> st' `seq` cont a st'
@@ -163,15 +158,16 @@ actionT f = ActionT $ \rdr st cont -> f rdr st >>= \case
 -- | n must be Monad, so cant be MFunctor.
 hoistActionT :: (Monad m, Monad n)
              => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
-hoistActionT run m = actionT $ \r s -> run (runActionT m r s)
+hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
+
 #ifdef WAI3
 execActionT config m request send = 
 #else
 execActionT config m request = let send = return in
 #endif
-    runActionT m (ApiaryReader config request $ pathInfo request) (initialState config request) >>= \case
+    runActionT m config request (initialState config request) >>= \case
 #ifdef WAI3
         Pass           -> notFound config request send
 #else
@@ -185,20 +181,20 @@ instance (Monad m, Functor m) => Alternative (ActionT m) where
     (<|>) = mplus
 
 instance Monad m => MonadPlus (ActionT m) where
-    mzero = actionT $ \_ _ -> return Pass
-    mplus m n = actionT $ \r s -> runActionT m r s >>= \case
+    mzero = actionT $ \_ _ _ -> return Pass
+    mplus m n = actionT $ \c r s -> runActionT m c r s >>= \case
         Continue a -> return $ Continue a
         Stop stp   -> return $ Stop stp
-        Pass       -> runActionT n r s
+        Pass       -> runActionT n c r s
 
 instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault
 
 instance MonadTransControl ActionT where
     newtype StT ActionT a = StActionT { unStActionT :: Action (a, ActionState) }
-    liftWith f = actionT $ \r s -> 
-        liftM (\a -> Continue (a,s)) (f $ \t -> liftM StActionT $ runActionT t r s)
-    restoreT m = actionT $ \_ _ -> liftM unStActionT m
+    liftWith f = actionT $ \c r s -> 
+        liftM (\a -> Continue (a,s)) (f $ \t -> liftM StActionT $ runActionT t c r s)
+    restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
 
 instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
     newtype StM (ActionT m) a = StMT { unStMT :: ComposeSt ActionT m a }
@@ -209,26 +205,23 @@ instance MonadReader r m => MonadReader r (ActionT m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
-askAction :: Monad m => ActionT m ApiaryReader
-askAction = ActionT $ \r s c -> c r s
-
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT m a
-stop = ActionT $ \_ s _ -> return $ Stop (actionResponse s)
+stop = ActionT $ \_ _ s _ -> return $ Stop (actionResponse s)
 
 -- | stop with response. since 0.4.2.0.
 stopWith :: Monad m => Response -> ActionT m a
-stopWith a = ActionT $ \_ _ _ -> return $ Stop a
+stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 
 -- | get raw request. since 0.1.0.0.
 getRequest :: Monad m => ActionT m Request
-getRequest = readerRequest <$> askAction
+getRequest = ActionT $ \_ r s c -> c r s
 
 getRequestBody :: MonadIO m => ActionT m ([Param], [File L.ByteString])
-getRequestBody = ActionT $ \r s c -> case actionReqBody s of
+getRequestBody = ActionT $ \_ r s c -> case actionReqBody s of
     Just b  -> c b s
     Nothing -> do
-        b <- liftIO $ parseRequestBody lbsBackEnd (readerRequest r)
+        b <- liftIO $ parseRequestBody lbsBackEnd r
         c b s { actionReqBody = Just b }
 
 -- | parse request body and return params. since 0.9.0.0.
@@ -240,13 +233,13 @@ getReqFiles :: MonadIO m => ActionT m [File L.ByteString]
 getReqFiles = snd <$> getRequestBody
 
 getConfig :: Monad m => ActionT m ApiaryConfig
-getConfig = readerConfig <$> askAction
+getConfig = ActionT $ \c _ s cont -> cont c s
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
-modifyState f = ActionT $ \_ s c -> c () (f s)
+modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
 getState :: ActionT m ActionState
-getState = ActionT $ \_ s c -> c s s
+getState = ActionT $ \_ _ s c -> c s s
 
 -- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT m RequestHeaders
