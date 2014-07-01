@@ -47,7 +47,7 @@ data Session = Session
 data SessionConfig = SessionConfig
     { keyFile               :: FilePath
     , maxAge                :: DiffTime
-    , path                  :: Maybe S.ByteString
+    , cookiePath            :: Maybe S.ByteString
     , domain                :: Maybe S.ByteString
     , httpOnly              :: Bool
     , secure                :: Bool
@@ -89,7 +89,7 @@ mkSessionCookie conf key k v = do
     v' <- encryptIO key $ L.toStrict $ encode (BinUTCTime expire, v)
     return def { setCookieName     = k
                , setCookieValue    = v'
-               , setCookiePath     = path conf
+               , setCookiePath     = cookiePath conf
                , setCookieExpires  = Just expire
                , setCookieMaxAge   = Just (maxAge conf)
                , setCookieDomain   = domain conf
