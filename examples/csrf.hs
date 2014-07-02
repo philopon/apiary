@@ -19,7 +19,7 @@ page tok = do
 
 
 main :: IO ()
-main = withSession def { secure = False } $ run 3000 . runApiary def $ do
+main = withSession def { sessionSecure = False } $ run 3000 . runApiary def $ do
     root $ do  
         stdMethod GET . action $ csrfToken >>= page
 
