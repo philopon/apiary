@@ -1,5 +1,5 @@
 name:                apiary-clientsession
-version:             0.10.0
+version:             0.11.0
 synopsis:            clientsession support for apiary web framework.
 description:
   examples:
@@ -27,8 +27,8 @@ library
   other-extensions:    
   build-depends:       base               >=4.6   && <4.8
                      , bytestring         >=0.10  && <0.11
-                     , apiary             >=0.9   && <0.11
-                     , apiary-cookie      >=0.9   && <0.11
+                     , apiary             >=0.9   && <0.12
+                     , apiary-cookie      >=0.9   && <0.12
                      , clientsession      >=0.9   && <0.10
                      , time               >=1.4   && <1.5
                      , data-default-class >=0.0   && <0.1

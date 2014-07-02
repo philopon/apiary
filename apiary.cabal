@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.10.0
+version:             0.11.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -61,7 +61,6 @@ library
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
                        Control.Monad.Apiary.Filter.Internal
-                       Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Strategy
                        Control.Monad.Apiary.Action
 
@@ -70,6 +69,7 @@ library
 
   other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
+                       Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Capture.TH
                        Web.Apiary.TH
   other-extensions:    KindSignatures

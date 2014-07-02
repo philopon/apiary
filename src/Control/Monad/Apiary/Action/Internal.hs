@@ -66,14 +66,16 @@ data ActionState
         , actionStatus   :: Status
         , actionHeaders  :: ResponseHeaders
         , actionReqBody  :: Maybe ([Param], [File L.ByteString])
+        , actionPathInfo :: [T.Text]
         }
 
-initialState :: ApiaryConfig -> ActionState
-initialState conf = ActionState
+initialState :: ApiaryConfig -> Request -> ActionState
+initialState conf req = ActionState
     { actionResponse = responseLBS (defaultStatus conf) (defaultHeader conf) ""
     , actionStatus   = defaultStatus conf
     , actionHeaders  = defaultHeader conf
     , actionReqBody  = Nothing
+    , actionPathInfo = pathInfo req
     }
 
 #ifndef WAI3
@@ -161,16 +163,18 @@ hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
 
 #ifdef WAI3
-execActionT config m request send = runActionT m config request (initialState config) >>= \case
+execActionT config m request send = 
+#else
+execActionT config m request = let send = return in
+#endif
+    runActionT m config request (initialState config request) >>= \case
+#ifdef WAI3
         Pass           -> notFound config request send
+#else
+        Pass           -> notFound config request
+#endif
         Stop s         -> send s
         Continue (_,r) -> send $ actionResponse r
-#else
-execActionT config m request = runActionT m config request (initialState config) >>= \case
-        Pass           -> notFound config request
-        Stop s         -> return s
-        Continue (_,r) -> return $ actionResponse r
-#endif
 
 instance (Monad m, Functor m) => Alternative (ActionT m) where
     empty = mzero
@@ -233,6 +237,9 @@ getConfig = ActionT $ \c _ s cont -> cont c s
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT $ \_ _ s c -> c () (f s)
+
+getState :: ActionT m ActionState
+getState = ActionT $ \_ _ s c -> c s s
 
 -- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT m RequestHeaders

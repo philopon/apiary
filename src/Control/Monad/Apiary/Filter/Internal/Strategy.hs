@@ -19,12 +19,12 @@ class Strategy (w :: * -> *) where
   type SNext w (as :: [*]) a  :: [*]
   readStrategy :: (v -> Maybe a)
                -> ((k,v) -> Bool)
-               -> Proxy (w a)
+               -> proxy (w a)
                -> [(k, v)]
                -> SList as 
                -> Maybe (SList (SNext w as a))
 
-getQuery :: (v -> Maybe a) -> Proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
+getQuery :: (v -> Maybe a) -> proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
 getQuery readf _ kf = map readf . map snd . filter kf
 
 -- | get first matched key( [1,) params to Type.). since 0.5.0.0.
@@ -97,10 +97,10 @@ instance (Reifies u Int) => Strategy (LimitSome u) where
                [] -> Nothing
                as -> Just $ sSnoc l as
 
-reflectLimit :: Reifies n Int => Proxy (LimitSome n a) -> Int
+reflectLimit :: Reifies n Int => proxy (LimitSome n a) -> Int
 reflectLimit p = reflect $ asTyInt p
   where
-    asTyInt :: Proxy (LimitSome u a) -> Proxy u
+    asTyInt :: proxy (LimitSome u a) -> Proxy u
     asTyInt _ = Proxy
 
 -- | type check ( [0,) params to No argument ) since 0.5.0.0.
