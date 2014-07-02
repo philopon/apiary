@@ -45,12 +45,12 @@ data Session = Session
     }
 
 data SessionConfig = SessionConfig
-    { keyFile               :: FilePath
-    , maxAge                :: DiffTime
-    , cookiePath            :: Maybe S.ByteString
-    , domain                :: Maybe S.ByteString
-    , httpOnly              :: Bool
-    , secure                :: Bool
+    { sessionKeyFile        :: FilePath
+    , sessionMaxAge         :: DiffTime
+    , sessionPath           :: Maybe S.ByteString
+    , sessionDomain         :: Maybe S.ByteString
+    , sessionHttpOnly       :: Bool
+    , sessionSecure         :: Bool
 
     , angularXsrfCookieName :: Maybe S.ByteString
     , csrfTokenCookieName   :: S.ByteString
@@ -66,7 +66,7 @@ instance Default SessionConfig where
 
 withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
 withSession cfg@SessionConfig{..} m = do
-    k <- liftIO $ getKey keyFile
+    k <- liftIO $ getKey sessionKeyFile
     p <- liftIO $ makeSystem >>= newIORef
     let sess = Session k p cfg
     m sess
@@ -85,16 +85,16 @@ instance Binary BinUTCTime where
 mkSessionCookie :: SessionConfig -> Key -> S.ByteString -> S.ByteString -> IO SetCookie
 mkSessionCookie conf key k v = do
     t <- getCurrentTime
-    let expire = addUTCTime (realToFrac $ maxAge conf) t
+    let expire = addUTCTime (realToFrac $ sessionMaxAge conf) t
     v' <- encryptIO key $ L.toStrict $ encode (BinUTCTime expire, v)
     return def { setCookieName     = k
                , setCookieValue    = v'
-               , setCookiePath     = cookiePath conf
+               , setCookiePath     = sessionPath conf
                , setCookieExpires  = Just expire
-               , setCookieMaxAge   = Just (maxAge conf)
-               , setCookieDomain   = domain conf
-               , setCookieHttpOnly = httpOnly conf
-               , setCookieSecure   = secure conf
+               , setCookieMaxAge   = Just (sessionMaxAge conf)
+               , setCookieDomain   = sessionDomain conf
+               , setCookieHttpOnly = sessionHttpOnly conf
+               , setCookieSecure   = sessionSecure conf
                }
 
 getSessionValue :: Session -> UTCTime -- ^ current time

@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.Text.Encoding as T
 
 main :: IO ()
-main = withSession def { path = Just "/", secure = False} $ withAuth def $ run 3000 . runApiary def $ do
+main = withSession def { sessionPath = Just "/", sessionSecure = False} $ withAuth def $ run 3000 . runApiary def $ do
 
     root . stdMethod GET $ do
         authorized . action $ \s -> do
