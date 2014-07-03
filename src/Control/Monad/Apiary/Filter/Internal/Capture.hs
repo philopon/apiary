@@ -32,7 +32,7 @@ path p = focus $ \l -> l <$ path'
         c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
         _            -> empty
 
--- | check consumed pathes. since v0.12.0.
+-- | check consumed pathes. since v0.11.1.
 endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
 endPath = focus $ \l -> l <$ end
   where
