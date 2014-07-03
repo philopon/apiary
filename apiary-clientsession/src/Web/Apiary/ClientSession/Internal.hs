@@ -20,7 +20,6 @@ import Web.Apiary hiding (Default(..))
 import Web.Apiary.Cookie
 import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
-import Data.Proxy
 import Data.Maybe
 import Data.Time
 import Data.Default.Class
@@ -129,7 +128,7 @@ csrfToken Session{..} = do
                            }
 
 session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
-        -> S.ByteString -> Proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
+        -> S.ByteString -> proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session sess k p = focus $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime

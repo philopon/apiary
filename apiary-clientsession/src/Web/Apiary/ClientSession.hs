@@ -26,7 +26,6 @@ import Web.Apiary.Cookie (deleteCookie)
 import Data.Reflection
 import qualified Data.ByteString as S
 import Control.Monad.Apiary.Filter.Internal.Strategy
-import Data.Proxy
 
 type HasSession = Given I.Session
 
@@ -46,7 +45,7 @@ csrfToken :: (MonadIO m, HasSession) => ActionT m S.ByteString
 csrfToken = I.csrfToken given
 
 session :: (Functor n, MonadIO n, Strategy w, Query a, HasSession)
-        => S.ByteString -> Proxy (w a)
+        => S.ByteString -> proxy (w a)
         -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session = I.session given
 

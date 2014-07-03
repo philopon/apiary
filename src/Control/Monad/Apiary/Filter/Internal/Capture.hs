@@ -26,11 +26,19 @@ import Control.Monad.Apiary.Filter.Internal
 -- | check first path and drill down. since v0.11.0.
 path :: (Functor n, Monad n) 
      => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-path p = focus $ \l -> path' >> return l
+path p = focus $ \l -> l <$ path'
   where
     path' = liftM actionPathInfo getState >>= \case
         c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
         _            -> empty
+
+-- | check consumed pathes. since v0.11.1.
+endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
+endPath = focus $ \l -> l <$ end
+  where
+    end = liftM actionPathInfo getState >>= \case
+        [] -> return ()
+        _  -> empty
 
 -- | get first path and drill down. since v0.11.0.
 fetch :: (Path a, Functor n, Monad n)

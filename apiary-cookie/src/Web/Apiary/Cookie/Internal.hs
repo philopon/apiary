@@ -13,7 +13,6 @@ import Web.Apiary.Wai
 import Web.Apiary
 import Web.Cookie
 import Data.Maybe
-import Data.Proxy
 import Data.Time
 
 import Control.Monad.Apiary.Filter.Internal
@@ -39,7 +38,7 @@ cond p t f a = if p a then t a else f a
 -- @
 cookie :: (Strategy w, Query a, Functor n, Monad n)
        => S.ByteString
-       -> Proxy (w a)
+       -> proxy (w a)
        -> ApiaryT (SNext w as a) n m b
        -> ApiaryT as n m b
 cookie k p = function $ \l r -> readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l

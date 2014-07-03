@@ -124,7 +124,8 @@ captureTest = testGroup "capture"
     , testReq "POST /12"  $ assertPlain200 "Double 12.0" captureApp
     , testReq "GET /bar"  $ assertPlain200 "fall bar" captureApp
     , testReq "GET /baz"  $ assertPlain200 "fall baz" captureApp
-    , testReq "GET /bar/nyan/12" $ assertPlain200 "nyan 12" captureApp
+    , testReq "GET /bar/nyan/12"       $ assertPlain200 "nyan 12" captureApp
+    , testReq "GET /bar/nyan/12/other" $ assert404 captureApp
     ]
 
 --------------------------------------------------------------------------------
