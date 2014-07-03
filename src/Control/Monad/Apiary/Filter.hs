@@ -18,6 +18,7 @@ module Control.Monad.Apiary.Filter (
     , root
     , capture
     , Capture.path
+    , Capture.endPath
     , Capture.fetch
 
     -- ** query matcher

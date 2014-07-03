@@ -18,7 +18,7 @@ splitPath :: String -> [String]
 splitPath = map T.unpack . T.splitOn "/" . T.pack
 
 mkCap :: [String] -> ExpQ
-mkCap [] = [|id|]
+mkCap [] = [|Capture.endPath|]
 mkCap ((':':tyStr):as) = do
     -- ty <- lookupTypeName tyStr >>= maybe (fail "") return
     let ty = mkName tyStr
