@@ -154,7 +154,7 @@ pString = Proxy
 pVoid :: Proxy ()
 pVoid = Proxy
 
-pMaybe :: Proxy a -> Proxy (Maybe a)
+pMaybe :: proxy a -> Proxy (Maybe a)
 pMaybe _ = Proxy
 
 pFile :: Proxy (File L.ByteString)

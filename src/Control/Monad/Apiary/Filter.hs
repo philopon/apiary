@@ -112,10 +112,10 @@ root m = do
 -- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
 -- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
 -- @
-query :: forall a as w n m b. 
+query :: forall a as w n m b proxy. 
       (ReqParam a, Strategy.Strategy w, Functor n, MonadIO n)
       => S.ByteString
-      -> Proxy (w a)
+      -> proxy (w a)
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
 query key p = focus $ \l -> do
@@ -131,7 +131,7 @@ query key p = focus $ \l -> do
 -- @
 -- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
 -- @
-(=:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(=:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
      -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 k =: t = query k (pFirst t)
 
@@ -142,7 +142,7 @@ k =: t = query k (pFirst t)
 -- @
 -- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
 -- @
-(=!:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(=!:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
       -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 k =!: t = query k (pOne t)
 
@@ -153,7 +153,7 @@ k =!: t = query k (pOne t)
 -- @
 -- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
 -- @
-(=?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(=?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
       -> ApiaryT (Snoc as (Maybe a)) n m b -> ApiaryT as n m b
 k =?: t = query k (pOption t)
 
@@ -164,7 +164,7 @@ k =?: t = query k (pOption t)
 -- @
 -- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Proxy :: Proxy (Check Int))
 -- @
-(?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(?:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
      -> ApiaryT as n m b -> ApiaryT as n m b
 k ?: t = query k (pCheck t)
 
@@ -173,7 +173,7 @@ k ?: t = query k (pCheck t)
 -- @
 -- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
 -- @
-(=*:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(=*:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
 k =*: t = query k (pMany t)
 
@@ -182,7 +182,7 @@ k =*: t = query k (pMany t)
 -- @
 -- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
 -- @
-(=+:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> Proxy a 
+(=+:) :: (Functor n, MonadIO n, ReqParam a) => S.ByteString -> proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
 k =+: t = query k (pSome t)
 
