@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 import Test.Framework
 import Test.Framework.Providers.HUnit
