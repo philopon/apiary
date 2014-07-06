@@ -1,4 +1,4 @@
-.cabal-sandbox
+.cabal-sandbox*
 cabal.sandbox.config
 dist
 .DS_Store
@@ -8,3 +8,4 @@ client_session_key.aes
 *.dyn_o
 *.dyn_hi
 password
+*.swp

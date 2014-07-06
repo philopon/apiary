@@ -1,0 +1,39 @@
+name:                apiary-eventsource
+version:             0.11.0
+synopsis:            
+description:
+license:             MIT
+license-file:        LICENSE
+author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
+maintainer:          HirotomoMoriwaki<philopon.dependence@gmail.com>
+Homepage:            https://github.com/philopon/apiary
+Bug-reports:         https://github.com/philopon/apiary/issues
+copyright:           (c) 2014 Hirotomo Moriwaki
+category:            Web
+build-type:          Simple
+stability:           experimental
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+flag wai2apiary
+  default: False
+  manual:  False
+
+library
+  exposed-modules:     Web.Apiary.EventSource
+  build-depends:       base              >=4.6    && <4.8
+                     , apiary            >=0.11.3 && <0.12
+                     , blaze-builder     >=0.3    && <0.4
+  if flag(wai2apiary)
+    build-depends:     wai-eventsource   >=2.0    && <3.0
+                     , conduit           >=1.1    && <1.2
+  else
+    build-depends:     wai-extra         >=3.0    && <3.1
+
+  hs-source-dirs:      src
+  ghc-options:         -O2 -Wall
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: git://github.com/philopon/apiary.git
