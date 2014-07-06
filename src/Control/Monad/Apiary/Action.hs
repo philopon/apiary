@@ -36,6 +36,7 @@ module Control.Monad.Apiary.Action
     , redirectWith
     -- * Reexport
     , module Data.Default.Class
+    , module Network.HTTP.Types.Status
     
     -- * deprecated
     , redirectFound, redirectSeeOther, source
@@ -43,3 +44,4 @@ module Control.Monad.Apiary.Action
 
 import Control.Monad.Apiary.Action.Internal
 import Data.Default.Class
+import Network.HTTP.Types.Status hiding (mkStatus)
