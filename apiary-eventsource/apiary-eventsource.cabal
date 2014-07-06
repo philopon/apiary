@@ -1,5 +1,5 @@
-name:                apiary-
-version:             0.11.0.0
+name:                apiary-eventsource
+version:             0.11.3
 synopsis:            
 description:
 license:             MIT
@@ -15,11 +15,20 @@ stability:           experimental
 -- extra-source-files:  
 cabal-version:       >=1.10
 
+flag wai2apiary
+  default: False
+  manual:  False
+
 library
-  exposed-modules:     
-  other-modules:       
-  build-depends:       base              >=4.6   && <4.8
-                     , apiary            >=0.11  && <0.12
+  exposed-modules:     Web.Apiary.EventSource
+  build-depends:       base              >=4.6    && <4.8
+                     , apiary            >=0.11.3 && <0.12
+                     , blaze-builder     >=0.3    && <0.4
+  if flag(wai2apiary)
+    build-depends:     wai-eventsource   >=2.0    && <3.0
+                     , conduit           >=1.1    && <1.2
+  else
+    build-depends:     wai-extra         >=3.0    && <3.1
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

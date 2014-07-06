@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>websocket test</title>
+    <script>
+      window.addEventListener('load', function() {
+        var div    = document.getElementById("msg");
+
+        var source = new EventSource('/es');
+        source.onmessage = function(event) {
+            div.innerHTML += "Event: " + event.data + "<br>";
+          }
+
+      });
+    </script>
+  </head>
+  <body>
+    <div id="msg"></div>
+  </bodY>
+</html>

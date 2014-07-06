@@ -4,3 +4,4 @@ apiary-websockets
 apiary-cookie
 apiary-clientsession
 apiary-authenticate
+apiary-eventsource
