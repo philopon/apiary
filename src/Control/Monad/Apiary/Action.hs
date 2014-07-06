@@ -26,9 +26,7 @@ module Control.Monad.Apiary.Action
     , stream
     , response
 
-#ifndef WAI3
     , StreamingBody
-#endif
 
     -- ** monolithic action
     -- *** redirect
@@ -45,3 +43,7 @@ module Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Action.Internal
 import Data.Default.Class
 import Network.HTTP.Types.Status hiding (mkStatus)
+
+#ifdef WAI3
+import Network.Wai
+#endif
