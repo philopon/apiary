@@ -1,7 +1,8 @@
 name:                apiary-eventsource
 version:             0.11.3
-synopsis:            
+synopsis:            eventsource support for apiary web framework.
 description:
+  example: <https://github.com/philopon/apiary/blob/master/examples/eventsource.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
