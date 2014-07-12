@@ -90,9 +90,6 @@ runApiaryT run conf m = unApiaryT m (return SNil) conf (\_ w -> return w) >>= \a
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
 runApiary conf m = runIdentity $ runApiaryT id conf m
 
-class MonadApiary c' m where
-  foa :: (SList c -> ActionT n (SList c')) -> m a -> m a
-
 getGuard :: (Functor n, Monad n) => ApiaryT c n m (ActionT n (SList c))
 getGuard = ApiaryT $ \grd _ c -> c grd empty
 

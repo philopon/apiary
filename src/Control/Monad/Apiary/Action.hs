@@ -1,8 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action 
-    (
-      ActionT
+    ( ActionT
     , ApiaryConfig(..)
     -- * actions
     , stop, stopWith

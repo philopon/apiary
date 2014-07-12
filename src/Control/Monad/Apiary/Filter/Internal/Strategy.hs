@@ -16,13 +16,13 @@ import Data.Proxy
 import Data.Reflection
 
 class Strategy (w :: * -> *) where
-  type SNext w (as :: [*]) a  :: [*]
-  readStrategy :: (v -> Maybe a)
-               -> ((k,v) -> Bool)
-               -> proxy (w a)
-               -> [(k, v)]
-               -> SList as 
-               -> Maybe (SList (SNext w as a))
+    type SNext w (as :: [*]) a  :: [*]
+    readStrategy :: (v -> Maybe a)
+                 -> ((k,v) -> Bool)
+                 -> proxy (w a)
+                 -> [(k, v)]
+                 -> SList as 
+                 -> Maybe (SList (SNext w as a))
 
 getQuery :: (v -> Maybe a) -> proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
 getQuery readf _ kf = map readf . map snd . filter kf

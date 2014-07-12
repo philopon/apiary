@@ -36,7 +36,7 @@ readPathAs :: Path a => proxy a -> T.Text -> Maybe a
 readPathAs _ t = readPath t
 
 class Path a where
-  readPath :: T.Text -> Maybe a
+    readPath :: T.Text -> Maybe a
 
 instance Path Char where
     readPath    s | T.null s  = Nothing
@@ -161,7 +161,7 @@ pFile :: Proxy (File L.ByteString)
 pFile = Proxy
 
 class ReqParam a where
-  reqParams :: Proxy a -> Request -> [Param] -> [File L.ByteString] -> [(S.ByteString, Maybe a)]
+    reqParams :: Proxy a -> Request -> [Param] -> [File L.ByteString] -> [(S.ByteString, Maybe a)]
 
 instance ReqParam (FileInfo L.ByteString) where
     reqParams _ _ _ f = map (\(k,v) -> (k, Just v)) f
