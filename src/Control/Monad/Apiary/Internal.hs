@@ -23,25 +23,29 @@ import Control.Monad.Identity
 import Control.Monad.Trans.Control
 import Control.Monad.Base
 import Data.Apiary.SList
+import Data.Apiary.Document
 import Data.Monoid
+import qualified Data.Text as T
 
 import Control.Monad.Apiary.Action.Internal
 
 data ApiaryReader n c = ApiaryReader
     { readerFilter :: ActionT n (SList c)
     , readerConfig :: ApiaryConfig
+    , readerDoc    :: Doc -> Doc
     }
 
 data ApiaryWriter n = ApiaryWriter
     { writerHandler :: ActionT n ()
+    , writerDoc     :: [Doc]
     }
 
 instance Monad n => Monoid (ApiaryWriter n) where
-    mempty = ApiaryWriter mzero
-    ApiaryWriter ah `mappend` ApiaryWriter bh = ApiaryWriter (mplus ah bh)
+    mempty = ApiaryWriter mzero []
+    ApiaryWriter ah ad `mappend` ApiaryWriter bh bd = ApiaryWriter (mplus ah bh) (ad <> bd)
 
 initialReader :: Monad n => ApiaryConfig -> ApiaryReader n '[]
-initialReader conf = ApiaryReader (return SNil) conf
+initialReader conf = ApiaryReader (return SNil) conf id
 
 -- | most generic Apiary monad. since 0.8.0.0.
 newtype ApiaryT c n m a = ApiaryT { unApiaryT :: forall b.
@@ -99,10 +103,14 @@ instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) w
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
+runApiaryT' :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
+            -> ApiaryT '[] n m a -> m (Application, Documents)
+runApiaryT' run conf m = unApiaryT m (initialReader conf) (\_ w -> return w) >>= \wtr ->
+    return (execActionT conf (hoistActionT run $ writerHandler wtr), docsToDocuments $ writerDoc wtr)
+
 runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
-            -> ApiaryT '[] n m a -> m Application
-runApiaryT run conf m = unApiaryT m (initialReader conf) (\_ w -> return w) >>= \act ->
-    return $ execActionT conf (hoistActionT run $ writerHandler act)
+           -> ApiaryT '[] n m a -> m Application
+runApiaryT run conf m = fst `liftM` runApiaryT' run conf m
 
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
 runApiary conf m = runIdentity $ runApiaryT id conf m
@@ -114,13 +122,24 @@ addRoute :: Monad n => ApiaryWriter n -> ApiaryT c n m ()
 addRoute r = ApiaryT $ \_ cont -> cont () r
 
 -- | filter by action. since 0.6.1.0.
-focus :: Monad n => (SList c -> ActionT n (SList c'))
+focus :: Monad n => (Doc -> Doc) -> (SList c -> ActionT n (SList c'))
       -> ApiaryT c' n m a -> ApiaryT c n m a
-focus g m = ApiaryT $ \rdr cont -> unApiaryT m rdr { readerFilter = readerFilter rdr >>= g } cont
+focus d g m = ApiaryT $ \rdr cont -> unApiaryT m rdr 
+    { readerFilter = readerFilter rdr >>= g 
+    , readerDoc    = readerDoc rdr . d
+    } cont
+
+group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+group d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
+    { readerDoc = readerDoc rdr . Group d } cont
 
 -- | splice ActionT ApiaryT.
 action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
 action = action' . apply
+
+document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+document d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
+    { readerDoc = \_ -> readerDoc rdr (Leaf $ Just d) } cont
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since v0.4.2.0
@@ -129,8 +148,12 @@ actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
 actionWithPreAction pa a = do
     action' $ \c -> pa c >> apply a c
 
+getReader :: Monad n => ApiaryT c n m (ApiaryReader n c)
+getReader = ApiaryT $ \rdr cont -> cont rdr mempty
+
 -- | like action. but not apply arguments. since 0.8.0.0.
 action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
 action' a = do
-    rdr <- ApiaryT $ \rdr cont -> cont rdr mempty
-    addRoute $ ApiaryWriter (readerFilter rdr >>= \c -> a c)
+    rdr <- getReader
+    addRoute $ ApiaryWriter (readerFilter rdr >>= \c -> a c) 
+        [readerDoc rdr $ Leaf Nothing]

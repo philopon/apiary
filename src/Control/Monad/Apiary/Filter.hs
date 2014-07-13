@@ -56,6 +56,7 @@ import Data.Reflection
 
 import Data.Apiary.SList
 import Data.Apiary.Param
+import Data.Apiary.Document
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
@@ -67,7 +68,7 @@ import Control.Monad.Apiary.Internal
 
 -- | filter by HTTP method. since 0.1.0.0.
 method :: Monad n => HT.Method -> ApiaryT c n m a -> ApiaryT c n m a
-method m = function_ ((m ==) . requestMethod)
+method m = function_ (Method m) ((m ==) . requestMethod)
 
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.
 stdMethod :: Monad n => StdMethod -> ApiaryT c n m a -> ApiaryT c n m a
@@ -75,11 +76,11 @@ stdMethod = method . HT.renderStdMethod
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad n => ApiaryT c n m a -> ApiaryT c n m a
-ssl = function_ isSecure
+ssl = function_ id isSecure
 
 -- | http version filter. since 0.5.0.0.
 httpVersion :: Monad n => HT.HttpVersion -> ApiaryT c n m b -> ApiaryT c n m b
-httpVersion v = function_ $ (v ==) . Wai.httpVersion
+httpVersion v = function_ id $ (v ==) . Wai.httpVersion
 
 -- | http/0.9 only accepted fiter. since 0.5.0.0.
 http09 :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
@@ -97,7 +98,7 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
 root :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
-    function_ (\r -> rawPathInfo r `elem` rs) m
+    function_ Root (\r -> rawPathInfo r `elem` rs) m
 
 -- | low level query getter. since 0.5.0.0.
 --
@@ -118,7 +119,7 @@ query :: forall a as w n m b proxy.
       -> proxy (w a)
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
-query key p = focus $ \l -> do
+query key p = focus (Query key (Strategy.strategyRep (Proxy :: Proxy w)) $ reqParamRep (Proxy :: Proxy a)) $ \l -> do
     r     <- getRequest
     (q,f) <- getRequestBody
 
@@ -228,5 +229,5 @@ header' :: (Strategy.Strategy w, Monad n)
         -> (HT.Header -> Bool)
         -> ApiaryT (Strategy.SNext w as S.ByteString) n m b
         -> ApiaryT as n m b
-header' pf kf = function $ \l r ->
+header' pf kf = function id $ \l r ->
     Strategy.readStrategy Just kf (pf pByteString) (requestHeaders r) l

@@ -8,6 +8,8 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -20,10 +22,11 @@ import Control.Monad.Catch
 import Control.Monad.Trans.Control
 
 import Network.Wai
-import Network.Wai.Parse
+import qualified Network.Wai.Parse as P
 import Network.Mime
 import Network.HTTP.Types
 
+import Data.Apiary.Param
 import Data.Default.Class
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
@@ -62,11 +65,14 @@ instance Default ApiaryConfig where
         , mimeType      = defaultMimeLookup . T.pack
         }
 
+convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File
+convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
+
 data ActionState = ActionState
     { actionResponse :: Response
     , actionStatus   :: Status
     , actionHeaders  :: ResponseHeaders
-    , actionReqBody  :: Maybe ([Param], [File L.ByteString])
+    , actionReqBody  :: Maybe ([Param], [File])
     , actionPathInfo :: [T.Text]
     }
 
@@ -218,11 +224,12 @@ stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
 
-getRequestBody :: MonadIO m => ActionT m ([Param], [File L.ByteString])
+getRequestBody :: MonadIO m => ActionT m ([Param], [File])
 getRequestBody = ActionT $ \_ r s c -> case actionReqBody s of
     Just b  -> c b s
     Nothing -> do
-        b <- liftIO $ parseRequestBody lbsBackEnd r
+        (p,f) <- liftIO $ P.parseRequestBody P.lbsBackEnd r
+        let b = (p, map convFile f)
         c b s { actionReqBody = Just b }
 
 -- | parse request body and return params. since 0.9.0.0.
@@ -230,7 +237,7 @@ getReqParams :: MonadIO m => ActionT m [Param]
 getReqParams = fst <$> getRequestBody
 
 -- | parse request body and return files. since 0.9.0.0.
-getReqFiles :: MonadIO m => ActionT m [File L.ByteString]
+getReqFiles :: MonadIO m => ActionT m [File]
 getReqFiles = snd <$> getRequestBody
 
 getConfig :: Monad m => ActionT m ApiaryConfig
@@ -262,9 +269,11 @@ addHeader h v = modifyHeader ((h,v):)
 setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
 setHeaders hs = modifyHeader (const hs)
 
+type ContentType = S.ByteString
+
 -- | set content-type header.
 -- if content-type header already exists, replace it. since 0.1.0.0.
-contentType :: Monad m => S.ByteString -> ActionT m ()
+contentType :: Monad m => ContentType -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
 
