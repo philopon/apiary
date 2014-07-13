@@ -20,7 +20,7 @@ import Data.Typeable
 import Data.Maybe
 import Data.Reflection
 #if __GLASGOW_HASKELL__ < 707
-import Data.Typeable
+import Data.Proxy
 #endif
 
 class Strategy (w :: * -> *) where

@@ -42,10 +42,12 @@ data Route
     deriving (Show, Eq)
 
 extractRoute :: Doc -> Route
-extractRoute (DocPath  t     d) = Path  t (extractRoute d)
-extractRoute (DocFetch t     d) = Fetch t (extractRoute d)
-extractRoute (DocRoot  _)       = Path "/" End
-extractRoute d                  = dtail (const End) extractRoute d
+extractRoute = loop id
+  where
+    loop f (DocPath  t d) = loop (f . Path  t) d
+    loop f (DocFetch t d) = loop (f . Fetch t) d
+    loop _ (DocRoot    _) = Path "/" End
+    loop f d              = dtail (const $ f End) (loop f) d
 
 type Documents = [(Maybe T.Text, PathDoc)]
 
