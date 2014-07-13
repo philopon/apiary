@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
 
 module Web.Apiary.Authenticate.Internal where
 
@@ -16,7 +17,9 @@ import Data.Data
 import Data.Maybe
 import Data.List
 import Data.Default.Class
+#if __GLASGOW_HASKELL__ < 707
 import Data.Proxy -- for ghc-7.6
+#endif
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
@@ -75,7 +78,7 @@ withAuthWith sess s conf m = Client.withManager s $ \mgr ->
 authHandler :: (Functor n, MonadIO n) => Auth -> ApiaryT c n m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
-    pfxPath p = function (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
+    pfxPath p = function id (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
     retH = pfxPath (authPrefix config ++ authReturnToPath config) . stdMethod GET . action $
         returnAction authSession manager (authSessionName config) (authSuccessPage config)
