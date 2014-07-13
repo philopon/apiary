@@ -131,7 +131,7 @@ focus d g m = ApiaryT $ \rdr cont -> unApiaryT m rdr
 
 group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 group d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
-    { readerDoc = readerDoc rdr . Group d } cont
+    { readerDoc = readerDoc rdr . DocGroup d } cont
 
 -- | splice ActionT ApiaryT.
 action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
@@ -139,7 +139,7 @@ action = action' . apply
 
 document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 document d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
-    { readerDoc = \_ -> readerDoc rdr (Leaf $ Just d) } cont
+    { readerDoc = \_ -> readerDoc rdr (Document $ Just d) } cont
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since v0.4.2.0
@@ -156,4 +156,4 @@ action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
 action' a = do
     rdr <- getReader
     addRoute $ ApiaryWriter (readerFilter rdr >>= \c -> a c) 
-        [readerDoc rdr $ Leaf Nothing]
+        [readerDoc rdr $ Document Nothing]

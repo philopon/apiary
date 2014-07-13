@@ -8,6 +8,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Filter.Internal.Strategy where
 
@@ -18,6 +19,9 @@ import Data.Apiary.Document
 import Data.Typeable
 import Data.Maybe
 import Data.Reflection
+#if __GLASGOW_HASKELL__ < 707
+import Data.Typeable
+#endif
 
 class Strategy (w :: * -> *) where
     type SNext w (as :: [*]) a  :: [*]

@@ -25,7 +25,7 @@ import Control.Monad.Apiary.Internal
 
 -- | check first path and drill down. since v0.11.0.
 path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-path p = focus (Path p) $ \l -> l <$ path'
+path p = focus (DocPath p) $ \l -> l <$ path'
   where
     path' = liftM actionPathInfo getState >>= \case
         c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
@@ -42,7 +42,7 @@ endPath = focus id $ \l -> l <$ end
 -- | get first path and drill down. since v0.11.0.
 fetch :: (Path a, Monad n)
       => proxy a -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-fetch p = focus (Fetch $ pathRep p) $ \l -> liftM actionPathInfo getState >>= \case
+fetch p = focus (DocFetch $ pathRep p) $ \l -> liftM actionPathInfo getState >>= \case
     []  -> mzero
     c:_ -> case readPathAs p c of
         Nothing -> mzero

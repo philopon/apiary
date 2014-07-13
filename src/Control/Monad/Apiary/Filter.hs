@@ -68,7 +68,7 @@ import Control.Monad.Apiary.Internal
 
 -- | filter by HTTP method. since 0.1.0.0.
 method :: Monad n => HT.Method -> ApiaryT c n m a -> ApiaryT c n m a
-method m = function_ (Method m) ((m ==) . requestMethod)
+method m = function_ (DocMethod m) ((m ==) . requestMethod)
 
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.
 stdMethod :: Monad n => StdMethod -> ApiaryT c n m a -> ApiaryT c n m a
@@ -98,7 +98,7 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
 root :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
-    function_ Root (\r -> rawPathInfo r `elem` rs) m
+    function_ DocRoot (\r -> rawPathInfo r `elem` rs) m
 
 -- | low level query getter. since 0.5.0.0.
 --
@@ -119,7 +119,7 @@ query :: forall a as w n m b proxy.
       -> proxy (w a)
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
-query key p = focus (Query key (Strategy.strategyRep (Proxy :: Proxy w)) $ reqParamRep (Proxy :: Proxy a)) $ \l -> do
+query key p = focus (DocQuery key (Strategy.strategyRep (Proxy :: Proxy w)) $ reqParamRep (Proxy :: Proxy a)) $ \l -> do
     r     <- getRequest
     (q,f) <- getRequestBody
 
