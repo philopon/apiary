@@ -18,11 +18,13 @@ import Control.Monad.Base
 import Control.Monad.Reader
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
+
 import Network.Wai
 import Network.Wai.Parse
 import Network.Mime
-import Data.Default.Class
 import Network.HTTP.Types
+
+import Data.Default.Class
 import Blaze.ByteString.Builder
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -46,9 +48,9 @@ data ApiaryConfig = ApiaryConfig
 
 defNotFound :: Application
 #ifdef WAI3
-defNotFound _ f = f $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defNotFound _ f = f      $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #else
-defNotFound _ = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #endif
 
 instance Default ApiaryConfig where
@@ -60,14 +62,13 @@ instance Default ApiaryConfig where
         , mimeType      = defaultMimeLookup . T.pack
         }
 
-data ActionState 
-    = ActionState
-        { actionResponse :: Response
-        , actionStatus   :: Status
-        , actionHeaders  :: ResponseHeaders
-        , actionReqBody  :: Maybe ([Param], [File L.ByteString])
-        , actionPathInfo :: [T.Text]
-        }
+data ActionState = ActionState
+    { actionResponse :: Response
+    , actionStatus   :: Status
+    , actionHeaders  :: ResponseHeaders
+    , actionReqBody  :: Maybe ([Param], [File L.ByteString])
+    , actionPathInfo :: [T.Text]
+    }
 
 initialState :: ApiaryConfig -> Request -> ActionState
 initialState conf req = ActionState

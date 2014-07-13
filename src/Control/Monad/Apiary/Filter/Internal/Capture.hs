@@ -24,29 +24,28 @@ import Control.Monad.Apiary
 import Control.Monad.Apiary.Filter.Internal
 
 -- | check first path and drill down. since v0.11.0.
-path :: (Functor n, Monad n) 
-     => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 path p = focus $ \l -> l <$ path'
   where
     path' = liftM actionPathInfo getState >>= \case
         c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
-        _            -> empty
+        _            -> mzero
 
 -- | check consumed pathes. since v0.11.1.
-endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
+endPath :: Monad n => ApiaryT c n m a -> ApiaryT c n m a
 endPath = focus $ \l -> l <$ end
   where
     end = liftM actionPathInfo getState >>= \case
         [] -> return ()
-        _  -> empty
+        _  -> mzero
 
 -- | get first path and drill down. since v0.11.0.
-fetch :: (Path a, Functor n, Monad n)
+fetch :: (Path a, Monad n)
       => proxy a -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 fetch p = focus $ \l -> liftM actionPathInfo getState >>= \case
-    []  -> empty
+    []  -> mzero
     c:_ -> case readPathAs p c of
-        Nothing -> empty
+        Nothing -> mzero
         Just r  -> do
             modifyState (\s -> s { actionPathInfo = tail $ actionPathInfo s})
             return (sSnoc l r)
