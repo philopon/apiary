@@ -19,7 +19,6 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid
 import Data.List
 import Data.Function
-import Data.Traversable
 
 data StrategyRep = StrategyRep
     { strategyInfo :: T.Text }
@@ -67,10 +66,10 @@ data MethodDoc = MethodDoc
     , document :: T.Text
     }
 
-docToDocument :: Doc -> Maybe (PathDoc, Maybe T.Text)
+docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup g d') -> (,Just  g) <$> loop id (\md -> [("ANY", md)]) id d'
-    d'              -> (,Nothing) <$> loop id (\md -> [("ANY", md)]) id d'
+    (DocGroup g d') -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id d'
+    d'              -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id d'
   where
     loop ph mh qs (DocPath        t d)  = loop (ph . Path t) mh qs d
     loop _  mh qs (DocRoot          d)  = loop (const $ Path "" End) mh qs d
@@ -91,12 +90,15 @@ mergeMethod (pd:pds) = merge pd (filter (same pd) pds) : mergeMethod (filter (no
 docsToDocuments :: [Doc] -> Documents
 docsToDocuments doc =
     let gds = mapMaybe docToDocument doc
-        ngs = mergeMethod . map fst $ filter ((Nothing ==) . snd) gds
-        gs  = map upGroup . groupBy ((==) `on` snd) $ mapMaybe sequenceA gds
+        ngs = mergeMethod . map snd $ filter ((Nothing ==) . fst)   gds
+        gs  = map upGroup . groupBy ((==) `on` fst) $ mapMaybe trav gds
     in Documents ngs gs
   where
-    upGroup ((d,g):ig) = (g, mergeMethod $ d : map fst ig)
+    upGroup ((g,d):ig) = (g, mergeMethod $ d : map snd ig)
     upGroup []         = error "docsToDocuments: unknown error."
+
+    trav (Nothing, _) = Nothing
+    trav (Just a,  b) = Just (a, b)
 
 routeToHtml :: Route -> (Html, Html)
 routeToHtml = loop (1::Int) mempty []

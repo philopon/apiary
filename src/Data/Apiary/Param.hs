@@ -26,15 +26,16 @@ import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.String(IsString)
-import Data.Typeable hiding (typeRep)
 import Data.Text.Encoding.Error
 import Text.Read
 import Network.Wai
 
 #if __GLASGOW_HASKELL__ > 707
 import qualified Data.Typeable
+import Data.Typeable hiding (typeRep)
 typeRep   = Data.Typeable.typeRep
 #else
+import Data.Typeable
 typeRep _ = typeOf (undefined :: a)
 #endif
 typeRep :: forall proxy a. Typeable a => proxy a -> TypeRep
