@@ -16,6 +16,8 @@ module Control.Monad.Apiary.Filter.Internal.Capture where
 import Control.Applicative
 import Control.Monad
 import qualified Data.Text as T
+import Text.Blaze.Html
+
 import Data.Apiary.Param
 import Data.Apiary.SList
 import Data.Apiary.Document
@@ -40,12 +42,10 @@ endPath = focus id $ \l -> l <$ end
         _  -> mzero
 
 -- | get first path and drill down. since v0.11.0.
-fetch :: (Path a, Monad n)
-      => proxy a -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-fetch p = focus (DocFetch $ pathRep p) $ \l -> liftM actionPathInfo getState >>= \case
+fetch :: (Path a, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
+fetch p h = focus (DocFetch (pathRep p) h) $ \l -> liftM actionPathInfo getState >>= \case
     []  -> mzero
     c:_ -> case readPathAs p c of
         Nothing -> mzero
-        Just r  -> do
-            modifyState (\s -> s { actionPathInfo = tail $ actionPathInfo s})
-            return (sSnoc l r)
+        Just r  -> sSnoc l r <$
+            modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})

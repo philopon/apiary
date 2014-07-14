@@ -42,7 +42,8 @@ data ApiaryWriter n = ApiaryWriter
 
 instance Monad n => Monoid (ApiaryWriter n) where
     mempty = ApiaryWriter mzero []
-    ApiaryWriter ah ad `mappend` ApiaryWriter bh bd = ApiaryWriter (mplus ah bh) (ad <> bd)
+    ApiaryWriter ah ad `mappend` ApiaryWriter bh bd =
+        ApiaryWriter (mplus ah bh) (ad <> bd)
 
 initialReader :: Monad n => ApiaryConfig -> ApiaryReader n '[]
 initialReader conf = ApiaryReader (return SNil) conf id
@@ -105,8 +106,10 @@ instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) w
 
 runApiaryT' :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
             -> ApiaryT '[] n m a -> m (Application, Documents)
-runApiaryT' run conf m = unApiaryT m (initialReader conf) (\_ w -> return w) >>= \wtr ->
-    return (execActionT conf (hoistActionT run $ writerHandler wtr), docsToDocuments $ writerDoc wtr)
+runApiaryT' run conf m = unApiaryT m (initialReader conf) (\_ w -> return w) >>= \wtr -> do
+    let doc = docsToDocuments $ writerDoc wtr
+        app = execActionT conf $ hoistActionT run (writerHandler wtr) `mplus` documentAction conf doc
+    return (app, doc)
 
 runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
            -> ApiaryT '[] n m a -> m Application

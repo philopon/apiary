@@ -27,8 +27,10 @@ import Network.Mime
 import Network.HTTP.Types
 
 import Data.Apiary.Param
+import Data.Apiary.Document
 import Data.Default.Class
 import Blaze.ByteString.Builder
+import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
@@ -39,15 +41,23 @@ import Data.Conduit
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
-      notFound      :: Application
+      notFound       :: Application
       -- | used unless call 'status' function.
-    , defaultStatus :: Status
+    , defaultStatus  :: Status
       -- | initial headers.
-    , defaultHeader :: ResponseHeaders
+    , defaultHeader  :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
-    , rootPattern   :: [S.ByteString]
-    , mimeType      :: FilePath -> S.ByteString
+    , rootPattern    :: [S.ByteString]
+    , mimeType       :: FilePath -> S.ByteString
+    , documentAction :: Documents -> ActionT IO ()
     }
+
+defaultDocument :: Monad m => S.ByteString -> Documents -> ActionT m ()
+defaultDocument r d = do
+    p <- rawPathInfo <$> getRequest
+    guard $ p == r
+    contentType "text/html"
+    builder . renderHtmlBuilder $ defaultDocumentToHtml d
 
 defNotFound :: Application
 #ifdef WAI3
@@ -58,11 +68,12 @@ defNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")
 
 instance Default ApiaryConfig where
     def = ApiaryConfig 
-        { notFound      = defNotFound
-        , defaultStatus = ok200
-        , defaultHeader = []
-        , rootPattern   = ["", "/", "/index.html", "/index.htm"]
-        , mimeType      = defaultMimeLookup . T.pack
+        { notFound       = defNotFound
+        , defaultStatus  = ok200
+        , defaultHeader  = []
+        , rootPattern    = ["", "/", "/index.html", "/index.htm"]
+        , mimeType       = defaultMimeLookup . T.pack
+        , documentAction = defaultDocument "api"
         }
 
 convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File
