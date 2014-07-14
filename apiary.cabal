@@ -1,8 +1,8 @@
 name:                apiary
-version:             0.12.0
-synopsis:            Simple web framework inspired by scotty.
+version:             0.12.1
+synopsis:            Simple and type safe web framework that can be automatically generate API document.
 description:
-  Simple web framework inspired by scotty.
+  Simple and type safe web framework that can be automatically generate API document.
   .
   @
   &#123;-&#35; LANGUAGE QuasiQuotes &#35;-&#125;
@@ -35,7 +35,7 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation(https://github.com/philopon/apiary/blob/master/examples/api.hs>).
+    * auto generate API documentation(<https://github.com/philopon/apiary/blob/master/examples/api.hs>).
   .
   more examples: <https://github.com/philopon/apiary/blob/master/examples/>
 
