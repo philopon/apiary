@@ -10,7 +10,7 @@
 
 module Web.Apiary.Logger.Internal where
 
-import Web.Apiary hiding (Default(..))
+import Web.Apiary hiding (Default(..), File)
 import System.Log.FastLogger
 import Control.Exception
 import Data.Default.Class

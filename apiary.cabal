@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.11.3
+version:             0.12.0
 synopsis:            Simple web framework inspired by scotty.
 description:
   Simple web framework inspired by scotty.
@@ -35,6 +35,8 @@ description:
   .
     * type safe route filter.
   .
+    * auto generate API documentation(https://github.com/philopon/apiary/blob/master/examples/api.hs>).
+  .
   more examples: <https://github.com/philopon/apiary/blob/master/examples/>
 
 license:             MIT
@@ -66,6 +68,7 @@ library
 
                        Data.Apiary.SList
                        Data.Apiary.Param
+                       Data.Apiary.Document
 
   other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
@@ -80,33 +83,34 @@ library
 
                      , Rank2Types
                        
-  build-depends:       base              >=4.6 && <4.8
-                     , template-haskell  >=2.8 && <2.10
-                     , mtl               >=2.1 && <2.3
-                     , monad-control     >=0.3 && <0.4
-                     , transformers-base >=0.4 && <0.5
+  build-depends:       base                 >=4.6   && <4.8
+                     , template-haskell     >=2.8   && <2.10
+                     , mtl                  >=2.1   && <2.3
+                     , monad-control        >=0.3   && <0.4
+                     , transformers-base    >=0.4   && <0.5
 
-                     , text               >=1.1 && <1.2
-                     , bytestring         >=0.10 && <0.11
-                     , blaze-builder      >=0.3 && <0.4
-                     , data-default-class >=0.0 && <0.1
-                     , reflection         >=1.4 && <1.5
+                     , text                 >=1.1   && <1.2
+                     , bytestring           >=0.10  && <0.11
+                     , blaze-builder        >=0.3   && <0.4
+                     , data-default-class   >=0.0   && <0.1
+                     , reflection           >=1.4   && <1.5
 
-                     , http-types        >=0.8 && <0.9
-                     , mime-types        >=0.1 && <0.2
-                     , exceptions        >=0.6 && <0.7
+                     , http-types           >=0.8   && <0.9
+                     , mime-types           >=0.1   && <0.2
+                     , exceptions           >=0.6   && <0.7
+                     , blaze-html           >=0.7   && <0.8
 
   if impl(ghc < 7.8)
-    build-depends:     tagged             >=0.7 && <0.8
+    build-depends:     tagged               >=0.7   && <0.8
 
   if flag(wai3)
-    build-depends:     wai               >=3.0 && <3.1
-                     , wai-extra         >=3.0 && <3.1
+    build-depends:     wai                  >=3.0   && <3.1
+                     , wai-extra            >=3.0   && <3.1
     cpp-options:       -DWAI3
   else
-    build-depends:     wai               >=2.1 && <2.2
-                     , wai-extra         >=2.1 && <2.2
-                     , conduit           >=1.1 && <1.2
+    build-depends:     wai                  >=2.1   && <2.2
+                     , wai-extra            >=2.1   && <2.2
+                     , conduit              >=1.1   && <1.2
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
@@ -115,18 +119,18 @@ library
 test-suite test-framework
   main-is:             main.hs
   type:                exitcode-stdio-1.0
-  build-depends:       base                 >=4.6 && <4.8
-                     , test-framework       >=0.8 && <0.9
-                     , test-framework-hunit >=0.3 && <0.4
+  build-depends:       base                 >=4.6   && <4.8
+                     , test-framework       >=0.8   && <0.9
+                     , test-framework-hunit >=0.3   && <0.4
                      , apiary
-                     , bytestring           >=0.10 && <0.11
-                     , http-types           >=0.8  && <0.9
+                     , bytestring           >=0.10  && <0.11
+                     , http-types           >=0.8   && <0.9
   if flag(wai3)
-    build-depends:     wai               >=3.0 && <3.1
-                     , wai-extra         >=3.0 && <3.1
+    build-depends:     wai                  >=3.0   && <3.1
+                     , wai-extra            >=3.0   && <3.1
   else
-    build-depends:     wai               >=2.1 && <2.2
-                     , wai-test          >=2.0 && <2.1
+    build-depends:     wai                  >=2.1   && <2.2
+                     , wai-test             >=2.0   && <2.1
 
   hs-source-dirs:      test
   ghc-options:         -O2 -Wall -fno-warn-missing-signatures

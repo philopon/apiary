@@ -17,12 +17,22 @@ preCap p       = splitPath p
 splitPath :: String -> [String]
 splitPath = map T.unpack . T.splitOn "/" . T.pack
 
+description :: Monad m => String -> m (String, Maybe String)
+description s = case break (== '(') s of
+    (t, []) -> return (t, Nothing)
+    (t, st) -> case break (== ')') st of
+        (_:b, ")") -> return (t, Just b)
+        (_, _)     -> fail "capture: syntax error." 
+
 mkCap :: [String] -> ExpQ
 mkCap [] = [|Capture.endPath|]
 mkCap ((':':tyStr):as) = do
-    -- ty <- lookupTypeName tyStr >>= maybe (fail "") return
-    let ty = mkName tyStr
-    [|Capture.fetch (Proxy :: Proxy $(conT ty)) . $(mkCap as) |]
+    (t, mbd) <- description tyStr
+    ty <- lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
+    let d = case mbd of
+            Nothing -> [|Nothing|]
+            Just h  -> [|Just $(stringE h)|]
+    [|Capture.fetch (Proxy :: Proxy $(conT ty)) $d . $(mkCap as)|]
 mkCap (eq:as) = do
     [|(Capture.path $(stringE eq)) . $(mkCap as) |]
 

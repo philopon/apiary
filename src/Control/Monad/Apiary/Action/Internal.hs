@@ -8,6 +8,8 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE TupleSections #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -18,12 +20,17 @@ import Control.Monad.Base
 import Control.Monad.Reader
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
+
 import Network.Wai
-import Network.Wai.Parse
+import qualified Network.Wai.Parse as P
 import Network.Mime
-import Data.Default.Class
 import Network.HTTP.Types
+
+import Data.Apiary.Param
+import Data.Apiary.Document
+import Data.Default.Class
 import Blaze.ByteString.Builder
+import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
@@ -34,40 +41,51 @@ import Data.Conduit
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
-      notFound      :: Application
+      notFound       :: Application
       -- | used unless call 'status' function.
-    , defaultStatus :: Status
+    , defaultStatus  :: Status
       -- | initial headers.
-    , defaultHeader :: ResponseHeaders
+    , defaultHeader  :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
-    , rootPattern   :: [S.ByteString]
-    , mimeType      :: FilePath -> S.ByteString
+    , rootPattern    :: [S.ByteString]
+    , mimeType       :: FilePath -> S.ByteString
+    , documentAction :: Documents -> ActionT IO ()
     }
+
+defaultDocument :: Monad m => S.ByteString -> Documents -> ActionT m ()
+defaultDocument r d = do
+    p <- rawPathInfo <$> getRequest
+    guard $ p == r
+    contentType "text/html"
+    builder . renderHtmlBuilder $ defaultDocumentToHtml d
 
 defNotFound :: Application
 #ifdef WAI3
-defNotFound _ f = f $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defNotFound _ f = f      $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #else
-defNotFound _ = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #endif
 
 instance Default ApiaryConfig where
     def = ApiaryConfig 
-        { notFound      = defNotFound
-        , defaultStatus = ok200
-        , defaultHeader = []
-        , rootPattern   = ["", "/", "/index.html", "/index.htm"]
-        , mimeType      = defaultMimeLookup . T.pack
+        { notFound       = defNotFound
+        , defaultStatus  = ok200
+        , defaultHeader  = []
+        , rootPattern    = ["", "/", "/index.html", "/index.htm"]
+        , mimeType       = defaultMimeLookup . T.pack
+        , documentAction = defaultDocument "/api/document"
         }
 
-data ActionState 
-    = ActionState
-        { actionResponse :: Response
-        , actionStatus   :: Status
-        , actionHeaders  :: ResponseHeaders
-        , actionReqBody  :: Maybe ([Param], [File L.ByteString])
-        , actionPathInfo :: [T.Text]
-        }
+convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File
+convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
+
+data ActionState = ActionState
+    { actionResponse :: Response
+    , actionStatus   :: Status
+    , actionHeaders  :: ResponseHeaders
+    , actionReqBody  :: Maybe ([Param], [File])
+    , actionPathInfo :: [T.Text]
+    }
 
 initialState :: ApiaryConfig -> Request -> ActionState
 initialState conf req = ActionState
@@ -217,11 +235,12 @@ stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 getRequest :: Monad m => ActionT m Request
 getRequest = ActionT $ \_ r s c -> c r s
 
-getRequestBody :: MonadIO m => ActionT m ([Param], [File L.ByteString])
+getRequestBody :: MonadIO m => ActionT m ([Param], [File])
 getRequestBody = ActionT $ \_ r s c -> case actionReqBody s of
     Just b  -> c b s
     Nothing -> do
-        b <- liftIO $ parseRequestBody lbsBackEnd r
+        (p,f) <- liftIO $ P.parseRequestBody P.lbsBackEnd r
+        let b = (p, map convFile f)
         c b s { actionReqBody = Just b }
 
 -- | parse request body and return params. since 0.9.0.0.
@@ -229,7 +248,7 @@ getReqParams :: MonadIO m => ActionT m [Param]
 getReqParams = fst <$> getRequestBody
 
 -- | parse request body and return files. since 0.9.0.0.
-getReqFiles :: MonadIO m => ActionT m [File L.ByteString]
+getReqFiles :: MonadIO m => ActionT m [File]
 getReqFiles = snd <$> getRequestBody
 
 getConfig :: Monad m => ActionT m ApiaryConfig
@@ -261,9 +280,11 @@ addHeader h v = modifyHeader ((h,v):)
 setHeaders :: Monad m => ResponseHeaders -> ActionT m ()
 setHeaders hs = modifyHeader (const hs)
 
+type ContentType = S.ByteString
+
 -- | set content-type header.
 -- if content-type header already exists, replace it. since 0.1.0.0.
-contentType :: Monad m => S.ByteString -> ActionT m ()
+contentType :: Monad m => ContentType -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
 

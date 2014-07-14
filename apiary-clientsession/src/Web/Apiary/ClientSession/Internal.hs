@@ -129,7 +129,7 @@ csrfToken Session{..} = do
 
 session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
         -> S.ByteString -> proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
-session sess k p = focus $ \l -> do
+session sess k p = focus id $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime
     let mbr = readStrategy readQuery ((k ==) . fst) p
@@ -140,7 +140,7 @@ checkToken :: (Functor n, MonadIO n)
            => Session
            -> ApiaryT c n m a
            -> ApiaryT c n m a
-checkToken sess@Session{..} = focus $ \l -> do
+checkToken sess@Session{..} = focus id $ \l -> do
     r <- getRequest
     p <- getReqParams
 

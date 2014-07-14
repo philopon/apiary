@@ -4,7 +4,6 @@ module Web.Apiary.TH where
 
 import Control.Monad.Apiary
 import Control.Monad.Apiary.Action
-import Network.HTTP.Types.Status
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import qualified Data.Text as T

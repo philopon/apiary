@@ -1,8 +1,7 @@
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action 
-    (
-      ActionT
+    ( ActionT
     , ApiaryConfig(..)
     -- * actions
     , stop, stopWith
@@ -17,8 +16,10 @@ module Control.Monad.Apiary.Action
     , status
     -- *** response header
     , addHeader, setHeaders, modifyHeader
+    , ContentType
     , contentType
     -- *** response body
+    , File(..)
     , file
     , file'
     , builder
@@ -42,6 +43,7 @@ module Control.Monad.Apiary.Action
 
 import Control.Monad.Apiary.Action.Internal
 import Data.Default.Class
+import Data.Apiary.Param
 import Network.HTTP.Types.Status hiding (mkStatus)
 
 #ifdef WAI3
