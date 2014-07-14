@@ -35,7 +35,7 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation.
+    * auto generate API documentation(https://github.com/philopon/apiary/blob/master/examples/api.hs>).
   .
   more examples: <https://github.com/philopon/apiary/blob/master/examples/>
 
