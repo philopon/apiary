@@ -1,8 +1,8 @@
 name:                apiary
-version:             0.12.1
-synopsis:            Simple and type safe web framework that can be automatically generate API document.
+version:             0.12.3
+synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
-  Simple and type safe web framework that can be automatically generate API document.
+  Simple and type safe web framework that can be automatically generate API documentation.
   .
   @
   &#123;-&#35; LANGUAGE QuasiQuotes &#35;-&#125;
@@ -35,7 +35,7 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation(<https://github.com/philopon/apiary/blob/master/examples/api.hs>).
+    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/master/examples/api.hs>, <https://rawgit.com/philopon/apiary/master/examples/api.html>).
   .
   more examples: <https://github.com/philopon/apiary/blob/master/examples/>
 

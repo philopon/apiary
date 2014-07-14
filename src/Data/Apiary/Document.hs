@@ -124,7 +124,7 @@ defaultDocumentToHtml :: Documents -> Html
 defaultDocumentToHtml docs = H.docTypeHtml $ H.head headH <> H.body body
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
-    headH = H.title "API document" <>
+    headH = H.title "API documentation" <>
         css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
 
     htmlQR (Strict   r) = toHtml (show r)
@@ -156,4 +156,4 @@ defaultDocumentToHtml docs = H.docTypeHtml $ H.head headH <> H.body body
     doc (Documents n g) = H.div (mconcat $ map pathH n) <> mconcat (map groupH g)
 
     body  = H.div ! A.class_ "container" $
-        H.h1 "API document" <> doc docs
+        H.h1 "API documentation" <> doc docs

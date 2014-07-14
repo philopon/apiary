@@ -17,7 +17,7 @@ data Test = Test
 
 deriveToJSON defaultOptions ''Test
 
--- You can view API document on 'http://localhost:3000/api/document'.
+-- You can view API documentation on 'http://localhost:3000/api/documentation'.
 
 main :: IO ()
 main = do

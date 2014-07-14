@@ -41,19 +41,19 @@ import Data.Conduit
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
-      notFound       :: Application
+      notFound            :: Application
       -- | used unless call 'status' function.
-    , defaultStatus  :: Status
+    , defaultStatus       :: Status
       -- | initial headers.
-    , defaultHeader  :: ResponseHeaders
+    , defaultHeader       :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
-    , rootPattern    :: [S.ByteString]
-    , mimeType       :: FilePath -> S.ByteString
-    , documentAction :: Documents -> ActionT IO ()
+    , rootPattern         :: [S.ByteString]
+    , mimeType            :: FilePath -> S.ByteString
+    , documentationAction :: Documents -> ActionT IO ()
     }
 
-defaultDocument :: Monad m => S.ByteString -> Documents -> ActionT m ()
-defaultDocument r d = do
+defaultDocumentationAction :: Monad m => S.ByteString -> Documents -> ActionT m ()
+defaultDocumentationAction r d = do
     p <- rawPathInfo <$> getRequest
     guard $ p == r
     contentType "text/html"
@@ -68,12 +68,12 @@ defNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")
 
 instance Default ApiaryConfig where
     def = ApiaryConfig 
-        { notFound       = defNotFound
-        , defaultStatus  = ok200
-        , defaultHeader  = []
-        , rootPattern    = ["", "/", "/index.html", "/index.htm"]
-        , mimeType       = defaultMimeLookup . T.pack
-        , documentAction = defaultDocument "/api/document"
+        { notFound            = defNotFound
+        , defaultStatus       = ok200
+        , defaultHeader       = []
+        , rootPattern         = ["", "/", "/index.html", "/index.htm"]
+        , mimeType            = defaultMimeLookup . T.pack
+        , documentationAction = defaultDocumentationAction "/api/documentation"
         }
 
 convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File
