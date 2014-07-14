@@ -7,6 +7,7 @@ module Control.Monad.Apiary
     , apiaryConfig
     -- * execute action
     , action, action'
+    -- * API documentation
     , group
     , document
     -- * deprecated

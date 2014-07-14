@@ -77,7 +77,7 @@ instance Path Char where
         | otherwise = Just $ T.head s
 
 -- | javascript boolean.
--- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since v0.6.0.0.
+-- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
 instance Path Bool    where readPath = Just      . jsToBool
 
 instance Path Int     where readPath = readMaybe . T.unpack

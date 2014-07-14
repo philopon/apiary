@@ -132,20 +132,27 @@ focus d g m = ApiaryT $ \rdr cont -> unApiaryT m rdr
     , readerDoc    = readerDoc rdr . d
     } cont
 
-group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-group d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
-    { readerDoc = readerDoc rdr . DocGroup d } cont
-
 -- | splice ActionT ApiaryT.
 action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
 action = action' . apply
 
+-- | API document group. since 0.12.0.0.
+--
+-- only top level group recognized.
+group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+group d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
+    { readerDoc = readerDoc rdr . DocGroup d } cont
+
+-- | add API document. since 0.12.0.0.
+--
+-- It use only filters prior document,
+-- so you should be placed document directly in front of action.
 document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 document d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
     { readerDoc = \_ -> readerDoc rdr (Document $ Just d) } cont
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
--- | execute action before main action. since v0.4.2.0
+-- | execute action before main action. since 0.4.2.0
 actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
                     -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
 actionWithPreAction pa a = do

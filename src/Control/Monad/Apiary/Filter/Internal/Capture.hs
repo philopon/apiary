@@ -25,7 +25,7 @@ import Data.Apiary.Document
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Internal
 
--- | check first path and drill down. since v0.11.0.
+-- | check first path and drill down. since 0.11.0.
 path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 path p = focus (DocPath p) $ \l -> l <$ path'
   where
@@ -33,7 +33,7 @@ path p = focus (DocPath p) $ \l -> l <$ path'
         c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
         _            -> mzero
 
--- | check consumed pathes. since v0.11.1.
+-- | check consumed pathes. since 0.11.1.
 endPath :: Monad n => ApiaryT c n m a -> ApiaryT c n m a
 endPath = focus id $ \l -> l <$ end
   where
@@ -41,7 +41,7 @@ endPath = focus id $ \l -> l <$ end
         [] -> return ()
         _  -> mzero
 
--- | get first path and drill down. since v0.11.0.
+-- | get first path and drill down. since 0.11.0.
 fetch :: (Path a, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
 fetch p h = focus (DocFetch (pathRep p) h) $ \l -> liftM actionPathInfo getState >>= \case
     []  -> mzero

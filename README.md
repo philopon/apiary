@@ -6,6 +6,7 @@ Feature
 ----
 * small core library.
 * type level and nestable router.
+* auto generate API documents.
 
 Install
 ----

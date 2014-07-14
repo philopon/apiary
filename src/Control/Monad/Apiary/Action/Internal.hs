@@ -73,7 +73,7 @@ instance Default ApiaryConfig where
         , defaultHeader  = []
         , rootPattern    = ["", "/", "/index.html", "/index.htm"]
         , mimeType       = defaultMimeLookup . T.pack
-        , documentAction = defaultDocument "api"
+        , documentAction = defaultDocument "/api/document"
         }
 
 convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File

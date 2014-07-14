@@ -121,7 +121,7 @@ routeToHtml = loop (1::Int) mempty []
 
 
 defaultDocumentToHtml :: Documents -> Html
-defaultDocumentToHtml docs = H.docTypeHtml $ H.html $ H.head headH <> H.body body
+defaultDocumentToHtml docs = H.docTypeHtml $ H.head headH <> H.body body
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
     headH = H.title "API document" <>
@@ -130,6 +130,7 @@ defaultDocumentToHtml docs = H.docTypeHtml $ H.html $ H.head headH <> H.body bod
     htmlQR (Strict   r) = toHtml (show r)
     htmlQR (Nullable r) = toHtml (show r ++ "?")
     htmlQR  Check       = toHtml ("check" :: T.Text)
+
     query (QueryDoc p s q t) = H.tr $
         H.td (toHtml $ T.decodeUtf8 p) <> H.td (toHtml $ strategyInfo s) <> H.td (htmlQR q) <> H.td t
 
@@ -142,8 +143,9 @@ defaultDocumentToHtml docs = H.docTypeHtml $ H.html $ H.head headH <> H.body bod
 
     method (m, MethodDoc qs d) = 
         H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $
-        H.h4 (toHtml $ T.decodeUtf8 m) <> queriesH qs <> 
-        (H.p ! A.class_ "col-sm-offset-1 col-md-offset-1") (toHtml d)
+        H.h4 (toHtml $ T.decodeUtf8 m) <> 
+        (H.p ! A.class_ "col-sm-offset-1 col-md-offset-1") (toHtml d) <>
+        queriesH qs
 
     pathH (PathDoc r ms) =
         let (route, rdoc) = routeToHtml r
