@@ -23,7 +23,7 @@ module Control.Monad.Apiary.Filter (
     , Capture.fetch
 
     -- ** query matcher
-    , QueryKey(..)
+    , QueryKey(..), (??)
     , query
     -- *** specified operators
     , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
@@ -114,6 +114,9 @@ instance IsString QueryKey where
     fromString s = case break (== ':') s of
         (k, []) -> QueryKey (SC.pack k) Nothing
         (k, d)  -> QueryKey (SC.pack k) (Just . toHtml $ tail d)
+
+(??) :: QueryKey -> Html -> QueryKey
+QueryKey k _ ?? d = QueryKey k (Just d)
 
 -- | low level query getter. since 0.5.0.0.
 --

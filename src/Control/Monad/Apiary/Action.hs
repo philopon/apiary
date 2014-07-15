@@ -3,6 +3,7 @@
 module Control.Monad.Apiary.Action 
     ( ActionT
     , ApiaryConfig(..)
+    , defaultDocumentationAction
     -- * actions
     , stop, stopWith
 
@@ -36,7 +37,6 @@ module Control.Monad.Apiary.Action
     -- * Reexport
     , module Data.Default.Class
     , module Network.HTTP.Types.Status
-    , defaultDocumentationAction
     
     -- * deprecated
     , redirectFound, redirectSeeOther, source

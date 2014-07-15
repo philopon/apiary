@@ -9,6 +9,9 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.TH
 import Control.Monad
 import Control.Concurrent
+import Text.Blaze.Html
+import Data.Monoid
+import qualified Text.Blaze.Html5 as H
 
 data Test = Test 
     { name :: Maybe String
@@ -42,8 +45,9 @@ main = do
                 stdMethod POST .
                     -- you can add query description after ':'.
                     -- when not elem ':', it be undocumented parameter.
+                    -- or (??) function to add description.
                     ("name:name of cat" =?: pString) .
-                    ("age:age of cat"   =?: pInt) .
+                    ("age" ?? dAge      =?: pInt) .
                     document "set name and age from query parameter." . action $ \n a -> do
                         void . liftIO $ swapMVar nm n
                         liftIO $ maybe (return ()) (void . swapMVar ag) a
@@ -54,7 +58,14 @@ main = do
                     void . liftIO $ swapMVar ag 0
 
             -- you can add route capture description using ().
-            [capture|/api/cat/:String(name)/:Int(age)|] .
+            -- you can reference value using '$'.
+            [capture|/api/cat/:String($dName)/:Int(age)|] .
                 stdMethod POST . document "set name and age from route." . action $ \n a -> do
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a
+
+dName :: Html
+dName = H.ul $ H.li "name of cat." <> H.li "if null, homeless."
+
+dAge :: Html
+dAge = H.ul $ H.li "age of cat." <> H.li "cute!"
