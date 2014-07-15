@@ -2,6 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Data.Apiary.Document where
 
@@ -14,9 +15,11 @@ import Data.Maybe
 import Data.Apiary.Param
 import qualified Network.HTTP.Types as HT
 import Text.Blaze.Html
+import Text.Blaze.Internal(attribute)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid
+import Data.Default.Class
 import Data.List
 import Data.Function
 
@@ -122,13 +125,26 @@ routeToHtml = loop (1::Int) mempty []
         )
 
 
-defaultDocumentToHtml :: T.Text -> Maybe Html -> Documents -> Html
-defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body body <> footer
+data DefaultDocumentConfig = DefaultDocumentConfig
+    { documentTitle       :: T.Text
+    , documentDescription :: Maybe Html
+    , documentOpenDefault :: Bool
+    }
+
+instance Default DefaultDocumentConfig where
+    def = DefaultDocumentConfig "API documentation" Nothing False
+
+defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
+defaultDocumentToHtml DefaultDocumentConfig{..} docs =
+    H.docTypeHtml $ H.head headH <> H.body body <> footer
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
+    js  u = H.script ! A.src u $ mempty
     headH = mconcat 
-        [ H.title (toHtml title)
+        [ H.title (toHtml documentTitle)
         , css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+        , js  "//code.jquery.com/jquery-2.1.1.min.js"
+        , js  "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
         , H.style . toHtml $ T.concat
             [ ".fetch{color:gray}"
             , "footer{padding-top:30px;"
@@ -144,6 +160,8 @@ defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body b
             , "table.route-parameters{margin-top:0px !important;border-bottom:1px solid #ddd;background-color:#f5f5f5}"
             , ".method{margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #ddd}"
             , ".method:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}"
+            , ".methods div{margin-left:10px;color:#999}"
+            , ".panel-heading{cursor:pointer}"
             ]
         ]
 
@@ -180,25 +198,38 @@ defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body b
         , queriesH qs
         ]
 
-    pathH (PathDoc r ms) =
+    dataToggle = attribute "data-toggle" " data-toggle=\""
+    dataTarget = attribute "data-target" " data-target=\""
+
+    defOpenAttr = if documentOpenDefault
+                  then A.class_ "panel-collapse collapse in"
+                  else A.class_ "panel-collapse collapse"
+
+    pathH i (PathDoc r ms) =
         let (route, rdoc) = routeToHtml r
-            in H.div ! A.class_ "panel panel-default" $ mconcat
-            [ H.div ! A.class_ "panel-heading" $
-                H.h3 ! A.class_ "panel-title" $ route
-            , rdoc
-            , H.div ! A.class_ "panel-body" $ mcMap method ms
+        in H.div ! A.class_ "panel panel-default" $ mconcat
+            [ H.div ! A.class_ "panel-heading clearfix"
+                ! dataToggle "collapse" ! dataTarget (toValue $ "#collapse-" ++ show (i::Int)) $ mconcat
+                [ H.h3 ! A.class_ "panel-title pull-left" $ route
+                , H.div ! A.class_ "methods" $
+                    mcMap ((\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m)) . fst) (reverse ms)
+                ]
+            , H.div ! A.id (toValue $ "collapse-" ++ show i) ! defOpenAttr $
+                rdoc <> (H.div ! A.class_ "panel-body" $ mcMap method ms)
             ]
 
-    groupH (g, p) = H.div $ mconcat [H.h2 $ toHtml g, mcMap pathH p]
+    groupH i (g, p) =
+        let (i', gs) = mapAccumL (\ii a -> (succ ii, pathH ii a)) i p
+        in (i', H.div ! A.id (toValue $ T.append "group-" g) $ mconcat [H.h2 $ toHtml g, mconcat gs])
 
-    doc (Documents n g) = mconcat
-        [ H.div $ mcMap pathH n
-        , mcMap groupH g
-        ]
+    doc (Documents n g) =
+        let (i, ng) = mapAccumL (\i' a -> (succ i', pathH  i' a)) (0::Int) n
+            (_, gs) = mapAccumL groupH i g
+        in (H.div ! A.id "no-group") (mconcat ng) <> mconcat gs
 
     body  = H.div ! A.class_ "container" $ mconcat
-        [ H.div ! A.class_ "page-header" $ H.h1 (toHtml title)
-        , maybe mempty (H.div ! A.class_ "description") desc
+        [ H.div ! A.class_ "page-header" $ H.h1 (toHtml documentTitle)
+        , maybe mempty (H.div ! A.class_ "description") documentDescription
         , doc docs
         ]
 

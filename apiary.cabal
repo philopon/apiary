@@ -99,6 +99,7 @@ library
                      , mime-types           >=0.1   && <0.2
                      , exceptions           >=0.6   && <0.7
                      , blaze-html           >=0.7   && <0.8
+                     , blaze-markup         >=0.6   && <0.7
 
   if impl(ghc < 7.8)
     build-depends:     tagged               >=0.7   && <0.8

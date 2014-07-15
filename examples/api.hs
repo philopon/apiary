@@ -26,11 +26,10 @@ deriveToJSON defaultOptions ''Test
 -- can set in ApiaryConfig.
 conf :: ApiaryConfig
 conf = def {
-    documentationAction = Just $
-        defaultDocumentationAction
-        "/api/documentation"
-        "Cat API documentation"
-        (Just $ H.p "nyan! nyan! I'm cute cat!")
+    documentationAction = Just $ defaultDocumentationAction "/api/documentation"
+        def { documentTitle       = "Cat API documentation"
+            , documentDescription = Just $ H.p "nyan! nyan! I'm cute cat!"
+            }
     }
 
 main :: IO ()
