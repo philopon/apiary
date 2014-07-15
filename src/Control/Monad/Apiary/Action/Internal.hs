@@ -53,7 +53,7 @@ data ApiaryConfig = ApiaryConfig
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
     , rootPattern         :: [S.ByteString]
     , mimeType            :: FilePath -> S.ByteString
-    , documentationAction :: Documents -> ActionT IO ()
+    , documentationAction :: Maybe (Documents -> ActionT IO ())
     }
 
 defaultDocumentationAction :: Monad m => S.ByteString -> T.Text -> Maybe Html -> Documents -> ActionT m ()
@@ -79,7 +79,8 @@ instance Default ApiaryConfig where
         , failHeaders         = []
         , rootPattern         = ["", "/", "/index.html", "/index.htm"]
         , mimeType            = defaultMimeLookup . T.pack
-        , documentationAction = defaultDocumentationAction "/api/documentation" "API documentation" Nothing
+        , documentationAction = Just $ defaultDocumentationAction
+            "/api/documentation" "API documentation" Nothing
         }
 
 convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File

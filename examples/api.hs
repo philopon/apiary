@@ -26,7 +26,7 @@ deriveToJSON defaultOptions ''Test
 -- can set in ApiaryConfig.
 conf :: ApiaryConfig
 conf = def {
-    documentationAction =
+    documentationAction = Just $
         defaultDocumentationAction
         "/api/documentation"
         "Cat API documentation"

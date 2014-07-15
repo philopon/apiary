@@ -108,7 +108,8 @@ runApiaryT' :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
             -> ApiaryT '[] n m a -> m (Application, Documents)
 runApiaryT' run conf m = unApiaryT m (initialReader conf) (\_ w -> return w) >>= \wtr -> do
     let doc = docsToDocuments $ writerDoc wtr
-        app = execActionT conf $ hoistActionT run (writerHandler wtr) `mplus` documentationAction conf doc
+        da  = maybe mzero (\f -> f doc) $ documentationAction conf
+        app = execActionT conf $ hoistActionT run (writerHandler wtr) `mplus` da
     return (app, doc)
 
 runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
