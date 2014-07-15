@@ -29,7 +29,7 @@ conf = def {
     documentationAction =
         defaultDocumentationAction
         "/api/documentation"
-        "Cat API documentation."
+        "Cat API documentation"
         (Just $ H.p "nyan! nyan! I'm cute cat!")
     }
 

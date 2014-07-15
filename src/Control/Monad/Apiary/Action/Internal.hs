@@ -34,6 +34,7 @@ import Text.Blaze.Html
 import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.Text as T
 
 #ifndef WAI3
@@ -46,7 +47,9 @@ data ApiaryConfig = ApiaryConfig
       -- | used unless call 'status' function.
     , defaultStatus       :: Status
       -- | initial headers.
-    , defaultHeader       :: ResponseHeaders
+    , defaultHeaders      :: ResponseHeaders
+    , failStatus          :: Status
+    , failHeaders         :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
     , rootPattern         :: [S.ByteString]
     , mimeType            :: FilePath -> S.ByteString
@@ -71,7 +74,9 @@ instance Default ApiaryConfig where
     def = ApiaryConfig 
         { notFound            = defNotFound
         , defaultStatus       = ok200
-        , defaultHeader       = []
+        , defaultHeaders      = []
+        , failStatus          = internalServerError500
+        , failHeaders         = []
         , rootPattern         = ["", "/", "/index.html", "/index.htm"]
         , mimeType            = defaultMimeLookup . T.pack
         , documentationAction = defaultDocumentationAction "/api/documentation" "API documentation" Nothing
@@ -90,9 +95,9 @@ data ActionState = ActionState
 
 initialState :: ApiaryConfig -> Request -> ActionState
 initialState conf req = ActionState
-    { actionResponse = responseLBS (defaultStatus conf) (defaultHeader conf) ""
-    , actionStatus   = defaultStatus conf
-    , actionHeaders  = defaultHeader conf
+    { actionResponse = responseLBS (defaultStatus conf) (defaultHeaders conf) ""
+    , actionStatus   = defaultStatus  conf
+    , actionHeaders  = defaultHeaders conf
     , actionReqBody  = Nothing
     , actionPathInfo = pathInfo req
     }
@@ -130,7 +135,8 @@ instance Monad m => Monad (ActionT m) where
     m >>= k  = ActionT $ \conf req st cont ->
         unActionT m conf req st $ \a st' ->
         st' `seq` unActionT (k a) conf req st' cont
-    fail _ = ActionT $ \_ _ _ _ -> return Pass
+    fail s = ActionT $ \c _ _ _ -> return $
+        Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
 
 instance MonadIO m => MonadIO (ActionT m) where
     liftIO m = ActionT $ \_ _ st cont ->
