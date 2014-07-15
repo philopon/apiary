@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
+
 module Control.Monad.Apiary.Filter.Internal.Capture.TH where
 
 import Language.Haskell.TH
@@ -17,12 +19,16 @@ preCap p       = splitPath p
 splitPath :: String -> [String]
 splitPath = map T.unpack . T.splitOn "/" . T.pack
 
-description :: Monad m => String -> m (String, Maybe String)
+data Lookup = N Name | S String | None
+
+description :: String -> Q (String, Lookup)
 description s = case break (== '(') s of
-    (t, []) -> return (t, Nothing)
+    (t, []) -> return (t, None)
     (t, st) -> case break (== ')') st of
-        (_:b, ")") -> return (t, Just b)
-        (_, _)     -> fail "capture: syntax error." 
+        (_:'$':b, ")") -> lookupValueName b >>=
+            maybe (fail $ b ++ " not found.") (return . (t,) . N)
+        (_:b,     ")") -> return (t, S b)
+        (_, _)         -> fail "capture: syntax error." 
 
 mkCap :: [String] -> ExpQ
 mkCap [] = [|Capture.endPath|]
@@ -30,8 +36,9 @@ mkCap ((':':tyStr):as) = do
     (t, mbd) <- description tyStr
     ty <- lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
     let d = case mbd of
-            Nothing -> [|Nothing|]
-            Just h  -> [|Just $(stringE h)|]
+            None -> [|Nothing|]
+            S h  -> [|Just $(stringE h)|]
+            N n  -> [|Just $(varE n)|]
     [|Capture.fetch (Proxy :: Proxy $(conT ty)) $d . $(mkCap as)|]
 mkCap (eq:as) = do
     [|(Capture.path $(stringE eq)) . $(mkCap as) |]

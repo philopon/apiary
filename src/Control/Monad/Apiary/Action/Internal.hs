@@ -30,6 +30,7 @@ import Data.Apiary.Param
 import Data.Apiary.Document
 import Data.Default.Class
 import Blaze.ByteString.Builder
+import Text.Blaze.Html
 import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
@@ -52,12 +53,12 @@ data ApiaryConfig = ApiaryConfig
     , documentationAction :: Documents -> ActionT IO ()
     }
 
-defaultDocumentationAction :: Monad m => S.ByteString -> Documents -> ActionT m ()
-defaultDocumentationAction r d = do
+defaultDocumentationAction :: Monad m => S.ByteString -> T.Text -> Maybe Html -> Documents -> ActionT m ()
+defaultDocumentationAction r t md d = do
     p <- rawPathInfo <$> getRequest
     guard $ p == r
     contentType "text/html"
-    builder . renderHtmlBuilder $ defaultDocumentToHtml d
+    builder . renderHtmlBuilder $ defaultDocumentToHtml t md d
 
 defNotFound :: Application
 #ifdef WAI3
@@ -73,7 +74,7 @@ instance Default ApiaryConfig where
         , defaultHeader       = []
         , rootPattern         = ["", "/", "/index.html", "/index.htm"]
         , mimeType            = defaultMimeLookup . T.pack
-        , documentationAction = defaultDocumentationAction "/api/documentation"
+        , documentationAction = defaultDocumentationAction "/api/documentation" "API documentation" Nothing
         }
 
 convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File

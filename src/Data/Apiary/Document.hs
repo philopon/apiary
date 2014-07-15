@@ -113,47 +113,96 @@ routeToHtml = loop (1::Int) mempty []
     loop _ r p End =
         (r, if null p
             then mempty
-            else H.table ! A.class_ "table table-condensed col-sm-offset-1 col-md-offset-1" $
-                 H.caption "Route Parameters" <>
-                 H.tr (H.th "#" <> H.th "type" <> H.th "description") <>
-                 mconcat p
+            else H.table ! A.class_ "table table-condensed" $
+                 H.tr (mconcat 
+                    [ H.th ! A.class_ "col-sm-1 com-md-1" $ "#"
+                    , H.th ! A.class_ "col-sm-1 com-md-1" $ "type"
+                    , H.th "description"
+                    ]) <> mconcat p
         )
 
 
-defaultDocumentToHtml :: Documents -> Html
-defaultDocumentToHtml docs = H.docTypeHtml $ H.head headH <> H.body body
+defaultDocumentToHtml :: T.Text -> Maybe Html -> Documents -> Html
+defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body body <> footer
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
-    headH = H.title "API documentation" <>
-        css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+    headH = mconcat 
+        [ H.title (toHtml title)
+        , css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+        , H.style . toHtml $ T.concat
+            [ ".fetch{color:gray}"
+            , "footer{padding-top:40px;"
+            ,        "padding-bottom:40px;"
+            ,        "margin-top:20px;"
+            ,        "text-align:center;"
+            ,        "color:#777;"
+            ,        "border-top:1px solid #ddd"
+            ,       "}"
+            , ".description{margin-bottom:20px}"
+            , "table{margin-top:15px !important;margin-bottom:0px !important}"
+            , ".method{margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #ddd}"
+            , ".method:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}"
+            ]
+        ]
 
     htmlQR (Strict   r) = toHtml (show r)
     htmlQR (Nullable r) = toHtml (show r ++ "?")
     htmlQR  Check       = toHtml ("check" :: T.Text)
 
-    query (QueryDoc p s q t) = H.tr $
-        H.td (toHtml $ T.decodeUtf8 p) <> H.td (toHtml $ strategyInfo s) <> H.td (htmlQR q) <> H.td t
+    query (QueryDoc p s q t) = H.tr . mconcat $
+        [ H.td (toHtml $ T.decodeUtf8 p)
+        , H.td (toHtml $ strategyInfo s)
+        , H.td (htmlQR q)
+        , H.td t
+        ]
 
-    queriesH []    = mempty
-    queriesH qs    =
-        H.table ! A.class_ "table table-condensed col-sm-offset-1 col-md-offset-1" $
-        H.caption "Query Parameters" <>
-        H.tr (H.th "name" <> H.th "num" <> H.th "type" <> H.th "description") <>
-        mconcat (map query qs)
+    mcMap f = mconcat . map f
+
+    queriesH [] = mempty
+    queriesH qs =
+        H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $
+        H.table ! A.class_ "table table-condensed" $ mconcat
+        [ H.caption "Query parameters"
+        , H.tr $ mconcat [ H.th ! A.class_ "col-sm-1 col-md-1" $ "name"
+                         , H.th ! A.class_ "col-sm-1 col-md-1" $ "num"
+                         , H.th ! A.class_ "col-sm-1 col-md-1" $ "type"
+                         , H.th "description"
+                         ]
+        , mcMap query qs
+        ]
 
     method (m, MethodDoc qs d) = 
-        H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $
-        H.h4 (toHtml $ T.decodeUtf8 m) <> 
-        (H.p ! A.class_ "col-sm-offset-1 col-md-offset-1") (toHtml d) <>
-        queriesH qs
+        H.div ! A.class_ "method" $ mconcat
+        [ H.h4 . toHtml $ T.decodeUtf8 m
+        , H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $ H.p (toHtml d)
+        , queriesH qs
+        ]
 
     pathH (PathDoc r ms) =
         let (route, rdoc) = routeToHtml r
-            in H.div $ H.h3 route <> rdoc <> (H.div $ mconcat (map method ms))
+            in H.div ! A.class_ "panel panel-default" $ mconcat
+            [ H.div ! A.class_ "panel-heading" $ mconcat
+                [ H.h3 ! A.class_ "panel-title" $ route
+                , rdoc
+                ]
+            , H.div ! A.class_ "panel-body" $ mcMap method ms
+            ]
 
-    groupH (g, p) = H.div $ H.h2 (toHtml g) <> (mconcat $ map pathH p)
+    groupH (g, p) = H.div $ mconcat [H.h2 $ toHtml g, mcMap pathH p]
 
-    doc (Documents n g) = H.div (mconcat $ map pathH n) <> mconcat (map groupH g)
+    doc (Documents n g) = mconcat
+        [ H.div $ mcMap pathH n
+        , mcMap groupH g
+        ]
 
-    body  = H.div ! A.class_ "container" $
-        H.h1 "API documentation" <> doc docs
+    body  = H.div ! A.class_ "container" $ mconcat
+        [ H.div ! A.class_ "page-header" $ H.h1 (toHtml title)
+        , maybe mempty (H.div ! A.class_ "description") desc
+        , doc docs
+        ]
+
+    footer = H.footer $ mconcat
+        [ "API documentation generated "
+        , H.a ! A.href "https://github.com/philopon/apiary" $ "apiary"
+        , " web framework."
+        ]
