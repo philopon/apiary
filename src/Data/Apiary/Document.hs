@@ -113,7 +113,7 @@ routeToHtml = loop (1::Int) mempty []
     loop _ r p End =
         (r, if null p
             then mempty
-            else H.table ! A.class_ "table table-condensed" $
+            else H.table ! A.class_ "table table-condensed route-parameters" $
                  H.tr (mconcat 
                     [ H.th ! A.class_ "col-sm-1 com-md-1" $ "#"
                     , H.th ! A.class_ "col-sm-1 com-md-1" $ "type"
@@ -141,6 +141,7 @@ defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body b
             ,       "}"
             , ".description{margin-bottom:20px}"
             , "table{margin-top:15px !important;margin-bottom:0px !important}"
+            , "table.route-parameters{margin-top:0px !important;border-bottom:1px solid #ddd;background-color:#f5f5f5}"
             , ".method{margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #ddd}"
             , ".method:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}"
             ]
@@ -182,10 +183,9 @@ defaultDocumentToHtml title desc docs = H.docTypeHtml $ H.head headH <> H.body b
     pathH (PathDoc r ms) =
         let (route, rdoc) = routeToHtml r
             in H.div ! A.class_ "panel panel-default" $ mconcat
-            [ H.div ! A.class_ "panel-heading" $ mconcat
-                [ H.h3 ! A.class_ "panel-title" $ route
-                , rdoc
-                ]
+            [ H.div ! A.class_ "panel-heading" $
+                H.h3 ! A.class_ "panel-title" $ route
+            , rdoc
             , H.div ! A.class_ "panel-body" $ mcMap method ms
             ]
 
