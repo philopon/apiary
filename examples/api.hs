@@ -22,12 +22,23 @@ deriveToJSON defaultOptions ''Test
 
 -- You can view API documentation on 'http://localhost:3000/api/documentation'.
 
+-- Documentation route, title and description(or all of documentation function)
+-- can set in ApiaryConfig.
+conf :: ApiaryConfig
+conf = def {
+    documentationAction =
+        defaultDocumentationAction
+        "/api/documentation"
+        "Cat API documentation."
+        (Just $ H.p "nyan! nyan! I'm cute cat!")
+    }
+
 main :: IO ()
 main = do
     nm <- newMVar Nothing
     ag <- newMVar 0
 
-    run 3000 . runApiary def $ do
+    run 3000 . runApiary conf $ do
 
         -- you can add route document using document function.
         root . stdMethod GET . document "root page" . action $ do
