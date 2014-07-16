@@ -35,6 +35,7 @@ data Doc
     | DocMethod HT.Method    Doc
     | DocQuery  S.ByteString StrategyRep QueryRep Html Doc
     | DocGroup  T.Text       Doc
+    | DocPrecondition Html   Doc
     | Document  (Maybe T.Text)
 
 data Route
@@ -66,23 +67,25 @@ data QueryDoc = QueryDoc
     }
 
 data MethodDoc = MethodDoc
-    { queries  :: [QueryDoc]
-    , document :: T.Text
+    { queries       :: [QueryDoc]
+    , preconditions :: [Html]
+    , document      :: T.Text
     }
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup g d') -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id d'
-    d'              -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id d'
+    (DocGroup g d') -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id id d'
+    d'              -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
   where
-    loop ph mh qs (DocPath        t d)  = loop (ph . Path t) mh qs d
-    loop _  mh qs (DocRoot          d)  = loop (const $ Path "" End) mh qs d
-    loop ph mh qs (DocFetch     t h d)  = loop (ph . Fetch t h) mh qs d
-    loop ph _  qs (DocMethod      m d)  = loop ph (\md -> [(m, md)]) qs d
-    loop ph mh qs (DocQuery p s q t d)  = loop ph mh (qs . (QueryDoc p s q t:)) d
-    loop ph mh qs (DocGroup       _ d)  = loop ph mh qs d
-    loop ph mh qs (Document   (Just t)) = Just . PathDoc (ph End) $ mh (MethodDoc (qs []) t)
-    loop _  _  _  (Document   Nothing)  = Nothing
+    loop ph mh qs pc (DocPath         t d) = loop (ph . Path t) mh qs pc d
+    loop _  mh qs pc (DocRoot           d) = loop (const $ Path "" End) mh qs pc d
+    loop ph mh qs pc (DocFetch      t h d) = loop (ph . Fetch t h) mh qs pc d
+    loop ph _  qs pc (DocMethod       m d) = loop ph (\md -> [(m, md)]) qs pc d
+    loop ph mh qs pc (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc d
+    loop ph mh qs pc (DocGroup        _ d) = loop ph mh qs pc d
+    loop ph mh qs pc (DocPrecondition h d) = loop ph mh qs (pc . (h:)) d
+    loop ph mh qs pc (Document   (Just t)) = Just . PathDoc (ph End) $ mh (MethodDoc (qs []) (pc []) t)
+    loop _  _  _  _  (Document    Nothing) = Nothing
 
 mergeMethod :: [PathDoc] -> [PathDoc]
 mergeMethod [] = []
@@ -177,9 +180,17 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , mcMap query qs
         ]
 
-    method (m, MethodDoc qs d) = 
+    preconds [] = mempty
+    preconds p =
+        H.div ! A.class_ "well well-sm col-sm-offset-1 col-md-offset-1" $ mconcat
+            [ H.p "Preconditions:"
+            , H.ul $ mcMap (\h -> H.li h) p
+            ]
+
+    method (m, MethodDoc qs pc d) = 
         H.div ! A.class_ "method" $ mconcat
         [ H.h4 . toHtml $ T.decodeUtf8 m
+        , preconds pc
         , H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $ H.p (toHtml d)
         , queriesH qs
         ]

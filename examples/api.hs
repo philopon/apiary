@@ -12,6 +12,7 @@ import Control.Concurrent
 import Text.Blaze.Html
 import Data.Monoid
 import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 
 data Test = Test 
     { name :: Maybe String
@@ -27,8 +28,11 @@ deriveToJSON defaultOptions ''Test
 conf :: ApiaryConfig
 conf = def {
     documentationAction = Just $ defaultDocumentationAction "/api/documentation"
-        def { documentTitle       = "Cat API documentation"
-            , documentDescription = Just $ H.p "nyan! nyan! I'm cute cat!"
+        def { documentTitle       = "auto generate API documentation example"
+            , documentDescription = Just $ H.p $ mconcat
+                [ "example of API documentation. source file: "
+                , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
+                ]
             }
     }
 
@@ -42,6 +46,11 @@ main = do
         -- you can add route document using document function.
         root . stdMethod GET . document "root page" . action $ do
             lbs "root"
+
+        -- condition that put after document function, not documented.
+        [capture|/precondition|] . http11 . hasHeader "Accept" .
+            document "precondition test" . hasHeader "User-Agent" . action $ do
+                lbs "precondition"
 
         -- you can add document group only as top level action.
         group "cat" $ do
