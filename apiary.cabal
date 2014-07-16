@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.12.7
+version:             0.12.8
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -35,9 +35,9 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.12.7/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.12.7/examples/api.html>).
+    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.12.8/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.12.8/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.12.7/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.12.8/examples/>
 
 license:             MIT
 license-file:        LICENSE
