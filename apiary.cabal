@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.12.7
+version:             0.12.8
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -35,9 +35,9 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.12.7/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.12.7/examples/api.html>).
+    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.12.8/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.12.8/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.12.7/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.12.8/examples/>
 
 license:             MIT
 license-file:        LICENSE
@@ -49,7 +49,9 @@ copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
 stability:           experimental
--- extra-source-files:  
+extra-source-files:  static/api-documentation.min.js
+                   , static/jquery.cookie-1.4.1.min.js
+                   , static/api-documentation.min.css
 cabal-version:       >=1.10
 
 flag wai3
@@ -99,6 +101,7 @@ library
                      , mime-types           >=0.1   && <0.2
                      , exceptions           >=0.6   && <0.7
                      , blaze-html           >=0.7   && <0.8
+                     , blaze-markup         >=0.6   && <0.7
 
   if impl(ghc < 7.8)
     build-depends:     tagged               >=0.7   && <0.8

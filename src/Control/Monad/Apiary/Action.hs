@@ -4,6 +4,7 @@ module Control.Monad.Apiary.Action
     ( ActionT
     , ApiaryConfig(..)
     , defaultDocumentationAction
+    , DefaultDocumentConfig(..)
     -- * actions
     , stop, stopWith
 
@@ -45,6 +46,7 @@ module Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Action.Internal
 import Data.Default.Class
 import Data.Apiary.Param
+import Data.Apiary.Document
 import Network.HTTP.Types.Status hiding (mkStatus)
 
 #ifdef WAI3
