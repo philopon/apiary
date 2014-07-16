@@ -49,7 +49,9 @@ copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
 stability:           experimental
--- extra-source-files:  
+extra-source-files:  static/api-documentation.min.js
+                   , static/jquery.cookie-1.4.1.min.js
+                   , static/api-documentation.min.css
 cabal-version:       >=1.10
 
 flag wai3

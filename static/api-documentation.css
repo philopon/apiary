@@ -1,0 +1,47 @@
+.fetch {
+  color: gray;
+}
+
+footer {
+  padding-top:    30px;
+  padding-bottom: 50px;
+  margin-top:     20px;
+  text-align:     center;
+  color:          #777;
+  border-top:     1px solid #e5e5e5;
+}
+
+.description {
+  margin-bottom: 20px;
+}
+
+table {
+  margin-top:    15px !important;
+  margin-bottom:  0px !important;
+}
+
+table.route-parameters {
+  margin-top:       0px !important;
+  border-bottom:    1px solid #ddd;
+  background-color: #f5f5f5;
+}
+
+.method {
+  margin-bottom:  20px;
+  padding-bottom: 10px;
+  border-bottom:  1px solid #ddd;
+}
+
+.method:last-child {
+  margin-bottom:  0;
+  padding-bottom: 0;
+  border-bottom:  none;
+}
+
+.methods div{
+  margin-left: 10px;
+  color:       #999;
+}
+
+.panel-heading , h1 {cursor:pointer}
+

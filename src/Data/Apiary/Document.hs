@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.Apiary.Document where
 
+import Language.Haskell.TH
 import Control.Applicative
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -128,11 +129,10 @@ routeToHtml = loop (1::Int) mempty []
 data DefaultDocumentConfig = DefaultDocumentConfig
     { documentTitle       :: T.Text
     , documentDescription :: Maybe Html
-    , documentOpenDefault :: Bool
     }
 
 instance Default DefaultDocumentConfig where
-    def = DefaultDocumentConfig "API documentation" Nothing False
+    def = DefaultDocumentConfig "API documentation" Nothing
 
 defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
 defaultDocumentToHtml DefaultDocumentConfig{..} docs =
@@ -140,29 +140,15 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
     js  u = H.script ! A.src u $ mempty
+
     headH = mconcat 
         [ H.title (toHtml documentTitle)
         , css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
         , js  "//code.jquery.com/jquery-2.1.1.min.js"
         , js  "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
-        , H.style . toHtml $ T.concat
-            [ ".fetch{color:gray}"
-            , "footer{padding-top:30px;"
-            ,        "padding-bottom:50px;"
-            ,        "margin-top:20px;"
-            ,        "text-align:center;"
-            ,        "color:#777;"
-            ,        "border-top:1px solid #e5e5e5;"
-            ,        "background-color:#f5f5f5"
-            ,       "}"
-            , ".description{margin-bottom:20px}"
-            , "table{margin-top:15px !important;margin-bottom:0px !important}"
-            , "table.route-parameters{margin-top:0px !important;border-bottom:1px solid #ddd;background-color:#f5f5f5}"
-            , ".method{margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid #ddd}"
-            , ".method:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none}"
-            , ".methods div{margin-left:10px;color:#999}"
-            , ".panel-heading{cursor:pointer}"
-            ]
+        , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+        , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+        , $(runIO (readFile "static/api-documentation.min.css")     >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         ]
 
     htmlQR (Strict   r) = toHtml (show r)
@@ -201,10 +187,6 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     dataToggle = attribute "data-toggle" " data-toggle=\""
     dataTarget = attribute "data-target" " data-target=\""
 
-    defOpenAttr = if documentOpenDefault
-                  then A.class_ "panel-collapse collapse in"
-                  else A.class_ "panel-collapse collapse"
-
     pathH i (PathDoc r ms) =
         let (route, rdoc) = routeToHtml r
         in H.div ! A.class_ "panel panel-default" $ mconcat
@@ -214,7 +196,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
                 , H.div ! A.class_ "methods" $
                     mcMap ((\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m)) . fst) (reverse ms)
                 ]
-            , H.div ! A.id (toValue $ "collapse-" ++ show i) ! defOpenAttr $
+            , H.div ! A.id (toValue $ "collapse-" ++ show i) ! A.class_ "panel-collapse collapse" $
                 rdoc <> (H.div ! A.class_ "panel-body" $ mcMap method ms)
             ]
 
