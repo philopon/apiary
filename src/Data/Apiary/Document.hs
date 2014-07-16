@@ -74,8 +74,9 @@ data MethodDoc = MethodDoc
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup g d') -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id id d'
-    d'              -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
+    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
+    (DocGroup g d')  -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id id d'
+    d'               -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
   where
     loop ph mh qs pc (DocPath         t d) = loop (ph . Path t) mh qs pc d
     loop _  mh qs pc (DocRoot           d) = loop (const $ Path "" End) mh qs pc d
@@ -107,21 +108,22 @@ docsToDocuments doc =
     trav (Nothing, _) = Nothing
     trav (Just a,  b) = Just (a, b)
 
-routeToHtml :: Route -> (Html, Html)
-routeToHtml = loop (1::Int) mempty []
+routeToHtml :: Route -> (T.Text, Html, Html)
+routeToHtml = loop (1::Int) "" mempty []
   where
     sp = H.span "/" ! A.class_ "splitter"
-    loop i r p (Path s d)          = loop i (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
-    loop i r p (Fetch t Nothing d) = 
-        loop i (r <> sp <> H.span (toHtml $ ':' : show t) ! A.class_ "fetch") p d
-    loop i r p (Fetch t (Just h) d) = 
-        loop (succ i) (r <> sp <> H.span (toHtml (':' : show t) <> H.sup (toHtml i)) ! A.class_ "fetch")
+    loop i e r p (Path s d)          = loop i (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
+    loop i e r p (Fetch t Nothing d) = 
+        loop i (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> H.span (toHtml $ ':' : show t) ! A.class_ "fetch") p d
+    loop i e r p (Fetch t (Just h) d) = 
+        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> H.span (toHtml (':' : show t) <> H.sup (toHtml i)) ! A.class_ "fetch")
             (p <> [H.tr $ H.td (toHtml i) <> H.td (toHtml $ show t) <> H.td h]) d
-    loop _ r p End =
-        (r, if null p
-            then mempty
-            else H.table ! A.class_ "table table-condensed route-parameters" $
-                 H.tr (mconcat 
+    loop _ e r p End =
+        (e, r
+        , if null p
+          then mempty
+          else H.table ! A.class_ "table table-condensed route-parameters" $
+               H.tr (mconcat 
                     [ H.th ! A.class_ "col-sm-1 com-md-1" $ "#"
                     , H.th ! A.class_ "col-sm-1 com-md-1" $ "type"
                     , H.th "description"
@@ -198,27 +200,27 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     dataToggle = attribute "data-toggle" " data-toggle=\""
     dataTarget = attribute "data-target" " data-target=\""
 
-    pathH i (PathDoc r ms) =
-        let (route, rdoc) = routeToHtml r
+    pathH grp (PathDoc r ms) =
+        let (idnt, route, rdoc) = routeToHtml r
         in H.div ! A.class_ "panel panel-default" $ mconcat
             [ H.div ! A.class_ "panel-heading clearfix"
-                ! dataToggle "collapse" ! dataTarget (toValue $ "#collapse-" ++ show (i::Int)) $ mconcat
+                ! dataToggle "collapse" ! dataTarget (toValue $ T.concat ["[id='collapse-", grp, "-", idnt, "']"]) $ mconcat
                 [ H.h3 ! A.class_ "panel-title pull-left" $ route
                 , H.div ! A.class_ "methods" $
                     mcMap ((\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m)) . fst) (reverse ms)
                 ]
-            , H.div ! A.id (toValue $ "collapse-" ++ show i) ! A.class_ "panel-collapse collapse" $
+            , H.div ! A.id (toValue $ T.concat ["collapse-", grp, "-", idnt]) ! A.class_ "panel-collapse collapse" $
                 rdoc <> (H.div ! A.class_ "panel-body" $ mcMap method ms)
             ]
 
-    groupH i (g, p) =
-        let (i', gs) = mapAccumL (\ii a -> (succ ii, pathH ii a)) i p
-        in (i', H.div ! A.id (toValue $ T.append "group-" g) $ mconcat [H.h2 $ toHtml g, mconcat gs])
+    groupH (g, p) =
+        let gs = mcMap (pathH g) p
+        in H.div ! A.id (toValue $ T.append "group-" g) $ mconcat [H.h2 $ toHtml g, gs]
 
     doc (Documents n g) =
-        let (i, ng) = mapAccumL (\i' a -> (succ i', pathH  i' a)) (0::Int) n
-            (_, gs) = mapAccumL groupH i g
-        in (H.div ! A.id "no-group") (mconcat ng) <> mconcat gs
+        let ng = mcMap (pathH "") n
+            gs = mcMap groupH g
+        in (H.div ! A.id "no-group") ng <> gs
 
     body  = H.div ! A.class_ "container" $ mconcat
         [ H.div ! A.class_ "page-header" $ H.h1 (toHtml documentTitle)

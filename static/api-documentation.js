@@ -24,13 +24,13 @@
     var current = $.cookie('open') || [];
 
     $('.collapse').on('show.bs.collapse', function(e){
-      var cur = parseInt(e.target.id.slice(9));
+      var cur = e.target.id.slice(9);
       current.push(cur);
       current = unique(current);
       current.sort();
       $.cookie('open', current);
     }).on('hide.bs.collapse', function(e){
-      var cur = parseInt(e.target.id.slice(9));
+      var cur = e.target.id.slice(9);
       current = remove(current, cur);
       $.cookie('open', current);
     });
@@ -39,7 +39,7 @@
       if(current.length == 0) {
         $('.collapse').each(function(i,e){
           $(e).collapse('show');
-          var cur = parseInt(e.id.slice(9));
+          var cur = e.id.slice(9);
           current.push(cur);
         }).promise().done(function(){
           current = unique(current);
@@ -56,7 +56,7 @@
     });
 
     for(var i = 0; i < current.length; i++) {
-      $('#collapse-' + current[i]).addClass('in');
+      $("[id='collapse-" + current[i] + "']").addClass('in');
     }
   });
 
