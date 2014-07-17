@@ -75,9 +75,9 @@ data MethodDoc = MethodDoc
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
-    (DocGroup g d')  -> (Just  g,) <$> loop id (\md -> [("ANY", md)]) id id d'
-    d'               -> (Nothing,) <$> loop id (\md -> [("ANY", md)]) id id d'
+    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id d'
+    (DocGroup g d')  -> (Just  g,) <$> loop id (\md -> [("*", md)]) id id d'
+    d'               -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id d'
   where
     loop ph mh qs pc (DocPath         t d) = loop (ph . Path t) mh qs pc d
     loop _  mh qs pc (DocRoot           d) = loop (const $ Path "" End) mh qs pc d
@@ -143,10 +143,11 @@ routeToHtml = loop (1::Int) "" mempty []
 data DefaultDocumentConfig = DefaultDocumentConfig
     { documentTitle       :: T.Text
     , documentDescription :: Maybe Html
+    , documentUseCDN      :: Bool
     }
 
 instance Default DefaultDocumentConfig where
-    def = DefaultDocumentConfig "API documentation" Nothing
+    def = DefaultDocumentConfig "API documentation" Nothing True
 
 defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
 defaultDocumentToHtml DefaultDocumentConfig{..} docs =
@@ -154,20 +155,37 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
     js  u = H.script ! A.src u $ mempty
+    dataToggle = attribute "data-toggle" " data-toggle=\""
+    dataTarget = attribute "data-target" " data-target=\""
+
+    mcMap f = mconcat . map f
+
+    cdns = mconcat
+        [ css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+        , js  "//code.jquery.com/jquery-2.1.1.min.js"
+        , js  "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
+        ]
+
+    embeds = $( do
+        let embed f p = runIO (readFile p) >>= \c -> [|$(varE f) $ preEscapedToHtml (c :: String)|]
+        [| mconcat 
+            [ $(embed 'H.style  "static/bootstrap.min.css")
+            , $(embed 'H.script "static/jquery-2.1.1.min.js")
+            , $(embed 'H.script "static/bootstrap.min.js")
+            ]
+         |])
 
     headH = mconcat 
         [ H.title (toHtml documentTitle)
-        , css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-        , js  "//code.jquery.com/jquery-2.1.1.min.js"
-        , js  "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
+        , if documentUseCDN then cdns else embeds
         , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
         , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        , $(runIO (readFile "static/api-documentation.min.css")     >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
+        , $(runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         ]
 
     htmlQR (Strict   r) = toHtml (show r)
-    htmlQR (Nullable r) = toHtml (show r ++ "?")
-    htmlQR  Check       = toHtml ("check" :: T.Text)
+    htmlQR (Nullable r) = toHtml (show r) <> "?"
+    htmlQR  Check       = "check"
 
     query (QueryDoc p s q t) = H.tr . mconcat $
         [ H.td (toHtml $ T.decodeUtf8 p)
@@ -175,8 +193,6 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , H.td (htmlQR q)
         , H.td t
         ]
-
-    mcMap f = mconcat . map f
 
     queriesH [] = mempty
     queriesH qs =
@@ -208,9 +224,6 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , H.div $ H.p (toHtml d)
         , queriesH qs
         ]
-
-    dataToggle = attribute "data-toggle" " data-toggle=\""
-    dataTarget = attribute "data-target" " data-target=\""
 
     pathH grp (PathDoc r ms) =
         let (idnt, route, rdoc) = routeToHtml r

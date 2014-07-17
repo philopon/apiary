@@ -52,6 +52,9 @@ stability:           experimental
 extra-source-files:  static/api-documentation.min.js
                    , static/jquery.cookie-1.4.1.min.js
                    , static/api-documentation.min.css
+                   , static/jquery-2.1.1.min.js
+                   , static/bootstrap.min.css
+                   , static/bootstrap.min.js
 cabal-version:       >=1.10
 
 flag wai3

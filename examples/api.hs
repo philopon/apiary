@@ -29,9 +29,9 @@ deriveToJSON defaultOptions ''Test
 conf :: ApiaryConfig
 conf = def {
     documentationAction = Just $ defaultDocumentationAction "/api/documentation"
-        def { documentTitle       = "auto generate API documentation example"
+        def { documentTitle       = "Example of API documentation auto generation"
             , documentDescription = Just $ H.p $ mconcat
-                [ "example of API documentation. source file: "
+                [ "source file: "
                 , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
                 ]
             }
