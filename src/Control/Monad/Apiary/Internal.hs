@@ -25,6 +25,7 @@ import Control.Monad.Base
 import Data.Apiary.SList
 import Data.Apiary.Document
 import Data.Monoid
+import Text.Blaze.Html
 import qualified Data.Text as T
 
 import Control.Monad.Apiary.Action.Internal
@@ -151,6 +152,11 @@ group d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
 document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 document d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
     { readerDoc = \_ -> readerDoc rdr (Document $ Just d) } cont
+
+-- | add user defined precondition. since 0.13.0.
+precondition :: Html -> ApiaryT c n m a -> ApiaryT c n m a
+precondition d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
+    { readerDoc = readerDoc rdr . DocPrecondition d } cont
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since 0.4.2.0

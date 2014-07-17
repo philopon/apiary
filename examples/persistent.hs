@@ -34,7 +34,7 @@ main = withLogger def $ withLogger' def {bufferSize = 0 } $ \immediate ->
         runGivenLoggerT . runSql $ runMigration migrateAll
 
         run 3000 . runApiary def $ do
-            root . sql (selectList ([] :: [Filter Number]) []) . action $ \q -> do
+            root . sql Nothing (selectList ([] :: [Filter Number]) []) . action $ \q -> do
 
                 -- logging.
                 logging "root accessed.\n"

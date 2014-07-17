@@ -4,6 +4,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Web.Apiary.Database.Persist (
     -- * runner
@@ -24,12 +25,17 @@ module Web.Apiary.Database.Persist (
     ) where
 
 import Database.Persist.Sql
+
 import Web.Apiary
+
 import Control.Applicative
 import Control.Monad.Trans.Resource
+import Control.Monad.Apiary.Filter.Internal
+
+import Text.Blaze.Html
 import Data.Reflection
 import Data.Apiary.SList
-import Control.Monad.Apiary.Filter.Internal
+import Data.Apiary.Document
 
 type HasPersist = Given Persist
 
@@ -60,9 +66,10 @@ instance BoolLike [a] where
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (BoolLike a, Functor n, Monad n, MonadBaseControl IO (ActionT n), HasPersist)
-    => SqlPersistT (ResourceT (ActionT n)) a
+    => Maybe Html 
+    -> SqlPersistT (ResourceT (ActionT n)) a
     -> ApiaryT (Snoc as (UnBool a)) n m b
     -> ApiaryT as n m b
-sql p = focus id $ \l -> do
+sql doc p = focus (maybe id DocPrecondition doc) $ \l -> do
     r <- runSql p
     maybe empty (\i -> return $ sSnoc l i) $ unBool r

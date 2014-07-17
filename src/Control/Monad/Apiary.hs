@@ -10,8 +10,11 @@ module Control.Monad.Apiary
     -- * API documentation
     , group
     , document
+    , precondition
+    , rpHtml
     -- * deprecated
     , actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal
+import Data.Apiary.Document (rpHtml)

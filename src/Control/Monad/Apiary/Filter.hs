@@ -54,6 +54,7 @@ import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
+import Data.Monoid
 import Data.Proxy
 import Data.String
 import Data.Reflection
@@ -81,23 +82,23 @@ stdMethod = method . HT.renderStdMethod
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad n => ApiaryT c n m a -> ApiaryT c n m a
-ssl = function_ id isSecure
+ssl = function_ (DocPrecondition "SSL required") isSecure
 
 -- | http version filter. since 0.5.0.0.
-httpVersion :: Monad n => HT.HttpVersion -> ApiaryT c n m b -> ApiaryT c n m b
-httpVersion v = function_ id $ (v ==) . Wai.httpVersion
+httpVersion :: Monad n => HT.HttpVersion -> Html -> ApiaryT c n m b -> ApiaryT c n m b
+httpVersion v h = function_ (DocPrecondition h) $ (v ==) . Wai.httpVersion
 
 -- | http/0.9 only accepted fiter. since 0.5.0.0.
 http09 :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
-http09 = Control.Monad.Apiary.Filter.httpVersion HT.http09
+http09 = Control.Monad.Apiary.Filter.httpVersion HT.http09 "HTTP/0.9 only"
 
 -- | http/1.0 only accepted fiter. since 0.5.0.0.
 http10 :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
-http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10
+http10 = Control.Monad.Apiary.Filter.httpVersion HT.http10 "HTTP/1.0 only"
 
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
 http11 :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
-http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11
+http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
@@ -223,7 +224,8 @@ hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 -- | check whether to exists specified header or not. since 0.6.0.0.
 hasHeader :: Monad n => HT.HeaderName -> ApiaryT as n m b -> ApiaryT as n m b
-hasHeader n = header' pCheck ((n ==) . fst)
+hasHeader n = header' pCheck ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: Monad n
@@ -231,17 +233,20 @@ eqHeader :: Monad n
          -> S.ByteString  -- ^ header value
          -> ApiaryT as n m b
          -> ApiaryT as n m b
-eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v')
+eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v') . Just $
+    mconcat [toHtml $ show k, " header == ", toHtml $ show v]
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: Monad n => HT.HeaderName
        -> ApiaryT (Snoc as S.ByteString) n m b -> ApiaryT as n m b
-header n = header' pFirst ((n ==) . fst)
+header n = header' pFirst ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
 
 -- | filter by headers up to 100 entries. since 0.6.0.0.
 headers :: Monad n => HT.HeaderName
         -> ApiaryT (Snoc as [S.ByteString]) n m b -> ApiaryT as n m b
-headers n = header' limit100 ((n ==) . fst)
+headers n = header' limit100 ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
   where
     limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
     limit100 _ = Proxy
@@ -250,7 +255,10 @@ headers n = header' limit100 ((n ==) . fst)
 header' :: (Strategy.Strategy w, Monad n)
         => (forall x. Proxy x -> Proxy (w x))
         -> (HT.Header -> Bool)
+        -> Maybe Html
         -> ApiaryT (Strategy.SNext w as S.ByteString) n m b
         -> ApiaryT as n m b
-header' pf kf = function id $ \l r ->
+header' pf kf d = function pc $ \l r ->
     Strategy.readStrategy Just kf (pf pByteString) (requestHeaders r) l
+  where
+    pc = maybe id DocPrecondition d

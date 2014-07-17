@@ -11,7 +11,9 @@ import Control.Monad
 import Control.Concurrent
 import Text.Blaze.Html
 import Data.Monoid
+import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 
 data Test = Test 
     { name :: Maybe String
@@ -27,8 +29,11 @@ deriveToJSON defaultOptions ''Test
 conf :: ApiaryConfig
 conf = def {
     documentationAction = Just $ defaultDocumentationAction "/api/documentation"
-        def { documentTitle       = "Cat API documentation"
-            , documentDescription = Just $ H.p "nyan! nyan! I'm cute cat!"
+        def { documentTitle       = "Example of API documentation auto generation"
+            , documentDescription = Just $ H.p $ mconcat
+                [ "source file: "
+                , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
+                ]
             }
     }
 
@@ -43,8 +48,19 @@ main = do
         root . stdMethod GET . document "root page" . action $ do
             lbs "root"
 
+        -- condition that put after document function, not documented.
+        [capture|/precondition|] .
+            http11 .
+            hasHeader "Accept" .
+            precondition ("user " <> H.strong "defined" <> " precondition.") .
+
+            document "precondition test" .
+            hasHeader "User-Agent" $ -- <- not documented.
+                action $ lbs "precondition"
+
+
         -- you can add document group only as top level action.
-        group "cat" $ do
+        group "cat group" $ do
             [capture|/api/cat|] $ do
                 stdMethod GET . document "get current name and age." . action $ do
                     n <- liftIO $ readMVar nm
@@ -73,6 +89,19 @@ main = do
                 stdMethod POST . document "set name and age from route." . action $ \n a -> do
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a
+
+        -- you can generate API document with multiple action.
+        -- rpHtml function format as captured route parameter.
+        group "dog group" $ do
+            [capture|/api/dog/:Int|] $ do
+                precondition (rpHtml "Int" 1 <> " is even.") . document "twice" . action $ \i -> do
+                    guard $ even i
+                    contentType "text/plain"
+                    lbs (L.pack . show $ i * 2)
+                precondition (rpHtml "Int" 1 <> " is odd.") . document "succ" . action $ \i -> do
+                    contentType "text/plain"
+                    lbs (L.pack . show $ succ i)
+
 
 dName :: Html
 dName = H.ul $ H.li "name of cat." <> H.li "if null, homeless."
