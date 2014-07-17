@@ -66,10 +66,10 @@ instance BoolLike [a] where
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (BoolLike a, Functor n, Monad n, MonadBaseControl IO (ActionT n), HasPersist)
-    => Html 
+    => Maybe Html 
     -> SqlPersistT (ResourceT (ActionT n)) a
     -> ApiaryT (Snoc as (UnBool a)) n m b
     -> ApiaryT as n m b
-sql doc p = focus (DocPrecondition doc) $ \l -> do
+sql doc p = focus (maybe id DocPrecondition doc) $ \l -> do
     r <- runSql p
     maybe empty (\i -> return $ sSnoc l i) $ unBool r
