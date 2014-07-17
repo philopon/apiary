@@ -12,13 +12,16 @@ module Web.Apiary.Cookie.Internal where
 import Web.Apiary.Wai
 import Web.Apiary
 import Web.Cookie
-import Data.Maybe
-import Data.Time
 
 import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
+import Data.Maybe
+import Data.Time
+import Data.Monoid
+import Data.Apiary.Document
 import Blaze.ByteString.Builder
+import Text.Blaze.Html
 import qualified Data.ByteString as S
 
 cond :: (a -> Bool) -> (a -> b) -> (a -> b) -> a -> b
@@ -41,7 +44,8 @@ cookie :: (Strategy w, Query a, Functor n, Monad n)
        -> proxy (w a)
        -> ApiaryT (SNext w as a) n m b
        -> ApiaryT as n m b
-cookie k p = function id $ \l r -> readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l
+cookie k p = function (DocPrecondition $ toHtml (show k) <> " cookie required") $ \l r ->
+    readStrategy (readQuery . Just) ((k ==) . fst) p (cookie' r) l
 
 cookie' :: Request -> [(S.ByteString, S.ByteString)]
 cookie' = 

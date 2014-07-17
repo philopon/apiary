@@ -123,9 +123,9 @@ routeToHtml = loop (1::Int) "" mempty []
     sp = H.span "/" ! A.class_ "splitter"
     loop i e r p (Path s d)          = loop i (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
     loop i e r p (Fetch t Nothing d) = 
-        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> cap (toHtml $ show t) i) p d
+        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> rpHtml (toHtml $ show t) i) p d
     loop i e r p (Fetch t (Just h) d) = 
-        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> cap (toHtml $ show t) i)
+        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> rpHtml (toHtml $ show t) i)
             (p <> [H.tr $ H.td (toHtml i) <> H.td (toHtml $ show t) <> H.td h]) d
     loop _ e r p End =
         (e, r
@@ -259,5 +259,6 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , " web framework."
         ]
 
-cap :: Html -> Int -> Html
-cap s i = H.span (":" <> s <> H.sup (toHtml i)) ! A.class_ "fetch"
+-- | construct Html as route parameter. since 0.13.0.
+rpHtml :: Html -> Int -> Html
+rpHtml s i = H.span (":" <> s <> H.sup (toHtml i)) ! A.class_ "fetch"

@@ -21,10 +21,13 @@ import Web.Apiary.Cookie
 import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
 import Data.Maybe
+import Data.Monoid
 import Data.Time
 import Data.Default.Class
 import Data.Binary
 import Data.IORef
+import Data.Apiary.Document
+import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64
 
 import "crypto-random" Crypto.Random
@@ -129,7 +132,7 @@ csrfToken Session{..} = do
 
 session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
         -> S.ByteString -> proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
-session sess k p = focus id $ \l -> do
+session sess k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime
     let mbr = readStrategy readQuery ((k ==) . fst) p
@@ -140,7 +143,7 @@ checkToken :: (Functor n, MonadIO n)
            => Session
            -> ApiaryT c n m a
            -> ApiaryT c n m a
-checkToken sess@Session{..} = focus id $ \l -> do
+checkToken sess@Session{..} = focus (DocPrecondition "CSRF token required") $ \l -> do
     r <- getRequest
     p <- getReqParams
 

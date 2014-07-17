@@ -54,13 +54,11 @@ import qualified Network.HTTP.Types as HT
 import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import Data.Monoid
 import Data.Proxy
 import Data.String
 import Data.Reflection
 import Text.Blaze.Html
-import Data.CaseInsensitive
 
 import Data.Apiary.SList
 import Data.Apiary.Param
@@ -226,8 +224,8 @@ hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 -- | check whether to exists specified header or not. since 0.6.0.0.
 hasHeader :: Monad n => HT.HeaderName -> ApiaryT as n m b -> ApiaryT as n m b
-hasHeader n = header' pCheck ((n ==) . fst) $ Just .
-    toHtml $ (T.decodeUtf8 $ original n) `T.append` " header requred"
+hasHeader n = header' pCheck ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: Monad n
@@ -235,20 +233,20 @@ eqHeader :: Monad n
          -> S.ByteString  -- ^ header value
          -> ApiaryT as n m b
          -> ApiaryT as n m b
-eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v') $ Just . 
-    toHtml $ T.concat [T.decodeUtf8 $ original k, " == ", T.pack $ show v]
+eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v') . Just $
+    mconcat [toHtml $ show k, " header == ", toHtml $ show v]
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: Monad n => HT.HeaderName
        -> ApiaryT (Snoc as S.ByteString) n m b -> ApiaryT as n m b
-header n = header' pFirst ((n ==) . fst) $ Just .
-    toHtml $ (T.decodeUtf8 $ original n) `T.append` " header requred"
+header n = header' pFirst ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
 
 -- | filter by headers up to 100 entries. since 0.6.0.0.
 headers :: Monad n => HT.HeaderName
         -> ApiaryT (Snoc as [S.ByteString]) n m b -> ApiaryT as n m b
-headers n = header' limit100 ((n ==) . fst) $ Just .
-    toHtml $ (T.decodeUtf8 $ original n) `T.append` " header requred"
+headers n = header' limit100 ((n ==) . fst) . Just $
+    toHtml (show n) <> " header requred"
   where
     limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
     limit100 _ = Proxy

@@ -11,10 +11,10 @@ module Control.Monad.Apiary
     , group
     , document
     , precondition
-    , cap
+    , rpHtml
     -- * deprecated
     , actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal
-import Data.Apiary.Document (cap)
+import Data.Apiary.Document (rpHtml)

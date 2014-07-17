@@ -153,6 +153,7 @@ document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
 document d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
     { readerDoc = \_ -> readerDoc rdr (Document $ Just d) } cont
 
+-- | add user defined precondition. since 0.13.0.
 precondition :: Html -> ApiaryT c n m a -> ApiaryT c n m a
 precondition d m = ApiaryT $ \rdr cont -> unApiaryT m rdr
     { readerDoc = readerDoc rdr . DocPrecondition d } cont

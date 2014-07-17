@@ -91,14 +91,14 @@ main = do
                     void . liftIO $ swapMVar ag a
 
         -- you can generate API document with multiple action.
-        -- cap function format as captured route parameter.
+        -- rpHtml function format as captured route parameter.
         group "dog group" $ do
             [capture|/api/dog/:Int|] $ do
-                precondition (cap "Int" 1 <> " is even.") . document "twice" . action $ \i -> do
+                precondition (rpHtml "Int" 1 <> " is even.") . document "twice" . action $ \i -> do
                     guard $ even i
                     contentType "text/plain"
                     lbs (L.pack . show $ i * 2)
-                precondition (cap "Int" 1 <> " is odd.") . document "succ" . action $ \i -> do
+                precondition (rpHtml "Int" 1 <> " is odd.") . document "succ" . action $ \i -> do
                     contentType "text/plain"
                     lbs (L.pack . show $ succ i)
 
