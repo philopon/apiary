@@ -43,5 +43,9 @@ table.route-parameters {
   color:       #999;
 }
 
-.panel-heading , h1 {cursor:pointer}
+.panel-heading , h1 {cursor:pointer; }
 
+.precondition { margin-bottom: 10px; }
+
+.action { margin-bottom: 20px;}
+.action:last-child { margin-bottom: 0;}

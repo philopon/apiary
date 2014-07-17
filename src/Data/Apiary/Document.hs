@@ -3,6 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Data.Apiary.Document where
 
@@ -56,7 +57,7 @@ data Documents = Documents
 
 data PathDoc = PathDoc
     { path    :: Route
-    , methods :: [(HT.Method, MethodDoc)]
+    , methods :: [(HT.Method, [MethodDoc])]
     }
 
 data QueryDoc = QueryDoc
@@ -85,24 +86,32 @@ docToDocument = \case
     loop ph mh qs pc (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc d
     loop ph mh qs pc (DocGroup        _ d) = loop ph mh qs pc d
     loop ph mh qs pc (DocPrecondition h d) = loop ph mh qs (pc . (h:)) d
-    loop ph mh qs pc (Document   (Just t)) = Just . PathDoc (ph End) $ mh (MethodDoc (qs []) (pc []) t)
+    loop ph mh qs pc (Document   (Just t)) = Just . PathDoc (ph End) $ mh [MethodDoc (qs []) (pc []) t]
     loop _  _  _  _  (Document    Nothing) = Nothing
 
-mergeMethod :: [PathDoc] -> [PathDoc]
-mergeMethod [] = []
-mergeMethod (pd:pds) = merge pd (filter (same pd) pds) : mergeMethod (filter (not . same pd) pds)
+mergePathDoc :: [PathDoc] -> [PathDoc]
+mergePathDoc [] = []
+mergePathDoc (pd:pds) = merge (filter (same pd) pds) : mergePathDoc (filter (not . same pd) pds)
   where
-    same = (==) `on` path
-    merge pd' pds' = PathDoc (path pd') (methods pd' ++ concatMap methods pds')
+    same           = (==) `on` path
+    merge pds' = PathDoc (path pd) (mergeMethods $ methods pd ++ concatMap methods pds')
+
+mergeMethods :: [(HT.Method, [MethodDoc])] -> [(HT.Method, [MethodDoc])]
+mergeMethods [] = []
+mergeMethods (m:ms) = merge (filter (same m) ms) : mergeMethods (filter (not . same m) ms)
+  where
+    same = (==) `on` fst
+    merge ms' = (fst m, snd m ++ concatMap snd ms')
+
 
 docsToDocuments :: [Doc] -> Documents
 docsToDocuments doc =
     let gds = mapMaybe docToDocument doc
-        ngs = mergeMethod . map snd $ filter ((Nothing ==) . fst)   gds
+        ngs = mergePathDoc . map snd $ filter ((Nothing ==) . fst)   gds
         gs  = map upGroup . groupBy ((==) `on` fst) $ mapMaybe trav gds
     in Documents ngs gs
   where
-    upGroup ((g,d):ig) = (g, mergeMethod $ d : map snd ig)
+    upGroup ((g,d):ig) = (g, mergePathDoc $ d : map snd ig)
     upGroup []         = error "docsToDocuments: unknown error."
 
     trav (Nothing, _) = Nothing
@@ -114,9 +123,9 @@ routeToHtml = loop (1::Int) "" mempty []
     sp = H.span "/" ! A.class_ "splitter"
     loop i e r p (Path s d)          = loop i (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
     loop i e r p (Fetch t Nothing d) = 
-        loop i (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> H.span (toHtml $ ':' : show t) ! A.class_ "fetch") p d
+        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> cap (toHtml $ show t) i) p d
     loop i e r p (Fetch t (Just h) d) = 
-        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> H.span (toHtml (':' : show t) <> H.sup (toHtml i)) ! A.class_ "fetch")
+        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> cap (toHtml $ show t) i)
             (p <> [H.tr $ H.td (toHtml i) <> H.td (toHtml $ show t) <> H.td h]) d
     loop _ e r p End =
         (e, r
@@ -184,16 +193,19 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
 
     preconds [] = mempty
     preconds p =
-        H.div ! A.class_ "well well-sm col-sm-offset-1 col-md-offset-1" $ mconcat
+        H.div ! A.class_ "well well-sm precondition" $ mconcat
             [ H.p "Preconditions:"
             , H.ul $ mcMap (\h -> H.li h) p
             ]
 
-    method (m, MethodDoc qs pc d) = 
-        H.div ! A.class_ "method" $ mconcat
+    method (m, ms) = H.div ! A.class_ "method" $ mconcat
         [ H.h4 . toHtml $ T.decodeUtf8 m
-        , preconds pc
-        , H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $ H.p (toHtml d)
+        , mcMap action ms
+        ]
+
+    action (MethodDoc qs pc d) = H.div ! A.class_ "action col-sm-offset-1 col-md-offset-1" $ mconcat
+        [ preconds pc
+        , H.div $ H.p (toHtml d)
         , queriesH qs
         ]
 
@@ -233,3 +245,6 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , H.a ! A.href "https://github.com/philopon/apiary" $ "apiary"
         , " web framework."
         ]
+
+cap :: Html -> Int -> Html
+cap s i = H.span (":" <> s <> H.sup (toHtml i)) ! A.class_ "fetch"
