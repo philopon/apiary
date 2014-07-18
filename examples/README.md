@@ -15,3 +15,4 @@ sub-libraries
 * eventsource.hs,eventsource.html
 * csrf.hs
 * auth.hs
+* pureScript.hs, pureScript.html, pureScript.purs
