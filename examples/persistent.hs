@@ -42,16 +42,16 @@ main = withLogger def $ withLogger' def {bufferSize = 0 } $ \immediate ->
                 lbs $ L.pack (show q)
 
             [capture|/:Int|] $ do
-                stdMethod GET . action $ \i -> do
+                method GET . action $ \i -> do
 
                     -- if you want to do local logging action.
                     -- logging stdout immediately.
                     c <- runStdoutLoggingT . runSql $ count [NumberNumber ==. i]
                     lbs $ L.pack (show c)
 
-                stdMethod POST . action $ \i -> do
+                method POST . action $ \i -> do
                     _ <- immediate $ runSql $ insert (Number i)
                     return ()
 
-                stdMethod DELETE . action $ \i -> do
+                method DELETE . action $ \i -> do
                     runSql $ deleteWhere [NumberNumber ==. i]

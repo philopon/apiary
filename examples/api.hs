@@ -11,6 +11,7 @@ import Control.Monad
 import Control.Concurrent
 import Text.Blaze.Html
 import Data.Monoid
+import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -46,13 +47,13 @@ main = do
         -- you can add document group only as top level action.
         group "cat group" $ do
             [capture|/api/cat|] $ do
-                stdMethod GET . document "get current name and age." . action $ do
+                method GET . document "get current name and age." . action $ do
                     n <- liftIO $ readMVar nm
                     a <- liftIO $ readMVar ag
                     contentType "application/json"
                     lbs $ JSON.encode $ Test n a
 
-                stdMethod POST .
+                method POST .
                     -- you can add query description after ':'.
                     -- when not elem ':', it be undocumented parameter.
                     -- or (??) function to add description.
@@ -63,19 +64,19 @@ main = do
                         liftIO $ maybe (return ()) (void . swapMVar ag) a
 
                 -- when document function not exists, it be undocumented route.
-                stdMethod DELETE . action $ do
+                method DELETE . action $ do
                     void . liftIO $ swapMVar nm Nothing
                     void . liftIO $ swapMVar ag 0
 
             -- you can add route capture description using ().
             -- you can reference value using '$'.
             [capture|/api/cat/:String($dName)/:Int(age)|] .
-                stdMethod POST . document "set name and age from route." . action $ \n a -> do
+                method POST . document "set name and age from route." . action $ \n a -> do
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a
 
         -- no document function -> hidden route.
-        root . stdMethod GET . action $ do
+        root . method GET . action $ do
             lbs "root"
 
         -- you can generate API document with multiple action.
@@ -91,7 +92,7 @@ main = do
                     lbs (L.pack . show $ succ i)
 
         -- add documentation page route.
-        [capture|/api/documentation|] . stdMethod GET . document "this page" . action $
+        [capture|/api/documentation|] . method GET . document "this page" . action $
             defaultDocumentationAction def 
                 { documentTitle       = "Example of API documentation auto generation"
                 , documentDescription = Just $ H.p $ mconcat

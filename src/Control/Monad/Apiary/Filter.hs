@@ -7,11 +7,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Control.Monad.Apiary.Filter (
     -- * filters
     -- ** http method
-      method, stdMethod
+      method, Method(..)
     -- ** http version
     , Control.Monad.Apiary.Filter.httpVersion
     , http09, http10, http11
@@ -40,10 +41,11 @@ module Control.Monad.Apiary.Filter (
     , ssl
     
     -- * Reexport
-    -- | StdMethod(..)
-    , module Network.HTTP.Types
     -- | Strategy Proxies
     , module Control.Monad.Apiary.Filter.Internal.Strategy
+
+    -- * deprecated
+    , stdMethod
 
     ) where
 
@@ -51,7 +53,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Network.Wai as Wai
 import qualified Network.HTTP.Types as HT
-import Network.HTTP.Types (StdMethod(..))
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
 import Data.Monoid
@@ -72,13 +73,49 @@ import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
--- | filter by HTTP method. since 0.1.0.0.
-method :: Monad n => HT.Method -> ApiaryT c n m a -> ApiaryT c n m a
-method m = function_ (DocMethod m) ((m ==) . requestMethod)
+data Method
+    = GET
+    | POST
+    | HEAD
+    | PUT
+    | DELETE
+    | TRACE
+    | CONNECT
+    | OPTIONS
+    | PATCH
+    | NonStandard S.ByteString
+    deriving (Eq, Ord, Read, Show)
 
+renderMethod :: Method -> SC.ByteString
+renderMethod = \case
+    GET           -> "GET"
+    POST          -> "POST"
+    HEAD          -> "HEAD"
+    PUT           -> "PUT"
+    DELETE        -> "DELETE"
+    TRACE         -> "TRACE"
+    CONNECT       -> "CONNECT"
+    OPTIONS       -> "OPTIONS"
+    PATCH         -> "PATCH"
+    NonStandard a -> a
+{-# INLINE renderMethod #-}
+
+instance IsString Method where
+    fromString = NonStandard . SC.pack
+
+-- | filter by HTTP method. since 0.1.0.0.
+--
+-- @
+-- method GET      -- stdmethod
+-- method \"HOGE\" -- non standard method
+-- @
+method :: Monad n => Method -> ApiaryT c n m a -> ApiaryT c n m a
+method m = function_ (DocMethod $ renderMethod m) ((renderMethod m ==) . requestMethod)
+
+{-# DEPRECATED stdMethod "use method" #-}
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.
-stdMethod :: Monad n => StdMethod -> ApiaryT c n m a -> ApiaryT c n m a
-stdMethod = method . HT.renderStdMethod
+stdMethod :: Monad n => Method -> ApiaryT c n m a -> ApiaryT c n m a
+stdMethod = method
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad n => ApiaryT c n m a -> ApiaryT c n m a

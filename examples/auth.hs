@@ -12,7 +12,7 @@ import qualified Data.Text.Encoding as T
 main :: IO ()
 main = withSession def { sessionPath = Just "/", sessionSecure = False} $ withAuth def $ run 3000 . runApiary def $ do
 
-    root . stdMethod GET $ do
+    root . method GET $ do
         authorized . action $ \s -> do
             contentType "text/html"
             lbs $ L.unwords ["your id:", L.pack $ show s, "\n<a href=\"/logout\">logout</a>"]
@@ -23,7 +23,7 @@ main = withSession def { sessionPath = Just "/", sessionSecure = False} $ withAu
             lbs $ L.fromChunks $ maybe [] (\m -> ["<h1>", m, "</h1>"]) mbmsg ++ elm
             deleteCookie "message"
 
-    [capture|/logout|] . stdMethod GET . action $ do
+    [capture|/logout|] . method GET . action $ do
         authLogout
         setCookie def { setCookieName = "message", setCookieValue = "logout done, bye." }
         redirect "/"

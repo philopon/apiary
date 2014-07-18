@@ -20,10 +20,10 @@ It can configure ApiaryConfig.
 
 >     root $ do
 
-Then 'stdMethod' filter apply and execute action. 
+Then 'method' filter apply and execute action. 
 So only root like path and GET method is processed.
 
->         stdMethod GET . action $ do
+>         method GET . action $ do
 
 Set content-type. default response header can configure by ApiaryConfig.
 
@@ -39,11 +39,11 @@ Capture filter filtering 'path' and read ':Type'.
 
 You can get captured elements by action (without underscore) function.
 
->         stdMethod GET . action $ \i -> do
+>         method GET . action $ \i -> do
 >             contentType "text/plain"
 >             lbs . L.pack $ "GET " ++ show i
 
->         stdMethod POST . action $ \i -> do
+>         method POST . action $ \i -> do
 >             contentType "text/plain"
 >             lbs . L.pack $ "POST " ++ show (i * 2)
 
@@ -59,7 +59,7 @@ You can use MonadPlus instance. when b == 0, 404 page not found.
 >         lbs . L.pack $ show (a / b)
 
 >     [capture|/static/:String|] $ do
->         stdMethod GET . action $ \p -> do
+>         method GET . action $ \p -> do
 
 Static file provider. content-type auto detected by extension.
 
