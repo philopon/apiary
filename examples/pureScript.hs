@@ -16,7 +16,7 @@ import System.FilePath
 main :: IO ()
 main = do
     setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
-    withPureScript def $ run 3000 . runApiary def $ do
+    withPureScript def {development = True} $ run 3000 . runApiary def $ do
         method GET $ do
             root . action $ do
                 contentType "text/html"

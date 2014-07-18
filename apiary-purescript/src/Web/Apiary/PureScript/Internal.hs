@@ -4,9 +4,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 module Web.Apiary.PureScript.Internal where
 
+import Control.Exception
 import Control.Applicative
 import Language.Haskell.TH
 import Web.Apiary
@@ -17,10 +19,19 @@ import qualified Language.PureScript as P
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.HashMap.Strict as H
 import Data.IORef
+import Data.Typeable
+import qualified Text.Parsec.Error as P
 
 import qualified Paths_apiary_purescript as Path
+
+data PureScriptException
+    = ParseError   P.ParseError
+    | CompileError String
+    deriving (Show, Typeable)
+instance Exception PureScriptException
 
 purescriptDatadir :: FilePath
 purescriptDatadir = takeDirectory $(stringE =<< runIO Path.getDataDir) </> "purescript-" ++ VERSION_purescript
@@ -79,7 +90,9 @@ getAllModulePath = loop
 readPscInput :: FilePath -> IO [P.Module]
 readPscInput p = do
     txt <- U.readFile p
-    either (fail . show) return $ P.runIndentParser p P.parseModules txt
+    case P.runIndentParser p P.parseModules txt of
+        Left e  -> throwIO $ ParseError e
+        Right r -> return r
 
 pscModules :: PureScriptConfig -> IO [P.Module]
 pscModules conf = do
@@ -92,18 +105,34 @@ compile opt p = do
     mods <- pscModules opt
     mn   <- readPscInput p
     case P.compile (pureScriptOptions opt) $ mn ++ mods of
-        Left l -> fail l
+        Left l           -> throwIO (CompileError l)
         Right (js, _, _) -> return . T.encodeUtf8 $ T.pack js
 
 pureScript :: MonadIO m => PureScript -> FilePath -> ActionT m ()
 pureScript env p = do
     contentType "text/javascript"
-    s <- if development (pscConfig env)
-         then liftIO $ compile (pscConfig env) p
-         else liftIO $ (H.lookup p <$> readIORef (compiled env)) >>= \case
-            Nothing -> do
-                r <- compile (pscConfig env) p
-                atomicModifyIORef' (compiled env) ((,()) . H.insert p r)
-                return r
-            Just r  -> return r
-    lbs s
+    s <- liftIO . try $ 
+        if development (pscConfig env)
+        then compile (pscConfig env) p
+        else (H.lookup p <$> readIORef (compiled env)) >>= \case
+           Nothing -> do
+               r <- compile (pscConfig env) p
+               atomicModifyIORef' (compiled env) ((,()) . H.insert p r)
+               return r
+           Just r  -> return r
+    case s of
+        Right r -> lbs r
+        Left  e | development (pscConfig env) -> 
+            lbs . LC.pack $ "alert(\"" ++ pr (e::PureScriptException) ++ "\")"
+
+                | otherwise -> lbs "alert(\"PureScript error.\");"
+  where
+    pr = concatMap esc . show
+    esc '"'  = "\\\""
+    esc '\'' = "\\'"
+    esc '\\' = "\\\\"
+    esc '/'  = "\\/"
+    esc '<'  = "\\x3c"
+    esc '>'  = "\\x3e"
+    esc '\n' = "\\n"
+    esc c    = [c]
