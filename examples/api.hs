@@ -24,30 +24,14 @@ deriveToJSON defaultOptions ''Test
 
 -- You can view API documentation on 'http://localhost:3000/api/documentation'.
 
--- Documentation route, title and description(or all of documentation function)
--- can set in ApiaryConfig.
-conf :: ApiaryConfig
-conf = def {
-    documentationAction = Just $ defaultDocumentationAction "/api/documentation"
-        def { documentTitle       = "Example of API documentation auto generation"
-            , documentDescription = Just $ H.p $ mconcat
-                [ "source file: "
-                , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
-                ]
-            }
-    }
-
 main :: IO ()
 main = do
     nm <- newMVar Nothing
     ag <- newMVar 0
 
-    run 3000 . runApiary conf $ do
+    run 3000 . runApiary def $ do
 
         -- you can add route document using document function.
-        root . stdMethod GET . document "root page" . action $ do
-            lbs "root"
-
         -- condition that put after document function, not documented.
         [capture|/precondition|] .
             http11 .
@@ -72,10 +56,10 @@ main = do
                     -- you can add query description after ':'.
                     -- when not elem ':', it be undocumented parameter.
                     -- or (??) function to add description.
-                    ("name:name of cat" =?: pString) .
+                    ("name:name of cat" =:  pMaybe pString) .
                     ("age" ?? dAge      =?: pInt) .
                     document "set name and age from query parameter." . action $ \n a -> do
-                        void . liftIO $ swapMVar nm n
+                        liftIO . void $ swapMVar nm n
                         liftIO $ maybe (return ()) (void . swapMVar ag) a
 
                 -- when document function not exists, it be undocumented route.
@@ -90,6 +74,10 @@ main = do
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a
 
+        -- no document function -> hidden route.
+        root . stdMethod GET . action $ do
+            lbs "root"
+
         -- you can generate API document with multiple action.
         -- rpHtml function format as captured route parameter.
         group "dog group" $ do
@@ -102,6 +90,15 @@ main = do
                     contentType "text/plain"
                     lbs (L.pack . show $ succ i)
 
+        -- add documentation page route.
+        [capture|/api/documentation|] . stdMethod GET . document "this page" . action $
+            defaultDocumentationAction def 
+                { documentTitle       = "Example of API documentation auto generation"
+                , documentDescription = Just $ H.p $ mconcat
+                    [ "source file: "
+                    , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
+                    ]
+                }
 
 dName :: Html
 dName = H.ul $ H.li "name of cat." <> H.li "if null, homeless."
