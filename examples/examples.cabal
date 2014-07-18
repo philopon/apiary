@@ -41,13 +41,13 @@ executable auth
 
 executable websockets
   main-is:             websockets.hs
-  build-depends:       base, apiary, warp, apiary-websockets, text, template-haskell
+  build-depends:       base, apiary, warp, apiary-websockets, text, template-haskell, directory, filepath
   ghc-options:         -O2 -Wall
   default-language:    Haskell2010
 
 executable eventsource
   main-is:             eventsource.hs
-  build-depends:       base, apiary, warp, blaze-builder, apiary-eventsource, text, template-haskell
+  build-depends:       base, apiary, warp, blaze-builder, apiary-eventsource, text, template-haskell, directory, filepath
   ghc-options:         -O2 -Wall
   default-language:    Haskell2010
 
