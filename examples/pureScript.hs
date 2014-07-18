@@ -1,12 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Web.Apiary
 import Web.Apiary.PureScript
 import Network.Wai.Handler.Warp
+import Language.Haskell.TH
 import System.Directory
-import System.Environment
 import System.FilePath
 
 -- please run
@@ -15,7 +15,7 @@ import System.FilePath
 
 main :: IO ()
 main = do
-    setCurrentDirectory (takeDirectory __FILE__)
+    setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
     withPureScript def $ run 3000 . runApiary def $ do
         method GET $ do
             root . action $ do

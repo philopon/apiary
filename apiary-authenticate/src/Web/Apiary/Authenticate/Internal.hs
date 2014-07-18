@@ -80,10 +80,10 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function id (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
-    retH = pfxPath (authPrefix config ++ authReturnToPath config) . stdMethod GET . action $
+    retH = pfxPath (authPrefix config ++ authReturnToPath config) . method GET . action $
         returnAction authSession manager (authSessionName config) (authSuccessPage config)
 
-    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . stdMethod GET . action $
+    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . method GET . action $
         authAction manager providerUrl returnTo realm parameters
 
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`

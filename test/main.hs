@@ -66,8 +66,8 @@ helloWorldAllTest = testGroup "helloWorld"
 
 methodFilterApp :: Application
 methodFilterApp = runApiary def $ do
-    method   "GET" . action $ contentType "text/plain" >> lbs "GET"
-    stdMethod POST . action $ contentType "text/plain" >> lbs "POST"
+    method "GET" . action $ contentType "text/plain" >> lbs "GET"
+    method POST  . action $ contentType "text/plain" >> lbs "POST"
 
 methodFilterTest :: Test
 methodFilterTest = testGroup "methodFilter"
@@ -112,7 +112,7 @@ rootFilterTest = testGroup "rootFilter"
 captureApp :: Application
 captureApp = runApiary def $ do
     [capture|/foo|]  . action $ contentType "text/plain" >> lbs "foo"
-    [capture|/:Int|] . stdMethod GET . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["Int", L.pack $ show i])
+    [capture|/:Int|] . method GET . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["Int", L.pack $ show i])
     [capture|/:Double|] . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["Double", L.pack $ show i])
     [capture|/bar/:L.ByteString/:Int|] . action $ \s i -> contentType "text/plain" >> lbs (L.unwords [s, L.pack $ show i])
     [capture|/:L.ByteString|] . action $ \s -> contentType "text/plain" >> lbs (L.unwords ["fall", s])
@@ -230,10 +230,10 @@ queryTest = testGroup "query"
 multipleFilter1App :: Application
 multipleFilter1App = runApiary def $ do
     root $ do
-        stdMethod GET  . action $ contentType "text/plain" >> lbs "GET /"
-        stdMethod POST . action $ contentType "text/html"  >> lbs "POST /"
+        method GET  . action $ contentType "text/plain" >> lbs "GET /"
+        method POST . action $ contentType "text/html"  >> lbs "POST /"
 
-    stdMethod DELETE . action $ contentType "text/plain" >> lbs "DELETE ANY"
+    method DELETE . action $ contentType "text/plain" >> lbs "DELETE ANY"
 
 multipleFilter1Test :: Test
 multipleFilter1Test = testGroup "multiple test1: root, method"
