@@ -101,6 +101,7 @@ initialState conf req = ActionState
     , actionReqBody  = Nothing
     , actionPathInfo = pathInfo req
     }
+{-# INLINE initialState #-}
 
 #ifndef WAI3
 type StreamingBody = Source IO (Flush Builder)
@@ -153,6 +154,7 @@ instance MonadThrow m => MonadThrow (ActionT m) where
 instance MonadCatch m => MonadCatch (ActionT m) where
     catch m h = actionT $ \conf req st -> 
         catch (runActionT m conf req st) (\e -> runActionT (h e) conf req st)
+    {-# INLINE catch #-}
 
 instance MonadMask m => MonadMask (ActionT m) where
     mask a = actionT $ \conf req st ->
@@ -163,6 +165,8 @@ instance MonadMask m => MonadMask (ActionT m) where
         uninterruptibleMask $ \u -> runActionT (a $ q u) conf req st
       where
         q u m = actionT $ \conf req st -> u (runActionT m conf req st)
+    {-# INLINE mask #-}
+    {-# INLINE uninterruptibleMask #-}
 
 runActionT :: Monad m => ActionT m a
            -> ApiaryConfig -> Request -> ActionState
@@ -184,9 +188,9 @@ actionT f = ActionT $ \conf req st cont -> f conf req st >>= \case
 hoistActionT :: (Monad m, Monad n)
              => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
 hoistActionT run m = actionT $ \c r s -> run (runActionT m c r s)
+{-# INLINE hoistActionT #-}
 
 execActionT :: ApiaryConfig -> ActionT IO () -> Application
-
 #ifdef WAI3
 execActionT config m request send = 
 #else
@@ -204,6 +208,8 @@ execActionT config m request = let send = return in
 instance (Monad m, Functor m) => Alternative (ActionT m) where
     empty = mzero
     (<|>) = mplus
+    {-# INLINE empty #-}
+    {-# INLINE (<|>) #-}
 
 instance Monad m => MonadPlus (ActionT m) where
     mzero = actionT $ \_ _ _ -> return Pass
@@ -211,6 +217,8 @@ instance Monad m => MonadPlus (ActionT m) where
         Continue a -> return $ Continue a
         Stop stp   -> return $ Stop stp
         Pass       -> runActionT n c r s
+    {-# INLINE mzero #-}
+    {-# INLINE mplus #-}
 
 instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault

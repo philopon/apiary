@@ -107,7 +107,9 @@ instance Path String       where readPath = Just . T.unpack;      pathRep _ = ty
 class Typeable a => Query a where
     readQuery :: Maybe S.ByteString -> Maybe a
     queryRep  :: proxy a            -> QueryRep
-    queryRep = Strict . typeRep
+    queryRep = Strict . qTypeRep
+    qTypeRep  :: proxy a            -> TypeRep
+    qTypeRep = typeRep
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
@@ -131,34 +133,35 @@ instance Query Float   where readQuery = maybe Nothing (readMaybe . S.unpack)
 
 instance Query T.Text  where
     readQuery  = fmap $ T.decodeUtf8With lenientDecode
-    queryRep _ = Strict (typeRep (Proxy :: Proxy Text))
+    qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
 instance Query TL.Text where
     readQuery  = fmap (TL.decodeUtf8With lenientDecode . L.fromStrict)
-    queryRep _ = Strict (typeRep (Proxy :: Proxy Text))
+    qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
 instance Query S.ByteString where 
     readQuery  = id
-    queryRep _ = Strict (typeRep (Proxy :: Proxy Text))
+    qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
 instance Query L.ByteString where 
     readQuery  = fmap L.fromStrict
-    queryRep _ = Strict (typeRep (Proxy :: Proxy Text))
+    qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
 instance Query String       where
     readQuery  = fmap S.unpack
-    queryRep _ = Strict (typeRep (Proxy :: Proxy Text))
+    qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
 -- | allow no parameter. but check parameter type.
 instance Query a => Query (Maybe a) where
     readQuery (Just a) = Just `fmap` readQuery (Just a)
     readQuery Nothing  = Just Nothing
-    queryRep  _        = Nullable $ typeRep (Proxy :: Proxy a)
+    queryRep _         = Nullable $ qTypeRep (Proxy :: Proxy a)
 
--- | always success. for exists check.
+-- | always success. for check existence.
 instance Query () where
     readQuery _ = Just ()
-    queryRep _ = Check
+    queryRep  _ = Check
+    qTypeRep  _ = typeOf ()
 
 pBool :: Proxy Bool
 pBool = Proxy

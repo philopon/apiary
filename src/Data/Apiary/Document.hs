@@ -184,7 +184,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         ]
 
     htmlQR (Strict   r) = toHtml (show r)
-    htmlQR (Nullable r) = toHtml (show r) <> "?"
+    htmlQR (Nullable r) = H.span (toHtml (show r) <> "?") ! A.title (toValue (show r) <> "(nullable)")
     htmlQR  Check       = "check"
 
     query (QueryDoc p s q t) = H.tr . mconcat $

@@ -150,7 +150,7 @@ queryFirstTest = testGroup "First"
     , testReq "GET /?foo=12" $ assertPlain200 "foo Int 12" app
     , testReq "GET /?foo=a" $ assertPlain200 "foo String \"a\"" app
     , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int 12" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo String \"12\"" app
+    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo Int 12" app
     ]
   where app = queryApp (=:) (=:) (=:)
 
