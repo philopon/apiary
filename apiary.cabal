@@ -35,9 +35,9 @@ description:
   .
     * type safe route filter.
   .
-    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.13.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.13.0/examples/api.html>).
+    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.14.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.14.0/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.13.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.14.0/examples/>
 
 license:             MIT
 license-file:        LICENSE

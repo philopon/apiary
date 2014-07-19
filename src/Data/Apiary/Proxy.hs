@@ -4,17 +4,17 @@
 
 module Data.Apiary.Proxy
     ( module Export
+#if __GLASGOW_HASKELL__ < 707
     , typeRep
+#endif
     ) where
 
 #if __GLASGOW_HASKELL__ > 707
-import qualified Data.Typeable
-import Data.Typeable as Export hiding (typeRep)
-typeRep   = Data.Typeable.typeRep
-#else
-import Data.Proxy as Export
 import Data.Typeable as Export
-typeRep _ = typeOf (undefined :: a)
-#endif
+#else
+import Data.Proxy    as Export
+import Data.Typeable as Export
 typeRep :: forall proxy a. Typeable a => proxy a -> TypeRep
+typeRep _ = typeOf (undefined :: a)
 {-# INLINE typeRep #-}
+#endif
