@@ -8,22 +8,26 @@
 
 module Web.Apiary.PureScript.Internal where
 
-import Control.Exception
-import Control.Applicative
-import Language.Haskell.TH
-import Web.Apiary
-import qualified System.IO.UTF8 as U
 import System.FilePath
 import System.Directory
+import qualified System.IO.UTF8 as U
+
+import Language.Haskell.TH
 import qualified Language.PureScript as P
+
+import Control.Exception
+import Control.Applicative
+
+import Web.Apiary
+
+import Data.IORef
+import Data.Typeable
+import qualified Data.HashMap.Strict as H
+import qualified Text.Parsec.Error as P
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.Encoding as T
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as LC
-import qualified Data.HashMap.Strict as H
-import Data.IORef
-import Data.Typeable
-import qualified Text.Parsec.Error as P
 
 import qualified Paths_apiary_purescript as Path
 

@@ -10,8 +10,8 @@ module Web.Apiary.PureScript
     ) where
 
 import Web.Apiary
-import Data.Reflection
 import qualified Web.Apiary.PureScript.Internal as I
+import Data.Reflection
 
 type HasPureScript = Given I.PureScript
 

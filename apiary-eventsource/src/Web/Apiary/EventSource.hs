@@ -7,12 +7,13 @@ module Web.Apiary.EventSource
     , module Network.Wai.EventSource.EventStream
     ) where
 
-import Data.Function
-import           Control.Concurrent.Chan (Chan, dupChan, readChan)
-
+import Web.Apiary
 import Network.Wai.EventSource.EventStream (ServerEvent(..))
 import qualified Network.Wai.EventSource.EventStream as E
-import Web.Apiary
+
+import Control.Concurrent.Chan (Chan, dupChan, readChan)
+
+import Data.Function
 
 #ifdef VERSION_wai_eventsource
 import           Blaze.ByteString.Builder (Builder)
