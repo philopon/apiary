@@ -1,3 +1,9 @@
+# 0.14.0
+* change First Strategy behaviour(check first param only).
+* change documentation generation API.
+* merge method and stdMethod function.
+* add apiary-purescript
+
 # 0.13.0
 * Option that generate full embed documentation.
 * Add precondition, rpHtml functions.
