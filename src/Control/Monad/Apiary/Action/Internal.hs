@@ -21,14 +21,15 @@ import Control.Monad.Reader
 import Control.Monad.Catch
 import Control.Monad.Trans.Control
 
-import Network.Wai
-import qualified Network.Wai.Parse as P
 import Network.Mime
 import Network.HTTP.Types
+import Network.Wai
+import qualified Network.Wai.Parse as P
 
 import Data.Apiary.Param
 import Data.Apiary.Document
 import Data.Default.Class
+
 import Blaze.ByteString.Builder
 import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.ByteString as S
@@ -38,6 +39,7 @@ import qualified Data.Text as T
 
 #ifndef WAI3
 import Data.Conduit
+type StreamingBody = Source IO (Flush Builder)
 #endif
 
 data ApiaryConfig = ApiaryConfig
@@ -60,16 +62,16 @@ defaultDocumentationAction conf = do
     contentType "text/html"
     builder . renderHtmlBuilder $ defaultDocumentToHtml conf d
 
-defNotFound :: Application
+defaultNotFound :: Application
 #ifdef WAI3
-defNotFound _ f = f      $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defaultNotFound _ f = f      $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #else
-defNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
+defaultNotFound _   = return $ responseLBS status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 #endif
 
 instance Default ApiaryConfig where
     def = ApiaryConfig 
-        { notFound            = defNotFound
+        { notFound            = defaultNotFound
         , defaultStatus       = ok200
         , defaultHeaders      = []
         , failStatus          = internalServerError500
@@ -78,8 +80,7 @@ instance Default ApiaryConfig where
         , mimeType            = defaultMimeLookup . T.pack
         }
 
-convFile :: (S.ByteString, P.FileInfo L.ByteString) -> File
-convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
+--------------------------------------------------------------------------------
 
 data ActionState = ActionState
     { actionResponse :: Response
@@ -99,15 +100,13 @@ initialState conf req = ActionState
     }
 {-# INLINE initialState #-}
 
+--------------------------------------------------------------------------------
+
 data ActionEnv = ActionEnv
     { actionConfig    :: ApiaryConfig
     , actionRequest   :: Request
     , actionDocuments :: Documents
     }
-
-#ifndef WAI3
-type StreamingBody = Source IO (Flush Builder)
-#endif
 
 data Action a 
     = Continue a
@@ -120,6 +119,45 @@ newtype ActionT m a = ActionT { unActionT :: forall b.
     -> (a -> ActionState -> m (Action b))
     -> m (Action b)
     }
+
+runActionT :: Monad m => ActionT m a
+           -> ActionEnv -> ActionState
+           -> m (Action (a, ActionState))
+runActionT m env st = unActionT m env st $ \a st' ->
+    st' `seq` return (Continue (a, st'))
+{-# INLINE runActionT #-}
+
+actionT :: Monad m 
+        => (ActionEnv -> ActionState -> m (Action (a, ActionState)))
+        -> ActionT m a
+actionT f = ActionT $ \env st cont -> f env st >>= \case
+    Pass             -> return Pass
+    Stop s           -> return $ Stop s
+    Continue (a,st') -> st' `seq` cont a st'
+{-# INLINE actionT #-}
+
+-- | n must be Monad, so cant be MFunctor.
+hoistActionT :: (Monad m, Monad n)
+             => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
+hoistActionT run m = actionT $ \e s -> run (runActionT m e s)
+{-# INLINE hoistActionT #-}
+
+execActionT :: ApiaryConfig -> Documents -> ActionT IO () -> Application
+#ifdef WAI3
+execActionT config doc m request send = 
+#else
+execActionT config doc m request = let send = return in
+#endif
+    runActionT m (ActionEnv config request doc) (initialState config request) >>= \case
+#ifdef WAI3
+        Pass           -> notFound config request send
+#else
+        Pass           -> notFound config request
+#endif
+        Stop s         -> send s
+        Continue (_,r) -> send $ actionResponse r
+
+--------------------------------------------------------------------------------
 
 instance Functor (ActionT m) where
     fmap f m = ActionT $ \env st cont ->
@@ -169,43 +207,6 @@ instance MonadMask m => MonadMask (ActionT m) where
     {-# INLINE mask #-}
     {-# INLINE uninterruptibleMask #-}
 
-runActionT :: Monad m => ActionT m a
-           -> ActionEnv -> ActionState
-           -> m (Action (a, ActionState))
-runActionT m env st = unActionT m env st $ \a st' ->
-    st' `seq` return (Continue (a, st'))
-{-# INLINE runActionT #-}
-
-actionT :: Monad m 
-        => (ActionEnv -> ActionState -> m (Action (a, ActionState)))
-        -> ActionT m a
-actionT f = ActionT $ \env st cont -> f env st >>= \case
-    Pass             -> return Pass
-    Stop s           -> return $ Stop s
-    Continue (a,st') -> st' `seq` cont a st'
-{-# INLINE actionT #-}
-
--- | n must be Monad, so cant be MFunctor.
-hoistActionT :: (Monad m, Monad n)
-             => (forall b. m b -> n b) -> ActionT m a -> ActionT n a
-hoistActionT run m = actionT $ \e s -> run (runActionT m e s)
-{-# INLINE hoistActionT #-}
-
-execActionT :: ApiaryConfig -> Documents -> ActionT IO () -> Application
-#ifdef WAI3
-execActionT config doc m request send = 
-#else
-execActionT config doc m request = let send = return in
-#endif
-    runActionT m (ActionEnv config request doc) (initialState config request) >>= \case
-#ifdef WAI3
-        Pass           -> notFound config request send
-#else
-        Pass           -> notFound config request
-#endif
-        Stop s         -> send s
-        Continue (_,r) -> send $ actionResponse r
-
 instance (Monad m, Functor m) => Alternative (ActionT m) where
     empty = mzero
     (<|>) = mplus
@@ -239,13 +240,7 @@ instance MonadReader r m => MonadReader r (ActionT m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
--- | stop handler and send current state. since 0.3.3.0.
-stop :: Monad m => ActionT m a
-stop = ActionT $ \_ s _ -> return $ Stop (actionResponse s)
-
--- | stop with response. since 0.4.2.0.
-stopWith :: Monad m => Response -> ActionT m a
-stopWith a = ActionT $ \_ _ _ -> return $ Stop a
+--------------------------------------------------------------------------------
 
 getEnv :: Monad m => ActionT m ActionEnv
 getEnv = ActionT $ \e s c -> c e s
@@ -267,6 +262,8 @@ getRequestBody = ActionT $ \e s c -> case actionReqBody s of
         (p,f) <- liftIO $ P.parseRequestBody P.lbsBackEnd (actionRequest e)
         let b = (p, map convFile f)
         c b s { actionReqBody = Just b }
+  where
+    convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
 
 -- | parse request body and return params. since 0.9.0.0.
 getReqParams :: MonadIO m => ActionT m [Param]
@@ -276,19 +273,21 @@ getReqParams = fst <$> getRequestBody
 getReqFiles :: MonadIO m => ActionT m [File]
 getReqFiles = snd <$> getRequestBody
 
+--------------------------------------------------------------------------------
+
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
 modifyState f = ActionT $ \_ s c -> c () (f s)
 
 getState :: ActionT m ActionState
 getState = ActionT $ \_ s c -> c s s
 
--- | get all request headers. since 0.6.0.0.
-getHeaders :: Monad m => ActionT m RequestHeaders
-getHeaders = requestHeaders `liftM` getRequest
-
 -- | set status code. since 0.1.0.0.
 status :: Monad m => Status -> ActionT m ()
 status st = modifyState (\s -> s { actionStatus = st } )
+
+-- | get all request headers. since 0.6.0.0.
+getHeaders :: Monad m => ActionT m RequestHeaders
+getHeaders = requestHeaders `liftM` getRequest
 
 -- | modify response header. since 0.1.0.0.
 modifyHeader :: Monad m => (ResponseHeaders -> ResponseHeaders) -> ActionT m ()
@@ -309,6 +308,16 @@ type ContentType = S.ByteString
 contentType :: Monad m => ContentType -> ActionT m ()
 contentType c = modifyHeader
     (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
+
+--------------------------------------------------------------------------------
+
+-- | stop handler and send current state. since 0.3.3.0.
+stop :: Monad m => ActionT m a
+stop = ActionT $ \_ s _ -> return $ Stop (actionResponse s)
+
+-- | stop with response. since 0.4.2.0.
+stopWith :: Monad m => Response -> ActionT m a
+stopWith a = ActionT $ \_ _ _ -> return $ Stop a
 
 -- | redirect handler
 --

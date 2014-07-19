@@ -15,15 +15,15 @@ module Control.Monad.Apiary.Filter.Internal.Capture where
 
 import Control.Applicative
 import Control.Monad
-import qualified Data.Text as T
-import Text.Blaze.Html
+import Control.Monad.Apiary.Action.Internal
+import Control.Monad.Apiary.Internal
 
 import Data.Apiary.Param
 import Data.Apiary.SList
 import Data.Apiary.Document
 
-import Control.Monad.Apiary.Action.Internal
-import Control.Monad.Apiary.Internal
+import qualified Data.Text as T
+import Text.Blaze.Html
 
 -- | check first path and drill down. since 0.11.0.
 path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a

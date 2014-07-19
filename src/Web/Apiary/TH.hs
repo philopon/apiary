@@ -2,14 +2,17 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Web.Apiary.TH where
 
-import Control.Monad.Apiary
-import Control.Monad.Apiary.Action
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
+
+import Network.Mime
+
+import Control.Monad.Apiary
+import Control.Monad.Apiary.Action
+
 import qualified Data.Text as T
 import qualified Data.ByteString.Char8 as S
 import Data.Apiary.SList
-import Network.Mime
 
 numToCode :: Int -> ExpQ
 numToCode = \case

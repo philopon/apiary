@@ -43,11 +43,13 @@ module Control.Monad.Apiary.Action
     , redirectFound, redirectSeeOther, source
     ) where
 
+import Network.HTTP.Types.Status hiding (mkStatus)
+
 import Control.Monad.Apiary.Action.Internal
+
 import Data.Default.Class
 import Data.Apiary.Param
 import Data.Apiary.Document
-import Network.HTTP.Types.Status hiding (mkStatus)
 
 #ifdef WAI3
 import Network.Wai

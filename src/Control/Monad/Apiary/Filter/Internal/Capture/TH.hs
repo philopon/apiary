@@ -6,7 +6,9 @@ module Control.Monad.Apiary.Filter.Internal.Capture.TH where
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
+
 import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
+
 import qualified Data.Text as T
 import Data.Proxy
 

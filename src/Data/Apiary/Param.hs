@@ -16,30 +16,23 @@
 
 module Data.Apiary.Param where
 
+import Network.Wai
+
+import Data.Int
+import Data.Word
+import Data.Proxy
+import Data.Apiary.Proxy
+
+import Data.String(IsString)
+import Text.Read
+import Data.Text.Encoding.Error
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
+
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
-import Data.Int
-import Data.Word
-import Data.Proxy
-import Data.String(IsString)
-import Data.Text.Encoding.Error
-import Text.Read
-import Network.Wai
-
-#if __GLASGOW_HASKELL__ > 707
-import qualified Data.Typeable
-import Data.Typeable hiding (typeRep)
-typeRep   = Data.Typeable.typeRep
-#else
-import Data.Typeable
-typeRep _ = typeOf (undefined :: a)
-#endif
-typeRep :: forall proxy a. Typeable a => proxy a -> TypeRep
-{-# INLINE typeRep #-}
 
 jsToBool :: (IsString a, Eq a) => a -> Bool
 jsToBool = flip notElem jsFalse

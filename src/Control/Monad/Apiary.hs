@@ -16,4 +16,5 @@ module Control.Monad.Apiary
     ) where
 
 import Control.Monad.Apiary.Internal
+
 import Data.Apiary.Document (rpHtml)

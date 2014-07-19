@@ -49,30 +49,32 @@ module Control.Monad.Apiary.Filter (
 
     ) where
 
-import Control.Monad
-import Control.Monad.Trans
 import Network.Wai as Wai
 import qualified Network.HTTP.Types as HT
+
+import Control.Monad
+import Control.Monad.Trans
+
+import Control.Monad.Apiary.Action.Internal
+import Control.Monad.Apiary.Filter.Internal
+import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
+import Control.Monad.Apiary.Filter.Internal.Capture.TH
+import Control.Monad.Apiary.Internal
+import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
+import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
+
+import Text.Blaze.Html
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
 import Data.Monoid
 import Data.Proxy
 import Data.String
 import Data.Reflection
-import Text.Blaze.Html
 
 import Data.Apiary.SList
 import Data.Apiary.Param
 import Data.Apiary.Document
 import Data.Apiary.Method
-
-import Control.Monad.Apiary.Action.Internal
-import Control.Monad.Apiary.Filter.Internal
-import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
-import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
-import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
-import Control.Monad.Apiary.Filter.Internal.Capture.TH
-import Control.Monad.Apiary.Internal
 
 -- | filter by HTTP method. since 0.1.0.0.
 --
@@ -113,6 +115,8 @@ root :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ DocRoot (\r -> rawPathInfo r `elem` rs) m
+
+--------------------------------------------------------------------------------
 
 data QueryKey = QueryKey
     { queryKey  :: S.ByteString

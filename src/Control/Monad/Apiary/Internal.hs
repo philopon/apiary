@@ -16,19 +16,20 @@
 module Control.Monad.Apiary.Internal where
 
 import Network.Wai
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.Identity
 import Control.Monad.Trans.Control
 import Control.Monad.Base
+import Control.Monad.Apiary.Action.Internal
+
 import Data.Apiary.SList
 import Data.Apiary.Document
 import Data.Monoid
 import Text.Blaze.Html
 import qualified Data.Text as T
-
-import Control.Monad.Apiary.Action.Internal
 
 data ApiaryEnv n c = ApiaryEnv
     { envFilter :: ActionT n (SList c)
@@ -36,18 +37,13 @@ data ApiaryEnv n c = ApiaryEnv
     , envDoc    :: Doc -> Doc
     }
 
+initialEnv :: Monad n => ApiaryConfig -> ApiaryEnv n '[]
+initialEnv conf = ApiaryEnv (return SNil) conf id
+
 data ApiaryWriter n = ApiaryWriter
     { writerHandler :: ActionT n ()
     , writerDoc     :: [Doc]
     }
-
-instance Monad n => Monoid (ApiaryWriter n) where
-    mempty = ApiaryWriter mzero []
-    ApiaryWriter ah ad `mappend` ApiaryWriter bh bd =
-        ApiaryWriter (mplus ah bh) (ad <> bd)
-
-initialEnv :: Monad n => ApiaryConfig -> ApiaryEnv n '[]
-initialEnv conf = ApiaryEnv (return SNil) conf id
 
 -- | most generic Apiary monad. since 0.8.0.0.
 newtype ApiaryT c n m a = ApiaryT { unApiaryT :: forall b.
@@ -58,6 +54,28 @@ newtype ApiaryT c n m a = ApiaryT { unApiaryT :: forall b.
 
 -- | no transformer. (ActionT IO, ApiaryT Identity)
 type Apiary c = ApiaryT c IO Identity
+
+apiaryT :: Monad m
+        => (ApiaryEnv n c -> m (a, ApiaryWriter n))
+        -> ApiaryT c n m a
+apiaryT f = ApiaryT $ \env cont -> f env >>= \(a,w) -> cont a w
+
+runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
+           -> ApiaryT '[] n m a -> m Application
+runApiaryT run conf m = unApiaryT m (initialEnv conf) (\_ w -> return w) >>= \wtr -> do
+    let doc = docsToDocuments $ writerDoc wtr
+        app = execActionT conf doc $ hoistActionT run (writerHandler wtr)
+    return app
+
+runApiary :: ApiaryConfig -> Apiary '[] a -> Application
+runApiary conf m = runIdentity $ runApiaryT id conf m
+
+--------------------------------------------------------------------------------
+
+instance Monad n => Monoid (ApiaryWriter n) where
+    mempty = ApiaryWriter mzero []
+    ApiaryWriter ah ad `mappend` ApiaryWriter bh bd =
+        ApiaryWriter (mplus ah bh) (ad <> bd)
 
 instance Functor (ApiaryT c n m) where
     fmap f m = ApiaryT $ \env cont ->
@@ -88,11 +106,6 @@ instance (Monad n, MonadIO m) => MonadIO (ApiaryT c n m) where
 instance (Monad n, MonadBase b m) => MonadBase b (ApiaryT c n m) where
     liftBase m = ApiaryT $ \_ c -> liftBase m >>= \a -> c a mempty
 
-apiaryT :: Monad m
-        => (ApiaryEnv n c -> m (a, ApiaryWriter n))
-        -> ApiaryT c n m a
-apiaryT f = ApiaryT $ \env cont -> f env >>= \(a,w) -> cont a w
-
 instance Monad n => MonadTransControl (ApiaryT c n) where
     newtype StT (ApiaryT c n) a = StTApiary' { unStTApiary' :: (a, ApiaryWriter n) }
     liftWith f = apiaryT $ \env ->
@@ -105,18 +118,13 @@ instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) w
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
-runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
-           -> ApiaryT '[] n m a -> m Application
-runApiaryT run conf m = unApiaryT m (initialEnv conf) (\_ w -> return w) >>= \wtr -> do
-    let doc = docsToDocuments $ writerDoc wtr
-        app = execActionT conf doc $ hoistActionT run (writerHandler wtr)
-    return app
+--------------------------------------------------------------------------------
 
-runApiary :: ApiaryConfig -> Apiary '[] a -> Application
-runApiary conf m = runIdentity $ runApiaryT id conf m
+getApiaryEnv :: Monad n => ApiaryT c n m (ApiaryEnv n c)
+getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
 apiaryConfig :: Monad n => ApiaryT c n m ApiaryConfig
-apiaryConfig = ApiaryT $ \r cont -> cont (envConfig r) mempty
+apiaryConfig = liftM envConfig getApiaryEnv
 
 addRoute :: Monad n => ApiaryWriter n -> ApiaryT c n m ()
 addRoute r = ApiaryT $ \_ cont -> cont () r
@@ -132,6 +140,15 @@ focus d g m = ApiaryT $ \env cont -> unApiaryT m env
 -- | splice ActionT ApiaryT.
 action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
 action = action' . apply
+
+-- | like action. but not apply arguments. since 0.8.0.0.
+action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
+action' a = do
+    env <- getApiaryEnv
+    addRoute $ ApiaryWriter (envFilter env >>= \c -> a c) 
+        [envDoc env $ Document Nothing]
+
+--------------------------------------------------------------------------------
 
 -- | API document group. since 0.12.0.0.
 --
@@ -153,19 +170,11 @@ precondition :: Html -> ApiaryT c n m a -> ApiaryT c n m a
 precondition d m = ApiaryT $ \env cont -> unApiaryT m env
     { envDoc = envDoc env . DocPrecondition d } cont
 
+--------------------------------------------------------------------------------
+
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since 0.4.2.0
 actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
                     -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
 actionWithPreAction pa a = do
     action' $ \c -> pa c >> apply a c
-
-getReader :: Monad n => ApiaryT c n m (ApiaryEnv n c)
-getReader = ApiaryT $ \env cont -> cont env mempty
-
--- | like action. but not apply arguments. since 0.8.0.0.
-action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
-action' a = do
-    env <- getReader
-    addRoute $ ApiaryWriter (envFilter env >>= \c -> a c) 
-        [envDoc env $ Document Nothing]

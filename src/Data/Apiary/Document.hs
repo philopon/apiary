@@ -8,22 +8,26 @@
 module Data.Apiary.Document where
 
 import Language.Haskell.TH
+
 import Control.Applicative
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.ByteString as S
+
 import Data.Typeable
 import Data.Maybe
-import Data.Apiary.Param
-import Data.Apiary.Method
-import Text.Blaze.Html
-import Text.Blaze.Internal(attribute)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid
 import Data.Default.Class
 import Data.List
 import Data.Function
+
+import Data.Apiary.Param
+import Data.Apiary.Method
+
+import Text.Blaze.Html
+import Text.Blaze.Internal(attribute)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.ByteString as S
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
 
 data StrategyRep = StrategyRep
     { strategyInfo :: T.Text }
@@ -38,6 +42,8 @@ data Doc
     | DocGroup  T.Text       Doc
     | DocPrecondition Html   Doc
     | Document  (Maybe T.Text)
+
+--------------------------------------------------------------------------------
 
 data Route
     = Path  T.Text               Route
@@ -72,6 +78,8 @@ data MethodDoc = MethodDoc
     , preconditions :: [Html]
     , document      :: T.Text
     }
+
+--------------------------------------------------------------------------------
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
@@ -116,6 +124,8 @@ docsToDocuments doc =
 
     trav (Nothing, _) = Nothing
     trav (Just a,  b) = Just (a, b)
+
+-------------------------------------------------------------------------------
 
 routeToHtml :: Route -> (T.Text, Html, Html)
 routeToHtml = loop (1::Int) "" mempty []

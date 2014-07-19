@@ -11,11 +11,12 @@ module Web.Apiary
     , module Control.Monad
     ) where
 
+import Web.Apiary.TH
+
 import Control.Monad.Apiary
 import Control.Monad.Apiary.Action
-import Data.Apiary.Param
-
+import Control.Monad.Apiary.Filter
 import Control.Monad.Trans(MonadIO(..))
 import Control.Monad (MonadPlus(..), msum, mfilter, guard)
-import Control.Monad.Apiary.Filter
-import Web.Apiary.TH
+
+import Data.Apiary.Param
