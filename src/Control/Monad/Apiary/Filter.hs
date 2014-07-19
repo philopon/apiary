@@ -64,6 +64,7 @@ import Text.Blaze.Html
 import Data.Apiary.SList
 import Data.Apiary.Param
 import Data.Apiary.Document
+import Data.Apiary.Method
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
@@ -73,36 +74,6 @@ import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 
-data Method
-    = GET
-    | POST
-    | HEAD
-    | PUT
-    | DELETE
-    | TRACE
-    | CONNECT
-    | OPTIONS
-    | PATCH
-    | NonStandard S.ByteString
-    deriving (Eq, Ord, Read, Show)
-
-renderMethod :: Method -> SC.ByteString
-renderMethod = \case
-    GET           -> "GET"
-    POST          -> "POST"
-    HEAD          -> "HEAD"
-    PUT           -> "PUT"
-    DELETE        -> "DELETE"
-    TRACE         -> "TRACE"
-    CONNECT       -> "CONNECT"
-    OPTIONS       -> "OPTIONS"
-    PATCH         -> "PATCH"
-    NonStandard a -> a
-{-# INLINE renderMethod #-}
-
-instance IsString Method where
-    fromString = NonStandard . SC.pack
-
 -- | filter by HTTP method. since 0.1.0.0.
 --
 -- @
@@ -110,7 +81,7 @@ instance IsString Method where
 -- method \"HOGE\" -- non standard method
 -- @
 method :: Monad n => Method -> ApiaryT c n m a -> ApiaryT c n m a
-method m = function_ (DocMethod $ renderMethod m) ((renderMethod m ==) . requestMethod)
+method m = function_ (DocMethod m) ((renderMethod m ==) . requestMethod)
 
 {-# DEPRECATED stdMethod "use method" #-}
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.

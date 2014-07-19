@@ -15,7 +15,7 @@ import qualified Data.ByteString as S
 import Data.Typeable
 import Data.Maybe
 import Data.Apiary.Param
-import qualified Network.HTTP.Types as HT
+import Data.Apiary.Method
 import Text.Blaze.Html
 import Text.Blaze.Internal(attribute)
 import qualified Text.Blaze.Html5 as H
@@ -33,7 +33,7 @@ data Doc
     = DocPath   T.Text       Doc
     | DocRoot                Doc
     | DocFetch  TypeRep (Maybe Html) Doc
-    | DocMethod HT.Method    Doc
+    | DocMethod Method       Doc
     | DocQuery  S.ByteString StrategyRep QueryRep Html Doc
     | DocGroup  T.Text       Doc
     | DocPrecondition Html   Doc
@@ -57,7 +57,7 @@ data Documents = Documents
 
 data PathDoc = PathDoc
     { path    :: Route
-    , methods :: [(HT.Method, [MethodDoc])]
+    , methods :: [(Method, [MethodDoc])]
     }
 
 data QueryDoc = QueryDoc
@@ -96,7 +96,7 @@ mergePathDoc (pd:pds) = merge (filter (same pd) pds) : mergePathDoc (filter (not
     same           = (==) `on` path
     merge pds' = PathDoc (path pd) (mergeMethods $ methods pd ++ concatMap methods pds')
 
-mergeMethods :: [(HT.Method, [MethodDoc])] -> [(HT.Method, [MethodDoc])]
+mergeMethods :: [(Method, [MethodDoc])] -> [(Method, [MethodDoc])]
 mergeMethods [] = []
 mergeMethods (m:ms) = merge (filter (same m) ms) : mergeMethods (filter (not . same m) ms)
   where
@@ -215,7 +215,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
             ]
 
     method (m, ms) = H.div ! A.class_ "method" $ mconcat
-        [ H.h4 . toHtml $ T.decodeUtf8 m
+        [ H.h4 . toHtml $ T.decodeUtf8 $ renderMethod m
         , mcMap action ms
         ]
 
@@ -232,7 +232,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
                 ! dataToggle "collapse" ! dataTarget (toValue $ T.concat ["[id='collapse-", grp, "-", idnt, "']"]) $ mconcat
                 [ H.h3 ! A.class_ "panel-title pull-left" $ route
                 , H.div ! A.class_ "methods" $
-                    mcMap ((\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m)) . fst) (reverse ms)
+                    mcMap ((\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m)) . renderMethod . fst) (reverse ms)
                 ]
             , H.div ! A.id (toValue $ T.concat ["collapse-", grp, "-", idnt]) ! A.class_ "panel-collapse collapse" $
                 rdoc <> (H.div ! A.class_ "panel-body" $ mcMap method ms)

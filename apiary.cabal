@@ -75,6 +75,7 @@ library
                        Data.Apiary.SList
                        Data.Apiary.Param
                        Data.Apiary.Document
+                       Data.Apiary.Method
 
   other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
