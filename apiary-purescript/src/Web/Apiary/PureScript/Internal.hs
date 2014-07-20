@@ -86,7 +86,7 @@ getAllModulePath = loop
     loop dir = do
         c     <- filter (`notElem` [".", ".."]) `fmap` getDirectoryContents dir
         (f,d) <- spanM (doesFileExist . (dir </>)) c
-        let f' = filter ((".purs" ==) . takeExtension) f
+        let f' = filter ((elem "purs") . T.splitOn "." . T.pack . takeExtensions) f
         (map (dir </>) f' ++) `fmap` case d of
             [] -> return []
             _  -> concat `fmap` mapM (loop . (dir </>)) d
