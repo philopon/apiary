@@ -9,7 +9,7 @@
 module Web.Apiary.PureScript.Internal where
 
 import System.FilePath
-import System.Directory
+import qualified System.FilePath.Glob as G
 import qualified System.IO.UTF8 as U
 
 import Language.Haskell.TH
@@ -40,8 +40,16 @@ instance Exception PureScriptException
 purescriptDatadir :: FilePath
 purescriptDatadir = takeDirectory $(stringE =<< runIO Path.getDataDir) </> "purescript-" ++ VERSION_purescript
 
+defaultPatterns :: [G.Pattern]
+defaultPatterns = map G.compile 
+    [ "src/**/*.purs"
+    , "bower_components/purescript-*/src/**/*.purs"
+    , "bower_components/purescript-*/src/**/*.purs.hs"
+    ]
+
 data PureScriptConfig = PureScriptConfig
-    { bowerDirectory    :: FilePath
+    { libraryPatterns   :: [G.Pattern]
+    , libraryBaseDir    :: FilePath
     , preludePath       :: FilePath
     , development       :: Bool
     , initialCompiles   :: [FilePath]
@@ -50,7 +58,8 @@ data PureScriptConfig = PureScriptConfig
 
 instance Default PureScriptConfig where
     def = PureScriptConfig 
-        "bower_components"
+        defaultPatterns
+        "."
         defaultPreludePath
         False
         []
@@ -73,24 +82,6 @@ withPureScript conf m = do
 defaultPreludePath :: FilePath
 defaultPreludePath = purescriptDatadir </> "prelude/prelude.purs"
 
-spanM :: Monad m => (a -> m Bool) -> [a] -> m ([a], [a])
-spanM p = loop [] []
-  where
-    loop t f []     = return (t, f)
-    loop t f (a:as) = p a >>= \b ->
-        if b then loop (a:t) f as else loop t (a:f) as
-
-getAllModulePath :: FilePath -> IO [FilePath]
-getAllModulePath = loop
-  where
-    loop dir = do
-        c     <- filter (`notElem` [".", ".."]) `fmap` getDirectoryContents dir
-        (f,d) <- spanM (doesFileExist . (dir </>)) c
-        let f' = filter ((elem "purs") . T.splitOn "." . T.pack . takeExtensions) f
-        (map (dir </>) f' ++) `fmap` case d of
-            [] -> return []
-            _  -> concat `fmap` mapM (loop . (dir </>)) d
-
 readPscInput :: FilePath -> IO [P.Module]
 readPscInput p = do
     txt <- U.readFile p
@@ -100,7 +91,8 @@ readPscInput p = do
 
 pscModules :: PureScriptConfig -> IO [P.Module]
 pscModules conf = do
-    mods <- liftIO $ getAllModulePath (bowerDirectory conf)
+    mods <- liftIO $ do
+        concat . fst <$> G.globDir (libraryPatterns conf) (libraryBaseDir conf)
     let prel = preludePath conf
     concat `fmap` mapM readPscInput (prel : mods)
 
