@@ -11,7 +11,6 @@ import Control.Monad
 import Control.Concurrent
 import Text.Blaze.Html
 import Data.Monoid
-import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -33,14 +32,13 @@ main = do
     run 3000 . runApiary def $ do
 
         -- you can add route document using document function.
-        -- condition that put after document function, not documented.
+        -- condition which is next of noDoc function is not documented.
         [capture|/precondition|] .
             http11 .
             hasHeader "Accept" .
             precondition ("user " <> H.strong "defined" <> " precondition.") .
-
-            document "precondition test" .
-            hasHeader "User-Agent" $ -- <- not documented.
+            noDoc . hasHeader "User-Agent" . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
+            document "precondition test" $
                 action $ lbs "precondition"
 
 

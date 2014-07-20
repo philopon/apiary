@@ -37,11 +37,14 @@ data Doc
     = DocPath   T.Text       Doc
     | DocRoot                Doc
     | DocFetch  TypeRep (Maybe Html) Doc
+    | DocDropNext            Doc
+
     | DocMethod Method       Doc
     | DocQuery  S.ByteString StrategyRep QueryRep Html Doc
-    | DocGroup  T.Text       Doc
     | DocPrecondition Html   Doc
-    | Document  (Maybe T.Text)
+    | DocGroup  T.Text       Doc
+    | Document  T.Text       Doc
+    | Action
 
 --------------------------------------------------------------------------------
 
@@ -83,19 +86,32 @@ data MethodDoc = MethodDoc
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id d'
-    (DocGroup g d')  -> (Just  g,) <$> loop id (\md -> [("*", md)]) id id d'
-    d'               -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id d'
+    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
+    (DocGroup g  d') -> (Just  g,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
+    d'               -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
   where
-    loop ph mh qs pc (DocPath         t d) = loop (ph . Path t) mh qs pc d
-    loop _  mh qs pc (DocRoot           d) = loop (const $ Path "" End) mh qs pc d
-    loop ph mh qs pc (DocFetch      t h d) = loop (ph . Fetch t h) mh qs pc d
-    loop ph _  qs pc (DocMethod       m d) = loop ph (\md -> [(m, md)]) qs pc d
-    loop ph mh qs pc (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc d
-    loop ph mh qs pc (DocGroup        _ d) = loop ph mh qs pc d
-    loop ph mh qs pc (DocPrecondition h d) = loop ph mh qs (pc . (h:)) d
-    loop ph mh qs pc (Document   (Just t)) = Just . PathDoc (ph End) $ mh [MethodDoc (qs []) (pc []) t]
-    loop _  _  _  _  (Document    Nothing) = Nothing
+    loop ph mh qs ps doc     (DocDropNext       d) = loop ph mh qs ps doc (dropNext d)
+    loop ph mh qs pc doc     (DocPath         t d) = loop (ph . Path t) mh qs pc doc d
+    loop _  mh qs pc doc     (DocRoot           d) = loop (const $ Path "" End) mh qs pc doc d
+    loop ph mh qs pc doc     (DocFetch      t h d) = loop (ph . Fetch t h) mh qs pc doc d
+    loop ph _  qs pc doc     (DocMethod       m d) = loop ph (\md -> [(m, md)]) qs pc doc d
+    loop ph mh qs pc doc     (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc doc d
+    loop ph mh qs pc doc     (DocPrecondition h d) = loop ph mh qs (pc . (h:)) doc d
+    loop ph mh qs pc doc     (DocGroup        _ d) = loop ph mh qs pc doc d
+    loop ph mh qs pc _       (Document        t d) = loop ph mh qs pc (Just t) d
+    loop ph mh qs pc (Just t) Action               = Just . PathDoc (ph End) $ mh [MethodDoc (qs []) (pc []) t]
+    loop _  _  _  _  Nothing  Action               = Nothing
+
+    dropNext (DocPath         _ d) = d
+    dropNext (DocRoot           d) = d
+    dropNext (DocFetch      _ _ d) = d
+    dropNext (DocDropNext       d) = dropNext d
+    dropNext (DocMethod       _ d) = d
+    dropNext (DocQuery  _ _ _ _ d) = d
+    dropNext (DocPrecondition _ d) = d
+    dropNext (DocGroup        _ d) = d
+    dropNext (Document        _ d) = d
+    dropNext Action                = Action
 
 mergePathDoc :: [PathDoc] -> [PathDoc]
 mergePathDoc [] = []

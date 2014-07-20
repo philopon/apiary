@@ -10,6 +10,7 @@ module Control.Monad.Apiary
     , group
     , document
     , precondition
+    , noDoc
     , rpHtml
     -- * deprecated
     , actionWithPreAction

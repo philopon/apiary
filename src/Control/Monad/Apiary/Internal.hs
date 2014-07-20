@@ -146,29 +146,33 @@ action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
 action' a = do
     env <- getApiaryEnv
     addRoute $ ApiaryWriter (envFilter env >>= \c -> a c) 
-        [envDoc env $ Document Nothing]
+        [envDoc env Action]
 
 --------------------------------------------------------------------------------
+
+insDoc :: (Doc -> Doc) -> ApiaryT c n m a -> ApiaryT c n m a
+insDoc d m = ApiaryT $ \env cont -> unApiaryT m env
+    { envDoc = envDoc env . d } cont
 
 -- | API document group. since 0.12.0.0.
 --
 -- only top level group recognized.
 group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-group d m = ApiaryT $ \env cont -> unApiaryT m env
-    { envDoc = envDoc env . DocGroup d } cont
+group = insDoc . DocGroup
 
 -- | add API document. since 0.12.0.0.
 --
 -- It use only filters prior document,
 -- so you should be placed document directly in front of action.
 document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-document d m = ApiaryT $ \env cont -> unApiaryT m env
-    { envDoc = \_ -> envDoc env (Document $ Just d) } cont
+document = insDoc . Document
 
 -- | add user defined precondition. since 0.13.0.
 precondition :: Html -> ApiaryT c n m a -> ApiaryT c n m a
-precondition d m = ApiaryT $ \env cont -> unApiaryT m env
-    { envDoc = envDoc env . DocPrecondition d } cont
+precondition = insDoc . DocPrecondition
+
+noDoc :: ApiaryT c n m a -> ApiaryT c n m a
+noDoc = insDoc DocDropNext
 
 --------------------------------------------------------------------------------
 
