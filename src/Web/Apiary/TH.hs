@@ -5,6 +5,7 @@ module Web.Apiary.TH where
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
+import Network.HTTP.Types.Status
 import Network.Mime
 
 import Control.Monad.Apiary

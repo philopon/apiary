@@ -40,10 +40,6 @@ module Control.Monad.Apiary.Filter (
     -- ** other
     , ssl
     
-    -- * Reexport
-    -- | Strategy Proxies
-    , module Control.Monad.Apiary.Filter.Internal.Strategy
-
     -- * deprecated
     , stdMethod
 
@@ -57,7 +53,6 @@ import Control.Monad.Trans
 
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
 import Control.Monad.Apiary.Filter.Internal.Capture.TH
 import Control.Monad.Apiary.Internal
 import qualified Control.Monad.Apiary.Filter.Internal.Strategy as Strategy
@@ -170,7 +165,7 @@ query QueryKey{..} p =
 -- @
 (=:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
      -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-k =: t = query k (pFirst t)
+k =: t = query k (Strategy.pFirst t)
 
 -- | get one matched paramerer. since 0.5.0.0.
 --
@@ -181,7 +176,7 @@ k =: t = query k (pFirst t)
 -- @
 (=!:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-k =!: t = query k (pOne t)
+k =!: t = query k (Strategy.pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
 --
@@ -192,7 +187,7 @@ k =!: t = query k (pOne t)
 -- @
 (=?:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (Snoc as (Maybe a)) n m b -> ApiaryT as n m b
-k =?: t = query k (pOption t)
+k =?: t = query k (Strategy.pOption t)
 
 -- | check parameger given and type. since 0.5.0.0.
 --
@@ -203,7 +198,7 @@ k =?: t = query k (pOption t)
 -- @
 (?:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
      -> ApiaryT as n m b -> ApiaryT as n m b
-k ?: t = query k (pCheck t)
+k ?: t = query k (Strategy.pCheck t)
 
 -- | get many paramerer. since 0.5.0.0.
 --
@@ -212,7 +207,7 @@ k ?: t = query k (pCheck t)
 -- @
 (=*:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
-k =*: t = query k (pMany t)
+k =*: t = query k (Strategy.pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
 --
@@ -221,7 +216,7 @@ k =*: t = query k (pMany t)
 -- @
 (=+:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
-k =+: t = query k (pSome t)
+k =+: t = query k (Strategy.pSome t)
 
 -- | query exists checker.
 --
@@ -236,7 +231,7 @@ hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
 
 -- | check whether to exists specified header or not. since 0.6.0.0.
 hasHeader :: Monad n => HT.HeaderName -> ApiaryT as n m b -> ApiaryT as n m b
-hasHeader n = header' pCheck ((n ==) . fst) . Just $
+hasHeader n = header' Strategy.pCheck ((n ==) . fst) . Just $
     toHtml (show n) <> " header requred"
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
@@ -245,13 +240,13 @@ eqHeader :: Monad n
          -> S.ByteString  -- ^ header value
          -> ApiaryT as n m b
          -> ApiaryT as n m b
-eqHeader k v = header' pCheck (\(k',v') -> k == k' && v == v') . Just $
+eqHeader k v = header' Strategy.pCheck (\(k',v') -> k == k' && v == v') . Just $
     mconcat [toHtml $ show k, " header == ", toHtml $ show v]
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: Monad n => HT.HeaderName
        -> ApiaryT (Snoc as S.ByteString) n m b -> ApiaryT as n m b
-header n = header' pFirst ((n ==) . fst) . Just $
+header n = header' Strategy.pFirst ((n ==) . fst) . Just $
     toHtml (show n) <> " header requred"
 
 -- | filter by headers up to 100 entries. since 0.6.0.0.
