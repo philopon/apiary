@@ -371,13 +371,6 @@ redirectTemporary to = do
         then redirectWith temporaryRedirect307 to
         else redirectWith status302            to
 
--- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
-file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file f p = do
-    mime <- mimeType <$> getConfig
-    contentType (mime f)
-    file' f p
-
 -- | Raw response constructor. since 0.10.
 --
 -- example(use pipes-wai)
@@ -387,27 +380,34 @@ file f p = do
 -- producer = response (\s h -> responseProducer s h)
 -- @
 --
-response :: Monad m => (Status -> ResponseHeaders -> Response) -> ActionT m ()
-response f = modifyState (\s -> s { actionResponse = f (actionStatus s) (actionHeaders s)} )
+rawResponse :: Monad m => (Status -> ResponseHeaders -> Response) -> ActionT m ()
+rawResponse f = modifyState (\s -> s { actionResponse = f (actionStatus s) (actionHeaders s)} )
 
 -- | set response body file content, without set Content-Type. since 0.1.0.0.
 file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file' f p = response (\s h -> responseFile s h f p)
+file' f p = rawResponse (\s h -> responseFile s h f p)
+
+-- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
+file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
+file f p = do
+    mime <- mimeType <$> getConfig
+    contentType (mime f)
+    file' f p
 
 -- | set response body builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT m ()
-builder b = response (\s h -> responseBuilder s h b)
+builder b = rawResponse (\s h -> responseBuilder s h b)
 
 -- | set response body lazy bytestring. since 0.1.0.0.
 lbs :: Monad m => L.ByteString -> ActionT m ()
-lbs l = response (\s h -> responseLBS s h l)
+lbs l = rawResponse (\s h -> responseLBS s h l)
 
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT m ()
 #ifdef WAI3
-stream str = response (\s h -> responseStream s h str)
+stream str = rawResponse (\s h -> responseStream s h str)
 #else
-stream str = response (\s h -> responseSource s h str)
+stream str = rawResponse (\s h -> responseSource s h str)
 #endif
 
 {-# DEPRECATED source "use stream" #-}

@@ -27,7 +27,7 @@ module Control.Monad.Apiary.Action
     , builder
     , lbs
     , stream
-    , response
+    , rawResponse
 
     , StreamingBody
 
