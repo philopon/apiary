@@ -64,9 +64,9 @@ main = do
                     void . liftIO $ swapMVar nm Nothing
                     void . liftIO $ swapMVar ag 0
 
-            -- you can add route capture description using (description).
+            -- you can add route capture description using [].
             -- you can reference value using '$'.
-            [capture|/api/cat/:String($dName)/:Int(age)|] .
+            [capture|/api/cat/:String[$dName]/:Int[age]|] .
                 method POST . document "set name and age from route." . action $ \n a -> do
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a

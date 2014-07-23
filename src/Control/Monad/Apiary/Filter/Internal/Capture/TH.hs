@@ -24,12 +24,19 @@ splitPath = map T.unpack . T.splitOn "/" . T.pack
 data Lookup = N Name | S String | None
 
 description :: String -> Q (String, Lookup)
-description s = case break (== '(') s of
+description s = case break (`elem` "([") s of
     (t, []) -> return (t, None)
-    (t, st) -> case break (== ')') st of
-        (_:'$':b, ")") -> lookupValueName b >>=
+    (t, st) -> case break (`elem` ")]") st of
+        (_:'$':b, ")") -> do
+            reportWarning "DEPRECATED () description. use []."
+            s <- lookupValueName b
+            maybe (fail $ b ++ " not found.") (return . (t,) . N) s
+        (_:b,     ")") -> do
+            reportWarning "DEPRECATED () description. use []."
+            return (t, S b)
+        (_:'$':b, "]") -> lookupValueName b >>=
             maybe (fail $ b ++ " not found.") (return . (t,) . N)
-        (_:b,     ")") -> return (t, S b)
+        (_:b,     "]") -> return (t, S b)
         (_, _)         -> fail "capture: syntax error." 
 
 mkCap :: [String] -> ExpQ
