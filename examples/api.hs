@@ -38,8 +38,8 @@ main = do
             hasHeader "Accept" .
             precondition ("user " <> H.strong "defined" <> " precondition.") .
             noDoc . hasHeader "User-Agent" . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
-            document "precondition test" $
-                action $ lbs "precondition"
+            document "precondition test" .  action $
+                lbs "precondition"
 
 
         -- you can add document group only as top level action.
@@ -52,11 +52,9 @@ main = do
                     lbs $ JSON.encode $ Test n a
 
                 method POST .
-                    -- you can add query description after ':'.
-                    -- when not elem ':', it be undocumented parameter.
-                    -- or (??) function to add description.
-                    ("name:name of cat" =:  pMaybe pString) .
-                    ("age" ?? dAge      =?: pInt) .
+                    -- you can add query description using (??) function.
+                    ("name"         =:  pMaybe pString) .
+                    ("age" ?? dAge  =?: pInt) .
                     document "set name and age from query parameter." . action $ \n a -> do
                         liftIO . void $ swapMVar nm n
                         liftIO $ maybe (return ()) (void . swapMVar ag) a
@@ -66,7 +64,7 @@ main = do
                     void . liftIO $ swapMVar nm Nothing
                     void . liftIO $ swapMVar ag 0
 
-            -- you can add route capture description using ().
+            -- you can add route capture description using (description).
             -- you can reference value using '$'.
             [capture|/api/cat/:String($dName)/:Int(age)|] .
                 method POST . document "set name and age from route." . action $ \n a -> do

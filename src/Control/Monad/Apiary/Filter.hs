@@ -119,9 +119,7 @@ data QueryKey = QueryKey
     }
 
 instance IsString QueryKey where
-    fromString s = case break (== ':') s of
-        (k, []) -> QueryKey (SC.pack k) Nothing
-        (k, d)  -> QueryKey (SC.pack k) (Just . toHtml $ tail d)
+    fromString s = QueryKey (SC.pack s) Nothing
 
 (??) :: QueryKey -> Html -> QueryKey
 QueryKey k _ ?? d = QueryKey k (Just d)
@@ -154,9 +152,7 @@ query QueryKey{..} p =
             Strategy.readStrategy id ((queryKey ==) . fst) p 
             (reqParams (Proxy :: Proxy a) r q f) l
   where
-    doc = case queryDesc of
-        Nothing -> id
-        Just h  -> DocQuery queryKey (Strategy.strategyRep (Proxy :: Proxy w)) (reqParamRep (Proxy :: Proxy a)) h
+    doc = DocQuery queryKey (Strategy.strategyRep (Proxy :: Proxy w)) (reqParamRep (Proxy :: Proxy a)) queryDesc
 
 -- | get first matched paramerer. since 0.5.0.0.
 --

@@ -40,7 +40,7 @@ data Doc
     | DocDropNext            Doc
 
     | DocMethod Method       Doc
-    | DocQuery  S.ByteString StrategyRep QueryRep Html Doc
+    | DocQuery  S.ByteString StrategyRep QueryRep (Maybe Html) Doc
     | DocPrecondition Html   Doc
     | DocGroup  T.Text       Doc
     | Document  T.Text       Doc
@@ -73,7 +73,7 @@ data QueryDoc = QueryDoc
     { queryName     :: S.ByteString
     , queryStrategy :: StrategyRep
     , queryRep      :: QueryRep
-    , queryDocument :: Html
+    , queryDocument :: (Maybe Html)
     }
 
 data MethodDoc = MethodDoc
@@ -213,11 +213,13 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     htmlQR (Nullable r) = H.span (toHtml (show r) <> "?") ! A.title (toValue (show r) <> "(nullable)")
     htmlQR  Check       = "check"
 
+    noDesc = H.span "no description" ! A.class_ "no-description"
+
     query (QueryDoc p s q t) = H.tr . mconcat $
         [ H.td (toHtml $ T.decodeUtf8 p)
         , H.td (toHtml $ strategyInfo s)
         , H.td (htmlQR q)
-        , H.td t
+        , H.td $ maybe noDesc id t
         ]
 
     queriesH [] = mempty
