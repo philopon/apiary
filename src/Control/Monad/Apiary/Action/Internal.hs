@@ -28,6 +28,7 @@ import qualified Network.Wai.Parse as P
 
 import Data.Apiary.Param
 import Data.Apiary.Document
+import Data.Apiary.Document.Html
 import Data.Default.Class
 
 import Blaze.ByteString.Builder

@@ -43,7 +43,7 @@ module Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Action.Internal
 
 import Data.Apiary.Param
-import Data.Apiary.Document
+import Data.Apiary.Document.Html
 
 #ifdef WAI3
 import Network.Wai

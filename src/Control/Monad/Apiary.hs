@@ -18,4 +18,4 @@ module Control.Monad.Apiary
 
 import Control.Monad.Apiary.Internal
 
-import Data.Apiary.Document (rpHtml)
+import Data.Apiary.Document.Html (rpHtml)

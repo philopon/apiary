@@ -74,9 +74,10 @@ library
 
                        Data.Apiary.SList
                        Data.Apiary.Param
-                       Data.Apiary.Document
                        Data.Apiary.Method
                        Data.Apiary.Proxy
+                       Data.Apiary.Document
+                       Data.Apiary.Document.Html
 
   other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
