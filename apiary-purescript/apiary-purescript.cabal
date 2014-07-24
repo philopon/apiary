@@ -1,7 +1,8 @@
 name:                apiary-purescript
 version:             0.14.0
-synopsis:            
+synopsis:            purescript compiler for apiary web framework.
 description:
+  example: <https://github.com/philopon/apiary/blob/master/examples/pureScript.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>

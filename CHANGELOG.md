@@ -10,6 +10,7 @@
 * abolish ':' query document api. use (??) function.
 * deprecated () route decument api. use [].
 
+
 # 0.13.0
 * Option that generate full embed documentation.
 * Add precondition, rpHtml functions.
@@ -19,6 +20,7 @@
 * multi action
 * use route string as id of html
 
+
 # 0.12.8
 * Option that doesn't generate documentation.
 * Change fail of ActionT behaviour.
@@ -26,6 +28,7 @@
 
 ## API documentation page
 * collapse
+
 
 # 0.12.5
 * Enhance API documentation.
@@ -46,6 +49,7 @@
 
 ## apiary-clientsession
 * Add prefix SessionConfig fields.
+
 
 # 0.10.0
 * wai-3.0.
