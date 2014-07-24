@@ -21,9 +21,9 @@ page tok = do
 main :: IO ()
 main = withSession def { sessionSecure = False } $ run 3000 . runApiary def $ do
     root $ do  
-        stdMethod GET . action $ csrfToken >>= page
+        method GET . action $ csrfToken >>= page
 
-        stdMethod POST . ("str" =: pInt) . checkToken . action $ \i -> do
+        method POST . ("str" =: pInt) . checkToken . action $ \i -> do
             lbs $ L.pack (show i)
 
     [capture|/:S.ByteString|] . action $ page

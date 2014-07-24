@@ -49,3 +49,5 @@ table.route-parameters {
 
 .action { margin-bottom: 20px;}
 .action:last-child { margin-bottom: 0;}
+
+.no-description { color: #aaa }

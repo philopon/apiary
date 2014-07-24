@@ -2,10 +2,12 @@ module Control.Monad.Apiary.Filter.Internal
     ( function, function', function_, focus
     ) where
 
+import Network.Wai
+
 import Control.Monad
 import Control.Monad.Apiary.Internal
 import Control.Monad.Apiary.Action
-import Network.Wai
+
 import Data.Apiary.SList
 import Data.Apiary.Document
 

@@ -2,7 +2,6 @@ module Control.Monad.Apiary
     ( ApiaryT, Apiary
     , runApiary
     , runApiaryT
-    , runApiaryT'
     -- * getter
     , apiaryConfig
     -- * execute action
@@ -11,10 +10,12 @@ module Control.Monad.Apiary
     , group
     , document
     , precondition
+    , noDoc
     , rpHtml
     -- * deprecated
     , actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal
-import Data.Apiary.Document (rpHtml)
+
+import Data.Apiary.Document.Html (rpHtml)

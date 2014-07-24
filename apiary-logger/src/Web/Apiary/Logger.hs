@@ -22,10 +22,10 @@ module Web.Apiary.Logger (
     , module Data.Default.Class
     ) where
 
-import qualified Web.Apiary.Logger.Internal as I
-import Web.Apiary
-
 import System.Log.FastLogger
+
+import Web.Apiary
+import qualified Web.Apiary.Logger.Internal as I
 
 import Control.Applicative
 import Control.Monad

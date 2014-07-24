@@ -9,17 +9,22 @@
 
 module Web.Apiary.ClientSession.Internal where
 
+import "crypto-random" Crypto.Random
+import Crypto.Random.AESCtr
+
 import Control.Monad
 import Control.Applicative
 import Control.Arrow
+import Control.Monad.Apiary.Filter.Internal
+import Control.Monad.Apiary.Filter.Internal.Strategy
 
 import Web.Apiary.Wai
-import qualified Network.HTTP.Types as HTTP
-
 import Web.Apiary hiding (Default(..))
 import Web.Apiary.Cookie
 import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
+import qualified Network.HTTP.Types as HTTP
+
 import Data.Maybe
 import Data.Monoid
 import Data.Time
@@ -27,18 +32,11 @@ import Data.Default.Class
 import Data.Binary
 import Data.IORef
 import Data.Apiary.Document
+
 import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64
-
-import "crypto-random" Crypto.Random
-import Crypto.Random.AESCtr
-
-import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Strategy
-
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
-
 
 data Session = Session
     { key       :: Key

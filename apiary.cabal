@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.13.0
+version:             0.14.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -14,7 +14,7 @@ description:
   .
   main :: IO ()
   main = run 3000 . runApiary def $ do
-  &#32;&#32;[capture|/:Int|] . (&#34;name&#34; =: pLazyByteString) . stdMethod GET . action $ \\age name -> do
+  &#32;&#32;[capture|/:Int|] . (&#34;name&#34; =: pLazyByteString) . method GET . action $ \\age name -> do
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
   &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, name, &#34;!&#60;/h1&#62;\\n&#34;]
@@ -31,13 +31,13 @@ description:
   404 Page Notfound.
   @
   .
-    * Nestable route handling(Apiary Monad; capture, stdMethod and more.).
+    * Nestable route handling(Apiary Monad; capture, method and more.).
   .
     * type safe route filter.
   .
-    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.13.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.13.0/examples/api.html>).
+    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.14.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.14.0/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.13.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.14.0/examples/>
 
 license:             MIT
 license-file:        LICENSE
@@ -74,7 +74,10 @@ library
 
                        Data.Apiary.SList
                        Data.Apiary.Param
+                       Data.Apiary.Method
+                       Data.Apiary.Proxy
                        Data.Apiary.Document
+                       Data.Apiary.Document.Html
 
   other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal

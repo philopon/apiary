@@ -1,16 +1,22 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import Web.Apiary
 import Web.Apiary.WebSockets
 import Network.Wai.Handler.Warp
 import qualified Data.Text as T
 import Control.Concurrent
+import Language.Haskell.TH
+import System.FilePath
+import System.Directory
 
 main :: IO ()
-main = run 3000 . runApiary def $ do
-    [capture|/:Int|] . webSockets $ servApp
-    root $ actionWithWebSockets (servApp 0) (file "websockets.html" Nothing)
+main = do 
+    setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
+    run 3000 . runApiary def $ do
+        [capture|/:Int|] . webSockets $ servApp
+        root $ actionWithWebSockets (servApp 0) (file "websockets.html" Nothing)
 
 servApp :: Int -> PendingConnection -> IO ()
 servApp st pc = do

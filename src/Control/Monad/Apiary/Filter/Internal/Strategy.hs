@@ -12,16 +12,13 @@
 
 module Control.Monad.Apiary.Filter.Internal.Strategy where
 
-import Data.Apiary.SList
-import qualified Data.Text as T
-import Data.Apiary.Document
-
-import Data.Typeable
 import Data.Maybe
 import Data.Reflection
-#if __GLASGOW_HASKELL__ < 707
-import Data.Proxy
-#endif
+import qualified Data.Text as T
+
+import Data.Apiary.Proxy
+import Data.Apiary.SList
+import Data.Apiary.Document
 
 class Strategy (w :: * -> *) where
     type SNext w (as :: [*]) a  :: [*]
@@ -36,7 +33,7 @@ class Strategy (w :: * -> *) where
 getQuery :: (v -> Maybe a) -> proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
 getQuery readf _ kf = map readf . map snd . filter kf
 
--- | get first matched key( [1,) params to Type.). since 0.5.0.0.
+-- | get first matched key( [0,) params to Type.). since 0.5.0.0.
 data Option a deriving Typeable
 instance Strategy Option where
     type SNext Option as a = Snoc as (Maybe a)
@@ -49,30 +46,24 @@ instance Strategy Option where
                a:_ -> Just a
     strategyRep _ = StrategyRep "optional"
 
--- | get first matched key ( [0,) params to Maybe Type.) since 0.5.0.0.
+-- | get first matched key ( [1,) params to Maybe Type.) since 0.5.0.0.
 data First a deriving Typeable
 instance Strategy First where
     type SNext First as a = Snoc as a
     readStrategy rf k p q l =
-        let rs = getQuery rf p k q
-        in if any isNothing rs
-           then Nothing
-           else case catMaybes rs of
-               [] -> Nothing
-               a:_ -> Just $ sSnoc l a
+        case getQuery rf p k q of
+            Just a:_ -> Just $ sSnoc l a
+            _        -> Nothing
     strategyRep _ = StrategyRep "first"
 
--- | get key ( [1] param to Type.) since 0.5.0.0.
+-- | get key ( [1,1] param to Type.) since 0.5.0.0.
 data One a deriving Typeable
 instance Strategy One where
     type SNext One as a = Snoc as a
     readStrategy rf k p q l =
-        let rs = getQuery rf p k q
-        in if any isNothing rs
-           then Nothing
-           else case catMaybes rs of
-               [a] -> Just $ sSnoc l a
-               _   -> Nothing
+        case getQuery rf p k q of
+            [Just a] -> Just $ sSnoc l a
+            _        -> Nothing
     strategyRep _ = StrategyRep "one"
 
 -- | get parameters ( [0,) params to [Type] ) since 0.5.0.0.

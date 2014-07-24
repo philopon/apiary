@@ -4,38 +4,38 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE CPP #-}
 
 module Web.Apiary.Authenticate.Internal where
 
-import Control.Monad.Trans.Resource
-import Control.Applicative
-
 import GHC.Generics(Generic)
+
+import Control.Applicative
+import Control.Monad.Trans.Resource
+import Control.Monad.Apiary.Filter.Internal
+
+import Network.HTTP.Client.TLS(tlsManagerSettings)
+import qualified Network.HTTP.Types as HTTP
+import qualified Network.HTTP.Client as Client
+
+import Web.Authenticate.OpenId
+import Web.Apiary hiding(Default(..))
+import Web.Apiary.ClientSession.Explicit
+import qualified Web.Apiary.Wai as Wai
+
 import Data.Binary
 import Data.Data
 import Data.Maybe
 import Data.List
 import Data.Default.Class
-#if __GLASGOW_HASKELL__ < 707
-import Data.Proxy -- for ghc-7.6
-#endif
+import Data.Apiary.Proxy
+import Data.Apiary.SList
+
+import Blaze.ByteString.Builder
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import Blaze.ByteString.Builder
 
-import qualified Web.Apiary.Wai as Wai
-import qualified Network.HTTP.Types as HTTP
-import qualified Network.HTTP.Client as Client
-import Network.HTTP.Client.TLS(tlsManagerSettings)
-import Web.Authenticate.OpenId
-
-import Web.Apiary hiding(Default(..))
-import Data.Apiary.SList
-import Control.Monad.Apiary.Filter.Internal
-import Web.Apiary.ClientSession.Explicit
 
 data AuthConfig = AuthConfig
     { authSessionName  :: S.ByteString
@@ -80,10 +80,10 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function id (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
-    retH = pfxPath (authPrefix config ++ authReturnToPath config) . stdMethod GET . action $
+    retH = pfxPath (authPrefix config ++ authReturnToPath config) . method GET . action $
         returnAction authSession manager (authSessionName config) (authSuccessPage config)
 
-    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . stdMethod GET . action $
+    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . method GET . action $
         authAction manager providerUrl returnTo realm parameters
 
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
