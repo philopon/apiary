@@ -1,8 +1,14 @@
 # 0.14.0
 * change First Strategy behaviour(check first param only).
-* change documentation generation API.
 * merge method and stdMethod function.
+* rename function (response -> rawResponse)
 * add apiary-purescript
+
+## documentation
+* changed how to generate documentation. use defaultDocumentationAction action.
+* now, condition which is after document function, will be documented. use noDoc function.
+* abolish ':' query document api. use (??) function.
+* deprecated () route decument api. use [].
 
 # 0.13.0
 * Option that generate full embed documentation.
