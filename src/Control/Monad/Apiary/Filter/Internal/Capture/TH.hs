@@ -29,8 +29,8 @@ description s = case break (`elem` "([") s of
     (t, st) -> case break (`elem` ")]") st of
         (_:'$':b, ")") -> do
             reportWarning "DEPRECATED () description. use []."
-            s <- lookupValueName b
-            maybe (fail $ b ++ " not found.") (return . (t,) . N) s
+            v <- lookupValueName b
+            maybe (fail $ b ++ " not found.") (return . (t,) . N) v
         (_:b,     ")") -> do
             reportWarning "DEPRECATED () description. use []."
             return (t, S b)
