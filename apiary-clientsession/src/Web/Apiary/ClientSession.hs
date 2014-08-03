@@ -4,8 +4,9 @@
 
 module Web.Apiary.ClientSession
     ( HasSession
-    , I.SessionConfig(..)
+    , I.SessionConfig(..), I.KeySource(..)
     , withSession
+    , I.embedKeyConfig, I.embedDefaultKeyConfig
     -- * setter
     , setSession
     , csrfToken

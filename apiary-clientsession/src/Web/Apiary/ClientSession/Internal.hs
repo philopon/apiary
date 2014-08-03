@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
@@ -8,6 +9,10 @@
 {-# LANGUAGE PackageImports #-}
 
 module Web.Apiary.ClientSession.Internal where
+
+import Language.Haskell.TH
+
+import System.Directory
 
 import "crypto-random" Crypto.Random
 import Crypto.Random.AESCtr
@@ -25,6 +30,7 @@ import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
 import qualified Network.HTTP.Types as HTTP
 
+import Data.String
 import Data.Maybe
 import Data.Monoid
 import Data.Time
@@ -36,6 +42,7 @@ import Data.Apiary.Document
 import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64
 import qualified Data.ByteString as S
+import qualified Data.ByteString.Char8 as SC
 import qualified Data.ByteString.Lazy as L
 
 data Session = Session
@@ -44,8 +51,46 @@ data Session = Session
     , config    :: SessionConfig
     }
 
+data KeySource
+    = KeyFile       FilePath
+    | KeyByteString S.ByteString
+
+instance IsString KeySource where
+    fromString = KeyByteString . fromString
+
+-- | generate and embed key at compile time. since 0.13.2.
+--
+-- This function embed as SessionConfig with default config. so you can configure it.
+-- but don't configure sessionKey.
+-- 
+-- @
+-- withSession $embedDefaultKeyConfig { csrfTokenCookieName = \"foo\" } $ run 3000 . runApiary def $ do
+--     route define ...
+-- @
+embedKeyConfig :: FilePath -> ExpQ
+embedKeyConfig keyfile = do
+    bs <- runIO $ do
+        exists <- doesFileExist keyfile
+        if exists
+            then do 
+                b <- S.readFile keyfile
+                case initKey b of
+                    Left  _ -> newKey
+                    Right _ -> return b
+        else newKey
+    let s = stringE $ SC.unpack bs
+    [| def { sessionKey = KeyByteString $s } |]
+  where
+    newKey = do
+        (bs, _) <- randomKey
+        S.writeFile keyfile bs
+        return bs
+
+embedDefaultKeyConfig :: ExpQ
+embedDefaultKeyConfig = embedKeyConfig defaultKeyFile
+
 data SessionConfig = SessionConfig
-    { sessionKeyFile        :: FilePath
+    { sessionKey            :: KeySource
     , sessionMaxAge         :: DiffTime
     , sessionPath           :: Maybe S.ByteString
     , sessionDomain         :: Maybe S.ByteString
@@ -61,12 +106,14 @@ data SessionConfig = SessionConfig
 
 instance Default SessionConfig where
     def = SessionConfig
-        defaultKeyFile (24 * 60 * 60) Nothing Nothing True True
+        (KeyFile defaultKeyFile) (24 * 60 * 60) Nothing Nothing True True
         Nothing "_token" (Right "_token") 40
 
 withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
 withSession cfg@SessionConfig{..} m = do
-    k <- liftIO $ getKey sessionKeyFile
+    k <- liftIO $ case sessionKey of
+        KeyFile       f -> getKey f
+        KeyByteString s -> either fail return $ initKey s
     p <- liftIO $ makeSystem >>= newIORef
     let sess = Session k p cfg
     m sess
