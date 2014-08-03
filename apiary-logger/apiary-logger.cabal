@@ -1,5 +1,5 @@
 name:                apiary-logger
-version:             0.11.3
+version:             0.11.3.1
 synopsis:            fast-logger support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
@@ -21,7 +21,7 @@ library
   other-modules:       Web.Apiary.Logger.Internal
   build-depends:       base               >=4.6   && <4.8
                      , apiary             >=0.8   && <0.15
-                     , fast-logger        >=2.1   && <2.2
+                     , fast-logger        >=2.1   && <2.3
                      , monad-logger       >=0.3   && <0.4
                      , reflection         >=1.4   && <1.6
                      , data-default-class >=0.0   && <0.1
