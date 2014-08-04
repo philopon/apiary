@@ -7,6 +7,8 @@ description:
     <https://github.com/philopon/apiary/blob/master/examples/csrf.hs>
     .
     <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
+    .
+    <https://github.com/philopon/apiary/blob/master/examples/embed_key.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
