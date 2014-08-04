@@ -2,5 +2,8 @@ language: haskell
 ghc:
   - 7.8
   - 7.6
-install: bash -eu .travis-install.sh
+install:
+  - cabal install Cabal cabal-install
+  - export PATH=~/.cabal/bin:$PATH
+  - bash -eu .travis-install.sh
 script: bash -eu .travis-script.sh
