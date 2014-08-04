@@ -1,7 +1,8 @@
 module Web.Apiary.ClientSession.Explicit
     (
-      Session, SessionConfig(..)
+      Session, SessionConfig(..), KeySource(..)
     , withSession
+    , embedKeyConfig, embedDefaultKeyConfig
     -- * actions
     , setSession
     , csrfToken

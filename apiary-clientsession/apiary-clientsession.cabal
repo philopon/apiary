@@ -1,5 +1,5 @@
 name:                apiary-clientsession
-version:             0.13.1
+version:             0.13.2
 synopsis:            clientsession support for apiary web framework.
 description:
   examples:
@@ -7,6 +7,8 @@ description:
     <https://github.com/philopon/apiary/blob/master/examples/csrf.hs>
     .
     <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
+    .
+    <https://github.com/philopon/apiary/blob/master/examples/embed_key.hs>
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
@@ -26,6 +28,8 @@ library
   other-modules:       Web.Apiary.ClientSession.Internal
   other-extensions:    
   build-depends:       base               >=4.6   && <4.8
+                     , template-haskell
+                     , directory          >=1.2   && <1.3
                      , bytestring         >=0.10  && <0.11
                      , apiary             >=0.13  && <0.15
                      , apiary-cookie      >=0.13  && <0.14
