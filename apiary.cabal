@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.14.0
+version:             0.14.0.1
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -109,7 +109,7 @@ library
                      , exceptions           >=0.6   && <0.7
                      , blaze-html           >=0.7   && <0.8
                      , blaze-markup         >=0.6   && <0.7
-                     , case-insensitive     >=1.2   && <1.3
+                     , case-insensitive     >=1.1   && <1.3
 
   if impl(ghc < 7.8)
     build-depends:     tagged               >=0.7   && <0.8
