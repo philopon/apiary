@@ -79,7 +79,7 @@ import Data.Apiary.Method
 -- method \"HOGE\" -- non standard method
 -- @
 method :: Monad n => Method -> ApiaryT c n m a -> ApiaryT c n m a
-method m = focus (DocMethod m) (Just m) id return
+method m = focus' (DocMethod m) (Just m) id return
 
 {-# DEPRECATED stdMethod "use method" #-}
 -- | filter by HTTP method using StdMethod. since 0.1.0.0.
@@ -108,10 +108,10 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: (Functor m, Monad m, Monad n) => ApiaryT c n m b -> ApiaryT c n m b
-root = focus DocRoot Nothing (RootPath:) return
+root = focus' DocRoot Nothing (RootPath:) return
 
 anyPath :: (Functor m, Monad m, Monad n) => ApiaryT c n m b -> ApiaryT c n m b
-anyPath = focus id Nothing (AnyPath:) return
+anyPath = focus' id Nothing (AnyPath:) return
 
 --------------------------------------------------------------------------------
 
@@ -146,7 +146,7 @@ query :: forall a as w n m b proxy.
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
 query QueryKey{..} p =
-    focus doc Nothing id $ \l -> do
+    focus doc $ \l -> do
         r     <- getRequest
         (q,f) <- getRequestBody
 

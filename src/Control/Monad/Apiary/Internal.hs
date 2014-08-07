@@ -199,11 +199,17 @@ addRoute r = ApiaryT $ \_ -> return (r, ())
 -- | filter by action. since 0.6.1.0.
 focus :: Monad n
       => (Doc -> Doc)
-      -> Maybe Method
-      -> ([PathElem] -> [PathElem])
       -> (SList c -> ActionT n (SList c'))
       -> ApiaryT c' n m a -> ApiaryT c n m a
-focus d meth pth g m = ApiaryT $ \env -> unApiaryT m env 
+focus d g m = focus' d Nothing id g m
+
+focus' :: Monad n
+       => (Doc -> Doc)
+       -> Maybe Method
+       -> ([PathElem] -> [PathElem])
+       -> (SList c -> ActionT n (SList c'))
+       -> ApiaryT c' n m a -> ApiaryT c n m a
+focus' d meth pth g m = ApiaryT $ \env -> unApiaryT m env 
     { envFilter = envFilter env >>= g 
     , envMethod = maybe (envMethod env) Just meth
     , envPath   = envPath env . pth

@@ -33,16 +33,16 @@ wsToApp conn srv args = getRequest >>= \req ->
         Just r  -> stopWith r
 
 -- | websocket only action. since 0.8.0.0.
-webSockets' :: (Monad n, Functor n) => WS.ConnectionOptions
+webSockets' :: (Functor m, Monad m, Functor n, Monad n) => WS.ConnectionOptions
             -> Fn xs WS.ServerApp -> ApiaryT xs n m ()
 webSockets' conn srv = action' $ wsToApp conn srv
 
 -- | websocket only action. since 0.8.0.0.
-webSockets :: (Monad n, Functor n)
+webSockets :: (Functor m, Monad m, Functor n, Monad n)
            => Fn xs WS.ServerApp -> ApiaryT xs n m ()
 webSockets = webSockets' WS.defaultConnectionOptions
 
-actionWithWebSockets' :: (Monad n, Functor n)
+actionWithWebSockets' :: (Functor m, Monad m, Functor n, Monad n)
                       => WS.ConnectionOptions 
                       -> Fn xs WS.ServerApp
                       -> Fn xs (ActionT n ())
@@ -50,7 +50,7 @@ actionWithWebSockets' :: (Monad n, Functor n)
 actionWithWebSockets' conn srv m =
     action' $ \a -> wsToApp conn srv a >> apply m a
 
-actionWithWebSockets :: (Functor n, Monad n)
+actionWithWebSockets :: (Functor m, Monad m, Functor n, Monad n)
                      => Fn c WS.ServerApp
                      -> Fn c (ActionT n ())
                      -> ApiaryT c n m ()

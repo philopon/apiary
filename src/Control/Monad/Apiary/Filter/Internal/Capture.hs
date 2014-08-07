@@ -27,15 +27,15 @@ import Text.Blaze.Html
 
 -- | check first path and drill down. since 0.11.0.
 path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-path p = focus (DocPath p) Nothing (Exact p:) return
+path p = focus' (DocPath p) Nothing (Exact p:) return
 
 -- | check consumed paths. since 0.11.1.
 endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
-endPath = focus id Nothing (EndPath:) return
+endPath = focus' id Nothing (EndPath:) return
 
 -- | get first path and drill down. since 0.11.0.
 fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-fetch p h = focus (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
+fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
         Nothing -> mzero

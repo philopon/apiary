@@ -15,7 +15,7 @@ import Data.Apiary.Document
 function :: Monad n => (Doc -> Doc)
          -> (SList c -> Request -> Maybe (SList c'))
          -> ApiaryT c' n m b -> ApiaryT c n m b
-function d f = focus d Nothing id $ \c -> getRequest >>= \r -> case f c r of
+function d f = focus d $ \c -> getRequest >>= \r -> case f c r of
     Nothing -> mzero
     Just c' -> return c'
 

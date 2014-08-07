@@ -1,3 +1,7 @@
+# 0.15.0
+* fast new router.
+* add anyPath function.
+
 # 0.14.0
 * change First Strategy behaviour(check first param only).
 * merge method and stdMethod function.
