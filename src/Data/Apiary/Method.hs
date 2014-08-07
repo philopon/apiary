@@ -5,6 +5,7 @@ module Data.Apiary.Method where
 
 import Data.String
 import qualified Data.ByteString.Char8 as S
+import Data.Hashable
 
 data Method
     = GET
@@ -18,6 +19,19 @@ data Method
     | PATCH
     | NonStandard S.ByteString
     deriving (Eq, Ord, Read, Show)
+
+instance Hashable Method where
+    hash GET             = 0
+    hash POST            = 0
+    hash HEAD            = 0
+    hash PUT             = 0
+    hash DELETE          = 0
+    hash TRACE           = 0
+    hash CONNECT         = 0
+    hash OPTIONS         = 0
+    hash PATCH           = 0
+    hash (NonStandard s) = hash s
+    hashWithSalt salt x = salt `hashWithSalt` hash x
 
 renderMethod :: Method -> S.ByteString
 renderMethod = \case

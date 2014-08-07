@@ -30,23 +30,23 @@ testReq str f =
 assertPlain200 :: L.ByteString -> Application -> Request -> IO ()
 assertPlain200 body app req = flip runSession app $ do
     res <- request req
+    assertBody body res
     assertStatus 200 res
     assertContentType "text/plain" res
-    assertBody body res
 
 assertHtml200 :: L.ByteString -> Application -> Request -> IO ()
 assertHtml200 body app req = flip runSession app $ do
     res <- request req
+    assertBody body res
     assertStatus 200 res
     assertContentType "text/html" res
-    assertBody body res
 
 assert404 :: Application -> Request -> IO ()
 assert404 app req = flip runSession app $ do
     res <- request req
+    assertBody "404 Page Notfound.\n" res
     assertStatus 404 res
     assertContentType "text/plain" res
-    assertBody "404 Page Notfound.\n" res
 
 --------------------------------------------------------------------------------
 
@@ -105,6 +105,19 @@ rootFilterTest = testGroup "rootFilter"
     , testReq "POST /"          $ assertHtml200 "root" rootFilterApp
     , testReq "GET /neko"       $ assert404 rootFilterApp
     , testReq "GET /index.html" $ assertHtml200 "root" rootFilterApp
+    ]
+
+--------------------------------------------------------------------------------
+anyFilterApp :: Application
+anyFilterApp = runApiary def $ [capture|/test|] . anyPath . action $ do
+    contentType "text/plain"
+    lbs "hello"
+
+anyFilterTest :: Test
+anyFilterTest = testGroup "anyPath"
+    [ testReq "GET /"          $ assert404 anyFilterApp
+    , testReq "GET /test"      $ assertPlain200 "hello" anyFilterApp
+    , testReq "POST /test/foo" $ assertPlain200 "hello" anyFilterApp
     ]
 
 --------------------------------------------------------------------------------
@@ -252,6 +265,7 @@ main = defaultMain
     , methodFilterTest
     , httpVersionTest
     , rootFilterTest
+    , anyFilterTest
     , captureTest
     , queryTest
     , multipleFilter1Test

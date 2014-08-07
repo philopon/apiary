@@ -23,12 +23,11 @@ import Web.Apiary.ClientSession.Explicit
 import qualified Web.Apiary.Wai as Wai
 
 import Data.Binary
-import Data.Data
+import Data.Data (Data)
 import Data.Maybe
 import Data.List
-import Data.Default.Class
-import Data.Apiary.Proxy
 import Data.Apiary.SList
+import Data.Apiary.Proxy
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString.Char8 as S
@@ -75,7 +74,7 @@ withAuthWith :: Session -> Client.ManagerSettings
 withAuthWith sess s conf m = Client.withManager s $ \mgr -> 
     m (Auth mgr conf sess)
 
-authHandler :: (Functor n, MonadIO n) => Auth -> ApiaryT c n m ()
+authHandler :: (Functor m, Monad m, Functor n, MonadIO n) => Auth -> ApiaryT c n m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function id (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
@@ -137,7 +136,8 @@ toOpenId r = OpenId_
     (oirParams r)
     (identifier <$> oirClaimed r)
 
-returnAction :: MonadIO m => Session -> Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
+returnAction :: (Functor m, MonadIO m)
+             => Session -> Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
 returnAction sess mgr key to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr

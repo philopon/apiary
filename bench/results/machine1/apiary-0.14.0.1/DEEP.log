@@ -1,0 +1,95 @@
+/home/philopon/bench-0.1.0/wrk/wrk
+Benchmarking DEEP
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    45.82ms   34.75ms   1.16s    99.33%
+    Req/Sec     1.13k   332.65     2.88k    76.70%
+  260838 requests in 30.01s, 30.35MB read
+  Socket errors: connect 0, read 0, write 0, timeout 22
+Requests/sec:   8692.89
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    44.64ms   12.23ms 880.29ms   94.33%
+    Req/Sec     1.17k   456.65     3.45k    69.17%
+  259313 requests in 30.01s, 30.17MB read
+  Socket errors: connect 0, read 0, write 0, timeout 92
+Requests/sec:   8641.71
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    60.31ms  126.33ms   2.04s    98.81%
+    Req/Sec     1.15k   506.24     3.57k    76.26%
+  259481 requests in 30.00s, 30.19MB read
+  Socket errors: connect 0, read 0, write 0, timeout 50
+Requests/sec:   8648.43
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    47.14ms   14.50ms 692.79ms   89.19%
+    Req/Sec     1.18k   564.24     3.54k    77.19%
+  260305 requests in 30.01s, 30.29MB read
+  Socket errors: connect 0, read 0, write 0, timeout 81
+Requests/sec:   8675.07
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    49.67ms   28.90ms   1.29s    91.06%
+    Req/Sec     1.17k   586.51     3.68k    73.74%
+  259611 requests in 30.01s, 30.21MB read
+  Socket errors: connect 0, read 0, write 0, timeout 78
+Requests/sec:   8651.81
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency   128.94ms  314.76ms   1.75s    93.12%
+    Req/Sec     1.14k   669.69     3.70k    66.26%
+  262089 requests in 30.00s, 30.49MB read
+Requests/sec:   8735.18
+Transfer/sec:      1.02MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    46.15ms   12.65ms 584.54ms   91.19%
+    Req/Sec     1.17k   523.10     3.76k    73.40%
+  260404 requests in 30.01s, 30.30MB read
+Requests/sec:   8678.49
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    46.65ms   14.10ms 854.91ms   89.90%
+    Req/Sec     1.18k   545.33     3.53k    77.76%
+  260435 requests in 30.01s, 30.30MB read
+  Socket errors: connect 0, read 0, write 0, timeout 59
+Requests/sec:   8679.38
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    47.34ms   14.70ms  98.53ms   85.60%
+    Req/Sec     1.18k   507.49     3.69k    80.61%
+  260233 requests in 30.01s, 30.28MB read
+  Socket errors: connect 0, read 0, write 0, timeout 124
+Requests/sec:   8672.78
+Transfer/sec:      1.01MB
+Running 30s test @ http://localhost:8080/deep/foo/bar/baz/100
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    45.85ms   12.59ms 774.18ms   90.50%
+    Req/Sec     1.18k   504.58     3.50k    81.50%
+  259899 requests in 30.01s, 30.24MB read
+  Socket errors: connect 0, read 0, write 0, timeout 100
+Requests/sec:   8661.78
+Transfer/sec:      1.01MB
+=================== summary ===================
+bench target: apiary
+bench mode:   30s * 10
+average:      8673.75
+stdev:        26.85

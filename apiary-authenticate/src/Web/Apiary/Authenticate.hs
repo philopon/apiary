@@ -40,7 +40,7 @@ withAuthWith :: HasSession => Client.ManagerSettings
 withAuthWith ms ac m = E.withAuthWith given ms ac (\a -> give a m)
 
 -- | default auth handlers. since 0.8.0.0.
-authHandler :: (Functor n, MonadIO n, HasAuth) => ApiaryT c n m ()
+authHandler :: (Functor m, Monad m, Functor n, MonadIO n, HasAuth) => ApiaryT c n m ()
 authHandler = E.authHandler given
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
