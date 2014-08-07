@@ -22,14 +22,14 @@ data Method
 
 instance Hashable Method where
     hash GET             = 0
-    hash POST            = 0
-    hash HEAD            = 0
-    hash PUT             = 0
-    hash DELETE          = 0
-    hash TRACE           = 0
-    hash CONNECT         = 0
-    hash OPTIONS         = 0
-    hash PATCH           = 0
+    hash POST            = 1
+    hash HEAD            = 2
+    hash PUT             = 3
+    hash DELETE          = 4
+    hash TRACE           = 5
+    hash CONNECT         = 6
+    hash OPTIONS         = 7
+    hash PATCH           = 8
     hash (NonStandard s) = hash s
     hashWithSalt salt x = salt `hashWithSalt` hash x
 
@@ -49,5 +49,3 @@ renderMethod = \case
 
 instance IsString Method where
     fromString = NonStandard . S.pack
-
-
