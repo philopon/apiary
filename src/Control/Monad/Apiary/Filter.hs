@@ -110,6 +110,7 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 root :: (Functor m, Monad m, Monad n) => ApiaryT c n m b -> ApiaryT c n m b
 root = focus' DocRoot Nothing (RootPath:) return
 
+-- | match all subsequent path. since 0.15.0.
 anyPath :: (Functor m, Monad m, Monad n) => ApiaryT c n m b -> ApiaryT c n m b
 anyPath = focus' id Nothing (AnyPath:) return
 

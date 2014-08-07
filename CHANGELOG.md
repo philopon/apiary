@@ -1,5 +1,5 @@
 # 0.15.0
-* fast new router.
+* enhance performance(new router).
 * add anyPath function.
 
 # 0.14.0

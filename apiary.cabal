@@ -31,6 +31,8 @@ description:
   404 Page Notfound.
   @
   .
+    * high performance(benchmark: <https://github.com/philopon/apiary/tree/master/bench>).
+  .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
     * type safe route filter.
