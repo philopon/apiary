@@ -1,5 +1,6 @@
-Apiary [![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary)
+Apiary [![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary) [![Hackage](https://budueba.com/hackage/apiary)](https://hackage.haskell.org/package/apiary)
 ====
+
 Simple web framework inspired by scotty.
 
 Feature
