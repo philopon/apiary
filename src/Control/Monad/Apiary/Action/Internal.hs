@@ -54,7 +54,7 @@ data ApiaryConfig = ApiaryConfig
     , failStatus          :: Status
     , failHeaders         :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
-    , rootPattern         :: [S.ByteString]
+    , rootPattern         :: [T.Text]
     , mimeType            :: FilePath -> S.ByteString
     }
 
@@ -89,16 +89,16 @@ data ActionState = ActionState
     , actionStatus   :: Status
     , actionHeaders  :: ResponseHeaders
     , actionReqBody  :: Maybe ([Param], [File])
-    , actionPathInfo :: [T.Text]
+    , actionFetches  :: [T.Text]
     }
 
-initialState :: ApiaryConfig -> Request -> ActionState
-initialState conf req = ActionState
+initialState :: ApiaryConfig -> ActionState
+initialState conf = ActionState
     { actionResponse = responseLBS (defaultStatus conf) (defaultHeaders conf) ""
     , actionStatus   = defaultStatus  conf
     , actionHeaders  = defaultHeaders conf
     , actionReqBody  = Nothing
-    , actionPathInfo = pathInfo req
+    , actionFetches  = []
     }
 {-# INLINE initialState #-}
 
@@ -133,7 +133,7 @@ execActionT config doc m request send =
 #else
 execActionT config doc m request = let send = return in
 #endif
-    runActionT m (ActionEnv config request doc) (initialState config request) >>= \case
+    runActionT m (ActionEnv config request doc) (initialState config) >>= \case
 #ifdef WAI3
         Pass           -> notFound config request send
 #else

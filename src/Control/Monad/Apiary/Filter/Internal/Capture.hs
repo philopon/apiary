@@ -26,26 +26,17 @@ import qualified Data.Text as T
 import Text.Blaze.Html
 
 -- | check first path and drill down. since 0.11.0.
-path :: (Functor n, Monad n) => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
-path p = focus (DocPath p) $ \l -> l <$ path'
-  where
-    path' = liftM actionPathInfo getState >>= \case
-        c:_ | c == p -> modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
-        _            -> mzero
+path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+path p = focus (DocPath p) Nothing (Exact p:) return
 
--- | check consumed pathes. since 0.11.1.
+-- | check consumed paths. since 0.11.1.
 endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
-endPath = focus id $ \l -> l <$ end
-  where
-    end = liftM actionPathInfo getState >>= \case
-        [] -> return ()
-        _  -> mzero
+endPath = focus id Nothing (EndPath:) return
 
 -- | get first path and drill down. since 0.11.0.
 fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-fetch p h = focus (DocFetch (pathRep p) h) $ \l -> liftM actionPathInfo getState >>= \case
-    []  -> mzero
-    c:_ -> case readPathAs p c of
+fetch p h = focus (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
+    []   -> mzero
+    f:fs -> case readPathAs p f of
         Nothing -> mzero
-        Just r  -> sSnoc l r <$
-            modifyState (\s -> s {actionPathInfo = tail $ actionPathInfo s})
+        Just r  -> sSnoc l r <$ modifyState (\s -> s {actionFetches = fs})
