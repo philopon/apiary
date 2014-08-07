@@ -106,7 +106,7 @@ http11 :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
-root :: Monad n => ApiaryT c n m b -> ApiaryT c n m b
+root :: (Functor m, Monad m, Functor n, Monad n) => ApiaryT c n m b -> ApiaryT c n m b
 root m = do
     rs <- rootPattern `liftM` apiaryConfig
     function_ DocRoot (\r -> rawPathInfo r `elem` rs) m
