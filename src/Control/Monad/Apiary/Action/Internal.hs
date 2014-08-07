@@ -9,6 +9,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TupleSections #-}
 
 module Control.Monad.Apiary.Action.Internal where
@@ -110,7 +111,7 @@ data ActionEnv = ActionEnv
     }
 
 data Action a 
-    = Continue a
+    = Continue ActionState a
     | Pass
     | Stop Response
 
@@ -123,18 +124,18 @@ newtype ActionT m a = ActionT { unActionT :: forall b.
 
 runActionT :: Monad m => ActionT m a
            -> ActionEnv -> ActionState
-           -> m (Action (a, ActionState))
+           -> m (Action a)
 runActionT m env st = unActionT m env st $ \a st' ->
-    st' `seq` return (Continue (a, st'))
+    st' `seq` return (Continue st' a)
 {-# INLINE runActionT #-}
 
 actionT :: Monad m 
-        => (ActionEnv -> ActionState -> m (Action (a, ActionState)))
+        => (ActionEnv -> ActionState -> m (Action a))
         -> ActionT m a
 actionT f = ActionT $ \env st cont -> f env st >>= \case
-    Pass             -> return Pass
-    Stop s           -> return $ Stop s
-    Continue (a,st') -> st' `seq` cont a st'
+    Pass           -> return Pass
+    Stop s         -> return $ Stop s
+    Continue st' a -> st' `seq` cont a st'
 {-# INLINE actionT #-}
 
 -- | n must be Monad, so cant be MFunctor.
@@ -151,12 +152,12 @@ execActionT config doc m request = let send = return in
 #endif
     runActionT m (ActionEnv config request doc) (initialState config request) >>= \case
 #ifdef WAI3
-        Pass           -> notFound config request send
+        Pass         -> notFound config request send
 #else
-        Pass           -> notFound config request
+        Pass         -> notFound config request
 #endif
-        Stop s         -> send s
-        Continue (_,r) -> send $ actionResponse r
+        Stop s       -> send s
+        Continue r _ -> send $ actionResponse r
 
 --------------------------------------------------------------------------------
 
@@ -217,9 +218,9 @@ instance (Monad m, Functor m) => Alternative (ActionT m) where
 instance Monad m => MonadPlus (ActionT m) where
     mzero = actionT $ \_ _ -> return Pass
     mplus m n = actionT $ \e s -> runActionT m e s >>= \case
-        Continue a -> return $ Continue a
-        Stop stp   -> return $ Stop stp
-        Pass       -> runActionT n e s
+        Continue st a -> return $ Continue st a
+        Stop stp      -> return $ Stop stp
+        Pass          -> runActionT n e s
     {-# INLINE mzero #-}
     {-# INLINE mplus #-}
 
@@ -227,9 +228,9 @@ instance MonadBase b m => MonadBase b (ActionT m) where
     liftBase = liftBaseDefault
 
 instance MonadTransControl ActionT where
-    newtype StT ActionT a = StActionT { unStActionT :: Action (a, ActionState) }
+    newtype StT ActionT a = StActionT { unStActionT :: Action a }
     liftWith f = actionT $ \e s -> 
-        liftM (\a -> Continue (a,s)) (f $ \t -> liftM StActionT $ runActionT t e s)
+        liftM (\a -> Continue s a) (f $ \t -> liftM StActionT $ runActionT t e s)
     restoreT m = actionT $ \_ _ -> liftM unStActionT m
 
 instance MonadBaseControl b m => MonadBaseControl b (ActionT m) where
