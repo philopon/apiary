@@ -24,6 +24,7 @@ import Data.Proxy
 import Data.Apiary.Proxy
 
 import Data.String(IsString)
+import qualified Data.Text.Read as TR
 import Text.Read
 import Data.Text.Encoding.Error
 import qualified Data.Text as T
@@ -41,6 +42,7 @@ jsToBool = flip notElem jsFalse
 
 readPathAs :: Path a => proxy a -> T.Text -> Maybe a
 readPathAs _ t = readPath t
+{-# INLINE readPathAs #-}
 
 data Text deriving Typeable
 
@@ -69,25 +71,40 @@ instance Path Char where
         | T.null s  = Nothing
         | otherwise = Just $ T.head s
 
+readInt :: Integral i => T.Text -> Maybe i
+readInt s = case (TR.signed TR.decimal) s of
+    Right (a, _) -> Just a
+    Left   _     -> Nothing
+
+readWord :: Integral i => T.Text -> Maybe i
+readWord s = case TR.decimal s of
+    Right (a, _) -> Just a
+    Left   _     -> Nothing
+
+readDouble :: T.Text -> Maybe Double
+readDouble s = case TR.double s of
+    Right (a, _) -> Just a
+    Left   _     -> Nothing
+
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
-instance Path Bool    where readPath = Just      . jsToBool
+instance Path Bool    where readPath = Just . jsToBool
 
-instance Path Int     where readPath = readMaybe . T.unpack
-instance Path Int8    where readPath = readMaybe . T.unpack
-instance Path Int16   where readPath = readMaybe . T.unpack
-instance Path Int32   where readPath = readMaybe . T.unpack
-instance Path Int64   where readPath = readMaybe . T.unpack
-instance Path Integer where readPath = readMaybe . T.unpack
+instance Path Int     where readPath = readInt
+instance Path Int8    where readPath = readInt
+instance Path Int16   where readPath = readInt
+instance Path Int32   where readPath = readInt
+instance Path Int64   where readPath = readInt
+instance Path Integer where readPath = readInt
 
-instance Path Word    where readPath = readMaybe . T.unpack
-instance Path Word8   where readPath = readMaybe . T.unpack
-instance Path Word16  where readPath = readMaybe . T.unpack
-instance Path Word32  where readPath = readMaybe . T.unpack
-instance Path Word64  where readPath = readMaybe . T.unpack
+instance Path Word    where readPath = readWord
+instance Path Word8   where readPath = readWord
+instance Path Word16  where readPath = readWord
+instance Path Word32  where readPath = readWord
+instance Path Word64  where readPath = readWord
 
-instance Path Double  where readPath = readMaybe . T.unpack
-instance Path Float   where readPath = readMaybe . T.unpack
+instance Path Double  where readPath = readDouble
+instance Path Float   where readPath = fmap realToFrac . readDouble
 
 instance Path  T.Text      where readPath = Just;                 pathRep _ = typeRep (Proxy :: Proxy Text)
 instance Path TL.Text      where readPath = Just . TL.fromStrict; pathRep _ = typeRep (Proxy :: Proxy Text)

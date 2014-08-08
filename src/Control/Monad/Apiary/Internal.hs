@@ -118,20 +118,22 @@ routerToAction router = getRequest >>= go
       where
         method = requestMethod req
 
-        pmAction (PathMethod mm am) =
-            maybe mzero id (H.lookup method mm) `mplus` maybe mzero id am
+        pmAction nxt (PathMethod mm am) =
+            let a = maybe nxt id am
+            in maybe a (`mplus` a) $ H.lookup method mm
 
         loop fch (Router _ _ anp pm) [] = do
             modifyState (\s -> s { actionFetches = fch [] } )
-            pmAction pm `mplus` maybe mzero pmAction anp
+            pmAction (maybe mzero (pmAction mzero) anp) pm 
 
         loop fch (Router c mbcp anp _) (p:ps) = case mbcp of
-            Nothing -> cld `mplus` maybe mzero pmAction anp
-            Just cp -> cld `mplus` loop (fch . (p:)) cp ps `mplus` maybe mzero pmAction anp
+            Nothing -> cld ana
+            Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
-            cld = case H.lookup p c of
-                Nothing -> mzero
-                Just cd -> loop fch cd ps
+            ana = maybe mzero (pmAction mzero) anp
+            cld nxt = case H.lookup p c of
+                Nothing -> nxt
+                Just cd -> loop fch cd ps `mplus` nxt
 
 runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
            -> ApiaryT '[] n m a -> m Application
