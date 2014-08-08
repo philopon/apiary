@@ -25,7 +25,6 @@ import Data.Apiary.Proxy
 
 import Data.String(IsString)
 import qualified Data.Text.Read as TR
-import Text.Read
 import Data.Text.Encoding.Error
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -34,6 +33,9 @@ import qualified Data.Text.Lazy.Encoding as TL
 
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
+
+import qualified Data.ByteString.Lex.Integral as SL
+import qualified Data.ByteString.Lex.Double   as SL
 
 jsToBool :: (IsString a, Eq a) => a -> Bool
 jsToBool = flip notElem jsFalse
@@ -71,40 +73,39 @@ instance Path Char where
         | T.null s  = Nothing
         | otherwise = Just $ T.head s
 
-readInt :: Integral i => T.Text -> Maybe i
-readInt s = case (TR.signed TR.decimal) s of
-    Right (a, _) -> Just a
+readText :: TR.Reader a -> T.Text -> (Maybe a)
+readText p s = case p s of
+    Right (a, t) -> if T.null t then Just a else Nothing
     Left   _     -> Nothing
 
-readWord :: Integral i => T.Text -> Maybe i
-readWord s = case TR.decimal s of
-    Right (a, _) -> Just a
-    Left   _     -> Nothing
+readTextInt :: Integral i => T.Text -> Maybe i
+readTextInt = readText (TR.signed TR.decimal)
 
-readDouble :: T.Text -> Maybe Double
-readDouble s = case TR.double s of
-    Right (a, _) -> Just a
-    Left   _     -> Nothing
+readTextWord :: Integral i => T.Text -> Maybe i
+readTextWord = readText TR.decimal
+
+readTextDouble :: T.Text -> Maybe Double
+readTextDouble = readText TR.double
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
 instance Path Bool    where readPath = Just . jsToBool
 
-instance Path Int     where readPath = readInt
-instance Path Int8    where readPath = readInt
-instance Path Int16   where readPath = readInt
-instance Path Int32   where readPath = readInt
-instance Path Int64   where readPath = readInt
-instance Path Integer where readPath = readInt
+instance Path Int     where readPath = readTextInt
+instance Path Int8    where readPath = readTextInt
+instance Path Int16   where readPath = readTextInt
+instance Path Int32   where readPath = readTextInt
+instance Path Int64   where readPath = readTextInt
+instance Path Integer where readPath = readTextInt
 
-instance Path Word    where readPath = readWord
-instance Path Word8   where readPath = readWord
-instance Path Word16  where readPath = readWord
-instance Path Word32  where readPath = readWord
-instance Path Word64  where readPath = readWord
+instance Path Word    where readPath = readTextWord
+instance Path Word8   where readPath = readTextWord
+instance Path Word16  where readPath = readTextWord
+instance Path Word32  where readPath = readTextWord
+instance Path Word64  where readPath = readTextWord
 
-instance Path Double  where readPath = readDouble
-instance Path Float   where readPath = fmap realToFrac . readDouble
+instance Path Double  where readPath = readTextDouble
+instance Path Float   where readPath = fmap realToFrac . readTextDouble
 
 instance Path  T.Text      where readPath = Just;                 pathRep _ = typeRep (Proxy :: Proxy Text)
 instance Path TL.Text      where readPath = Just . TL.fromStrict; pathRep _ = typeRep (Proxy :: Proxy Text)
@@ -121,25 +122,40 @@ class Typeable a => Query a where
     qTypeRep  :: proxy a            -> TypeRep
     qTypeRep = typeRep
 
+readBS :: (S.ByteString -> Maybe (a, S.ByteString))
+       -> S.ByteString -> Maybe a
+readBS p b = case p b of
+    Just (i, s) -> if S.null s then Just i else Nothing
+    _           -> Nothing
+
+readBSInt :: Integral a => S.ByteString -> Maybe a
+readBSInt = readBS (SL.readSigned SL.readDecimal)
+
+readBSWord :: Integral a => S.ByteString -> Maybe a
+readBSWord = readBS SL.readDecimal
+
+readBSDouble :: S.ByteString -> Maybe Double
+readBSDouble = readBS SL.readDouble
+
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
 instance Query Bool    where readQuery = fmap jsToBool
 
-instance Query Int     where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Int8    where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Int16   where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Int32   where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Int64   where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Integer where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Int     where readQuery = maybe Nothing readBSInt
+instance Query Int8    where readQuery = maybe Nothing readBSInt
+instance Query Int16   where readQuery = maybe Nothing readBSInt
+instance Query Int32   where readQuery = maybe Nothing readBSInt
+instance Query Int64   where readQuery = maybe Nothing readBSInt
+instance Query Integer where readQuery = maybe Nothing readBSInt
 
-instance Query Word    where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Word8   where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Word16  where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Word32  where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Word64  where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Word    where readQuery = maybe Nothing readBSWord
+instance Query Word8   where readQuery = maybe Nothing readBSWord
+instance Query Word16  where readQuery = maybe Nothing readBSWord
+instance Query Word32  where readQuery = maybe Nothing readBSWord
+instance Query Word64  where readQuery = maybe Nothing readBSWord
 
-instance Query Double  where readQuery = maybe Nothing (readMaybe . S.unpack)
-instance Query Float   where readQuery = maybe Nothing (readMaybe . S.unpack)
+instance Query Double  where readQuery = maybe Nothing readBSDouble
+instance Query Float   where readQuery = maybe Nothing (fmap realToFrac . readBSDouble)
 
 instance Query T.Text  where
     readQuery  = fmap $ T.decodeUtf8With lenientDecode

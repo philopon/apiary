@@ -38,5 +38,5 @@ fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc 
 fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
-        Nothing -> mzero
         Just r  -> sSnoc l r <$ modifyState (\s -> s {actionFetches = fs})
+        Nothing -> mzero

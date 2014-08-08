@@ -140,7 +140,7 @@ runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
 runApiaryT run conf m = unApiaryT m (initialEnv conf) >>= \(wtr, _) -> do
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-    return $ execActionT conf doc (hoistActionT run $ routerToAction rtr)
+    return $! execActionT conf doc (hoistActionT run $ routerToAction rtr)
 
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
 runApiary conf m = runIdentity $ runApiaryT id conf m

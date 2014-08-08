@@ -270,7 +270,7 @@ getReqFiles = snd `liftM` getRequestBody
 --------------------------------------------------------------------------------
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT m ()
-modifyState f = ActionT $ \_ s -> return $ Continue (f s) ()
+modifyState f = ActionT $ \_ s -> let s' = f s in s' `seq` return (Continue s' ())
 
 getState :: Monad m => ActionT m ActionState
 getState = ActionT $ \_ s -> return $ Continue s s
