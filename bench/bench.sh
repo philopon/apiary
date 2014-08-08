@@ -40,7 +40,7 @@ fi
 WRK="wrk -t8 -c400 -d$BENCHTIME"
 
 HELLO_URL="http://localhost:$PORT/echo/hello-world"
-PARAM_URL="http://localhost:$PORT/echo/plain/hello"
+PARAM_URL="http://localhost:$PORT/echo/plain/hello/12"
 DEEP_URL="http://localhost:$PORT/deep/foo/bar/baz/100"
 AFTER_DEEP_URL="http://localhost:$PORT/after"
 
@@ -54,7 +54,7 @@ elif [ "$BENCH" == "AFTER_DEEP" ]; then
   URL=$AFTER_DEEP_URL
 fi
 
-if ! which wrk; then
+if ! which wrk > /dev/null; then
   echo "wrk not found." >&2
   exit 127
 fi
@@ -63,7 +63,7 @@ fi
 echo -n "server start. " >&2
 if [ -e ./dist/build/$PROG/$PROG ]; then
   ./dist/build/$PROG/$PROG $PORT &
-  sleep 3
+  sleep 30
   pid=$!
   echo "pid: $pid" >&2
 else
