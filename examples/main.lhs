@@ -90,8 +90,6 @@ $ curl localhost:3000/number/1
 GET 1
 $ curl -XPOST localhost:3000/number/1
 POST 2
-curl localhost:3000/number/0x24
-GET 36
 $ curl localhost:3000/number/num
 404 Page Notfound.
 $ curl -XPUT localhost:3000/number/1

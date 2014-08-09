@@ -5,7 +5,9 @@
 import System.Environment
 import Web.Apiary
 import Network.Wai.Handler.Warp
-import qualified Data.ByteString.Lazy as L
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 #define SIMPLE(r) [capture|/deep/foo/bar/baz/r|] . method GET . action $ lbs "deep"
 
@@ -13,11 +15,11 @@ main :: IO ()
 main = do
     port:_ <- getArgs
     run (read port) . runApiary def $ do
-        [capture|/echo/hello-world|] . action $
+        [capture|/echo/hello-world|] . method GET . action $
             lbs "Hello World"
 
-        [capture|/echo/plain/:L.ByteString|] . method GET . action $ \s ->
-            lbs s
+        [capture|/echo/plain/:T.Text/:Int|] . method GET . action $ \s i ->
+            lbs . TL.encodeUtf8 . TL.fromChunks $ replicate i s
 
         SIMPLE(0)
         SIMPLE(1)

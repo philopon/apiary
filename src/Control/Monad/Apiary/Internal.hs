@@ -5,8 +5,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE OverloadedStrings #-}
+
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GADTs #-}
@@ -103,10 +103,15 @@ instance Monoid (ApiaryWriter n) where
     ApiaryWriter ra da `mappend` ApiaryWriter rb db = ApiaryWriter (ra . rb) (da . db)
 
 -- | most generic Apiary monad. since 0.8.0.0.
-newtype ApiaryT c n m a = ApiaryT { unApiaryT ::
+newtype ApiaryT c n m a = ApiaryT { unApiaryT :: forall b.
     ApiaryEnv n c
-    -> m (ApiaryWriter n, a)
+    -> (a -> ApiaryWriter n -> m b)
+    -> m b 
     }
+apiaryT :: Monad m
+        => (ApiaryEnv n c -> m (a, ApiaryWriter n))
+        -> ApiaryT c n m a
+apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a,w) -> cont a w
 
 -- | no transformer. (ActionT IO, ApiaryT Identity)
 type Apiary c = ApiaryT c IO Identity
@@ -118,67 +123,70 @@ routerToAction router = getRequest >>= go
       where
         method = requestMethod req
 
-        pmAction (PathMethod mm am) =
-            maybe mzero id (H.lookup method mm) `mplus` maybe mzero id am
+        pmAction nxt (PathMethod mm am) =
+            let a = maybe nxt id am
+            in maybe a (`mplus` a) $ H.lookup method mm
 
         loop fch (Router _ _ anp pm) [] = do
             modifyState (\s -> s { actionFetches = fch [] } )
-            pmAction pm `mplus` maybe mzero pmAction anp
+            pmAction (maybe mzero (pmAction mzero) anp) pm 
 
         loop fch (Router c mbcp anp _) (p:ps) = case mbcp of
-            Nothing -> cld `mplus` maybe mzero pmAction anp
-            Just cp -> cld `mplus` loop (fch . (p:)) cp ps `mplus` maybe mzero pmAction anp
+            Nothing -> cld ana
+            Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
-            cld = case H.lookup p c of
-                Nothing -> mzero
-                Just cd -> loop fch cd ps
+            ana = maybe mzero (pmAction mzero) anp
+            cld nxt = case H.lookup p c of
+                Nothing -> nxt
+                Just cd -> loop fch cd ps `mplus` nxt
 
 runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
            -> ApiaryT '[] n m a -> m Application
-runApiaryT run conf m = unApiaryT m (initialEnv conf) >>= \(wtr, _) -> do
+runApiaryT run conf m = unApiaryT m (initialEnv conf) (\_ w -> return w) >>= \wtr -> do
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-    return $ execActionT conf doc (hoistActionT run $ routerToAction rtr)
+    return $! execActionT conf doc (hoistActionT run $ routerToAction rtr)
 
 runApiary :: ApiaryConfig -> Apiary '[] a -> Application
 runApiary conf m = runIdentity $ runApiaryT id conf m
 
 --------------------------------------------------------------------------------
 
-instance Functor m => Functor (ApiaryT c n m) where
-    fmap f m = ApiaryT $ \env ->
-        fmap f <$> unApiaryT m env
+instance Functor (ApiaryT c n m) where
+    fmap f m = ApiaryT $ \env cont ->
+        unApiaryT m env $ \a hdr -> hdr `seq` cont (f a) hdr
 
-instance (Functor m, Monad m, Monad n) => Applicative (ApiaryT c n m) where
-    pure x = ApiaryT $ \_ -> return (mempty, x)
-    mf <*> ma = ApiaryT $ \env ->
-        unApiaryT mf env >>= \(w,  f) ->
-        unApiaryT ma env >>= \(w', a) ->
-        let w'' = w <> w'
-        in w'' `seq` return (w'', f a)
+instance Monad n => Applicative (ApiaryT c n m) where
+    pure x = ApiaryT $ \_ cont -> cont x mempty
+    mf <*> ma = ApiaryT $ \env cont ->
+        unApiaryT mf env $ \f hdr  ->
+        unApiaryT ma env $ \a hdr' ->
+        let hdr'' = hdr <> hdr'
+        in hdr'' `seq` cont (f a) hdr''
 
-instance (Functor m, Monad m, Monad n) => Monad (ApiaryT c n m) where
-    return x = ApiaryT $ \_ -> return (mempty, x)
-    m >>= k = ApiaryT $ \env ->
-        unApiaryT    m  env >>= \(w,  a) ->
-        unApiaryT (k a) env >>= \(w', b) ->
-        let w'' = w <> w'
-        in w'' `seq` return (w'', b)
+instance Monad n => Monad (ApiaryT c n m) where
+    return x = ApiaryT $ \_ cont -> cont x mempty
+    m >>= k = ApiaryT $ \env cont ->
+        unApiaryT    m  env $ \a hdr  ->
+        unApiaryT (k a) env $ \b hdr' -> 
+        let hdr'' = hdr <> hdr'
+        in hdr'' `seq` cont b hdr''
 
 instance Monad n => MonadTrans (ApiaryT c n) where
-    lift m = ApiaryT $ \_ -> (mempty,) `liftM` m
+    lift m = ApiaryT $ \_ c -> m >>= \a -> c a mempty
 
-instance (Functor m, MonadIO m, Monad n) => MonadIO (ApiaryT c n m) where
-    liftIO m = ApiaryT $ \_ -> (mempty,) `liftM` liftIO m
+instance (Monad n, MonadIO m) => MonadIO (ApiaryT c n m) where
+    liftIO m = ApiaryT $ \_ c -> liftIO m >>= \a -> c a mempty
 
 instance (Monad n, MonadBase b m) => MonadBase b (ApiaryT c n m) where
-    liftBase m = ApiaryT $ \_ -> (mempty,) `liftM` liftBase m
+    liftBase m = ApiaryT $ \_ c -> liftBase m >>= \a -> c a mempty
 
 instance Monad n => MonadTransControl (ApiaryT c n) where
-    newtype StT (ApiaryT c n) a = StTApiary' { unStTApiary' :: (ApiaryWriter n, a) }
-    liftWith f = ApiaryT $ \env ->
-        liftM (mempty,) (f $ \t -> liftM StTApiary' $ unApiaryT t env)
-    restoreT m = ApiaryT $ \_ -> liftM unStTApiary' m
+    newtype StT (ApiaryT c n) a = StTApiary' { unStTApiary' :: (a, ApiaryWriter n) }
+    liftWith f = apiaryT $ \env ->
+        liftM (\a -> (a, mempty)) 
+        (f $ \t -> liftM StTApiary' $ unApiaryT t env (\a w -> return (a,w)))
+    restoreT m = apiaryT $ \_ -> liftM unStTApiary' m
 
 instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) where
     newtype StM (ApiaryT c n m) a = StMApiary' { unStMApiary' :: ComposeSt (ApiaryT c n) m a }
@@ -187,14 +195,14 @@ instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) w
 
 --------------------------------------------------------------------------------
 
-getApiaryEnv :: (Monad m, Monad n) => ApiaryT c n m (ApiaryEnv n c)
-getApiaryEnv = ApiaryT $ \env -> return (mempty, env)
+getApiaryEnv :: Monad n => ApiaryT c n m (ApiaryEnv n c)
+getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
-apiaryConfig :: (Functor m, Monad m, Monad n) => ApiaryT c n m ApiaryConfig
+apiaryConfig :: Monad n => ApiaryT c n m ApiaryConfig
 apiaryConfig = liftM envConfig getApiaryEnv
 
-addRoute :: (Monad m, Monad n) => ApiaryWriter n -> ApiaryT c n m ()
-addRoute r = ApiaryT $ \_ -> return (r, ())
+addRoute :: Monad n => ApiaryWriter n -> ApiaryT c n m ()
+addRoute r = ApiaryT $ \_ cont -> cont () r
 
 -- | filter by action. since 0.6.1.0.
 focus :: Monad n
@@ -209,19 +217,19 @@ focus' :: Monad n
        -> ([PathElem] -> [PathElem])
        -> (SList c -> ActionT n (SList c'))
        -> ApiaryT c' n m a -> ApiaryT c n m a
-focus' d meth pth g m = ApiaryT $ \env -> unApiaryT m env 
+focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env 
     { envFilter = envFilter env >>= g 
     , envMethod = maybe (envMethod env) Just meth
     , envPath   = envPath env . pth
     , envDoc    = envDoc env  . d
-    }
+    } cont
 
 -- | splice ActionT ApiaryT.
-action :: (Functor m, Monad m, Monad n) => Fn c (ActionT n ()) -> ApiaryT c n m ()
+action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
 action = action' . apply
 
 -- | like action. but not apply arguments. since 0.8.0.0.
-action' :: (Functor m, Monad m, Monad n) => (SList c -> ActionT n ()) -> ApiaryT c n m ()
+action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
 action' a = do
     env <- getApiaryEnv
     addRoute $ ApiaryWriter
@@ -234,8 +242,8 @@ action' a = do
 --------------------------------------------------------------------------------
 
 insDoc :: (Doc -> Doc) -> ApiaryT c n m a -> ApiaryT c n m a
-insDoc d m = ApiaryT $ \env -> unApiaryT m env
-    { envDoc = envDoc env . d }
+insDoc d m = ApiaryT $ \env cont -> unApiaryT m env
+    { envDoc = envDoc env . d } cont
 
 -- | API document group. since 0.12.0.0.
 --
@@ -261,7 +269,7 @@ noDoc = insDoc DocDropNext
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since 0.4.2.0
-actionWithPreAction :: (Functor m, Monad m, Monad n) => (SList xs -> ActionT n a)
+actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
                     -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
 actionWithPreAction pa a = do
     action' $ \c -> pa c >> apply a c

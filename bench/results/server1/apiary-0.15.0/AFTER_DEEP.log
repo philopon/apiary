@@ -1,0 +1,103 @@
+Benchmarking AFTER_DEEP
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    13.08ms   35.76ms 532.07ms   99.51%
+    Req/Sec     4.93k     1.09k   14.80k    83.36%
+  1123579 requests in 30.00s, 131.80MB read
+Requests/sec:  37449.98
+Transfer/sec:      4.39MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    12.65ms   31.70ms 545.87ms   99.49%
+    Req/Sec     4.99k     1.25k   14.40k    80.94%
+  1142775 requests in 30.00s, 134.05MB read
+Requests/sec:  38094.59
+Transfer/sec:      4.47MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    11.46ms   19.95ms 432.61ms   99.75%
+    Req/Sec     4.98k     1.15k   14.30k    83.16%
+  1132121 requests in 30.00s, 132.80MB read
+  Socket errors: connect 0, read 0, write 0, timeout 34
+Requests/sec:  37741.05
+Transfer/sec:      4.43MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    10.51ms    5.89ms 397.04ms   99.30%
+    Req/Sec     5.03k     1.25k   13.64k    80.91%
+  1148907 requests in 30.00s, 134.77MB read
+  Socket errors: connect 0, read 0, write 0, timeout 23
+Requests/sec:  38294.31
+Transfer/sec:      4.49MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    10.38ms    2.19ms 262.83ms   88.80%
+    Req/Sec     4.99k     1.21k   11.58k    59.84%
+  1149984 requests in 30.00s, 134.90MB read
+Requests/sec:  38336.95
+Transfer/sec:      4.50MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    12.09ms   28.73ms 525.24ms   99.67%
+    Req/Sec     4.97k     1.12k   12.73k    74.24%
+  1139636 requests in 30.00s, 133.68MB read
+Requests/sec:  37985.20
+Transfer/sec:      4.46MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    11.93ms   25.25ms 524.04ms   99.66%
+    Req/Sec     4.91k     1.18k   13.55k    76.10%
+  1129676 requests in 30.00s, 132.51MB read
+Requests/sec:  37653.70
+Transfer/sec:      4.42MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    11.78ms   19.10ms 341.09ms   99.46%
+    Req/Sec     4.92k     1.31k   12.42k    78.96%
+  1132313 requests in 30.00s, 132.82MB read
+  Socket errors: connect 0, read 0, write 0, timeout 56
+Requests/sec:  37744.44
+Transfer/sec:      4.43MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    13.73ms   39.88ms 563.34ms   99.29%
+    Req/Sec     4.97k     1.15k   15.33k    83.53%
+  1130760 requests in 30.00s, 132.64MB read
+Requests/sec:  37689.49
+Transfer/sec:      4.42MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/after
+  8 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency    10.72ms   10.80ms 370.98ms   99.84%
+    Req/Sec     4.99k     1.20k    9.92k    71.21%
+  1152769 requests in 30.00s, 135.22MB read
+Requests/sec:  38429.05
+Transfer/sec:      4.51MB
+=================== summary ===================
+ghc version:  7.8.2
+bench target: apiary-0.15.0
+bench:        AFTER_DEEP
+bench mode:   30s * 10
+average:      37941.88
+stdev:        335.14
+=================== oneline ===================
+7.8.2,apiary-0.15.0,AFTER_DEEP,30s,10,37941.88,335.14

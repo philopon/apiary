@@ -3,15 +3,17 @@
 
 import System.Environment
 import Web.Spock
+import qualified Data.Text.Lazy as TL
 
 main :: IO ()
 main = do
     port:_ <- getArgs
     spockT (read port) id $ do
         get "/echo/hello-world" $ text "Hello World"
-        get "/echo/plain/:param" $ do
+        get "/echo/plain/:param/:int" $ do
             Just p <- param "param"
-            text p
+            Just i <- param "int"
+            text . TL.toStrict . TL.fromChunks $ replicate i p
 
         subcomponent "/deep/foo/bar/baz" $ do
             get "0" $ text "deep"

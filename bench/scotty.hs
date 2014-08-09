@@ -2,15 +2,17 @@
 
 import System.Environment
 import Web.Scotty
+import qualified Data.Text.Lazy as TL
 
 main :: IO ()
 main = do
     port:_ <- getArgs
     scotty (read port) $ do
         get "/echo/hello-world" $ text "Hello World"
-        get "/echo/plain/:param" $ do
+        get "/echo/plain/:param/:int" $ do
             p <- param "param"
-            text p
+            i <- param "int"
+            text . TL.fromChunks $ replicate i p
 
         get "/deep/foo/bar/baz/0" $ text "deep"
         get "/deep/foo/bar/baz/1" $ text "deep"
