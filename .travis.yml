@@ -3,7 +3,7 @@ ghc:
   - 7.8
   - 7.6
 install:
-  - cabal install Cabal cabal-install
+  - cabal install Cabal cabal-install happy alex
   - export PATH=~/.cabal/bin:$PATH
   - bash -eu .travis-install.sh
 script: bash -eu .travis-script.sh
