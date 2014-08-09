@@ -17,7 +17,7 @@ description:
   &#32;&#32;[capture|/:Int|] . (&#34;name&#34; =: pLazyByteString) . method GET . action $ \\age name -> do
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
-  &#32;&#32;&#32;&#32;&#32;&#32;lbs . L.concat $ [&#34;&#60;h1&#62;Hello, &#34;, name, &#34;!&#60;/h1&#62;\\n&#34;]
+  &#32;&#32;&#32;&#32;&#32;&#32;mapM_ lazyBytes [&#34;&#60;h1&#62;Hello, &#34;, name, &#34;!&#60;/h1&#62;\\n&#34;]
   @
   .
   @

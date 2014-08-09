@@ -24,10 +24,6 @@ import Data.IORef
 import Data.Typeable
 import qualified Data.HashMap.Strict as H
 import qualified Text.Parsec.Error as P
-import qualified Data.Text.Lazy as T
-import qualified Data.Text.Lazy.Encoding as T
-import qualified Data.ByteString.Lazy as L
-import qualified Data.ByteString.Lazy.Char8 as LC
 
 import qualified Paths_apiary_purescript as Path
 
@@ -70,7 +66,7 @@ instance Default PureScriptConfig where
 
 data PureScript = PureScript
     { pscConfig :: PureScriptConfig
-    , compiled  :: IORef (H.HashMap FilePath L.ByteString)
+    , compiled  :: IORef (H.HashMap FilePath String)
     }
 
 withPureScript :: MonadIO m => PureScriptConfig -> (PureScript -> m b) -> m b
@@ -96,13 +92,13 @@ pscModules conf = do
     let prel = preludePath conf
     concat `fmap` mapM readPscInput (prel : mods)
 
-compile :: PureScriptConfig -> FilePath -> IO L.ByteString
+compile :: PureScriptConfig -> FilePath -> IO String
 compile opt p = do
     mods <- pscModules opt
     mn   <- readPscInput p
     case P.compile (pureScriptOptions opt) $ mn ++ mods of
         Left l           -> throwIO (CompileError l)
-        Right (js, _, _) -> return . T.encodeUtf8 $ T.pack js
+        Right (js, _, _) -> return js
 
 pureScript :: MonadIO m => PureScript -> FilePath -> ActionT m ()
 pureScript env p = do
@@ -117,11 +113,12 @@ pureScript env p = do
                return r
            Just r  -> return r
     case s of
-        Right r -> lbs r
-        Left  e | development (pscConfig env) -> 
-            lbs . LC.pack $ "alert(\"" ++ pr (e::PureScriptException) ++ "\")"
-
-                | otherwise -> lbs "alert(\"PureScript error.\");"
+        Right r -> string r
+        Left  e | development (pscConfig env) -> do
+            bytes "console.log(\""
+            string $ pr (e :: PureScriptException)
+            bytes "\")"
+                | otherwise -> bytes "console.log(\"PureScript error.\");"
   where
     pr = concatMap esc . show
     esc '"'  = "\\\""
