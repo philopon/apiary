@@ -32,8 +32,8 @@ executable scotty
   ghc-options:         -Wall -O2 -threaded
   default-language:    Haskell2010
 
-executable spock
-  main-is:             spock.hs
+executable Spock
+  main-is:             Spock.hs
   build-depends:       base >=4.7 && <4.8
                      , Spock >=0.6.1
                      , text
