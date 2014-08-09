@@ -45,7 +45,7 @@ MemTotal:       16354960 kB
 
 results
 ---
-![result](./results.svg)
+![result](./results.png)
 
 |machine|  ghc  |  framework      |  HELLO |  PARAM |  DEEP  |AFTER_DEEP|
 |-------|-------|-----------------|--------|--------|--------|----------|
