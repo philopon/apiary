@@ -23,9 +23,10 @@ servApp st pc = do
     c <- acceptRequest pc
     go c st
   where
-    go c 10 = sendClose c ("Close" :: T.Text)
-    go c i = do
-        sendTextData c (T.pack $ show i)
-        liftIO $ putStrLn "send"
-        threadDelay (10 ^ (6 :: Int))
-        go c (succ i)
+    go c i 
+        | i > 10 = sendClose c ("Close" :: T.Text)
+        | otherwise = do
+            sendTextData c (T.pack $ show i)
+            liftIO $ putStrLn "send"
+            threadDelay (10 ^ (6 :: Int))
+            go c (succ i)
