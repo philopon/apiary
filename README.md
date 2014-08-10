@@ -27,7 +27,7 @@ import Network.Wai.Handler.Warp
 main :: IO ()
 main = run 3000 . runApiary def $ do
     action $ do
-        lbs "Hello World!\n"
+        bytes "Hello World!\n"
 ```
 display "Hello World!" in any path, parameter.
 
@@ -141,26 +141,30 @@ main :: IO ()
 main = run 3000 . runApiary def $ do
     [capture|/:Int|] $ do
         -- freely
-        ("query" =: pString) $ do
+        ("query" =: pByteString) $ do
             -- nestable
             ("mbQuery" =?: pDouble) $ do
                 -- filters
                 stdMethod GET . action $ \int query mbQuery -> do
                     contentType "text/plain"
-                    lbs $ L.unlines $ "GET" : map L.pack [show int, query, show mbQuery]
+                    bytes "GET\n"
+                    showing int
+                    bytes query
+                    showing mbQuery
 
                 stdMethod DELETE . action $ \_ _ _ -> do
-                    lbs "DELETE!\n"
+                    bytes "DELETE!\n"
 
             ("mbQuery" =: pLazyByteString) $ do
 
                 action $ \_ _ mbQuery -> do
                     contentType "text/plain"
-                    lbs . L.unwords $ [mbQuery, "is not Double.\n"]
+                    lazyBytes mbQuery
+                    bytes " is not Double.\n"
 
     -- no filter: default action
     action $ do
-        lbs "Hello World!\n"
+        bytes "Hello World!\n"
 ```
 
 ```bash

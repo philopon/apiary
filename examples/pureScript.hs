@@ -8,7 +8,6 @@ import Network.Wai.Handler.Warp
 import Language.Haskell.TH
 import System.Directory
 import System.FilePath
-import qualified Data.ByteString.Lazy.Char8 as L
 
 -- please run
 -- $ bower install philopon/purescript-xhr
@@ -32,7 +31,9 @@ main = do
             document "a + b" . action $ \i mbj -> do
                 let j = maybe 0 id mbj
                 contentType "application/json"
-                lbs . L.pack $ "{ \"test\": " ++ show (i + j) ++ "}"
+                bytes "{ \"test\": "
+                showing (i + j)
+                char '}'
 
         [capture|/api/documentation|] . method GET . action $
             defaultDocumentationAction def

@@ -1,4 +1,10 @@
-# 0.15.0
+# 0.15.2
+* you can set status and response headers anywhere.
+* deprecate lbs.
+* add bytes, lazyBytes(~ lbs), text, lazyText, showing, string, char request body functions. these functions **append** request body.
+* add reset function to reset request body to empty.
+
+# 0.15.1
 * enhance performance(especially parsing parameter).
 
 # 0.15.0

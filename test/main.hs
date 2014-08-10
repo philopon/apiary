@@ -53,7 +53,7 @@ assert404 app req = flip runSession app $ do
 helloWorldApp :: Application
 helloWorldApp = runApiary def $ action $ do
     contentType "text/plain"
-    lbs "hello"
+    bytes "hello"
 
 helloWorldAllTest :: Test
 helloWorldAllTest = testGroup "helloWorld" 
@@ -66,8 +66,8 @@ helloWorldAllTest = testGroup "helloWorld"
 
 methodFilterApp :: Application
 methodFilterApp = runApiary def $ do
-    method "GET" . action $ contentType "text/plain" >> lbs "GET"
-    method POST  . action $ contentType "text/plain" >> lbs "POST"
+    method "GET" . action $ contentType "text/plain" >> bytes "GET"
+    method POST  . action $ contentType "text/plain" >> bytes "POST"
 
 methodFilterTest :: Test
 methodFilterTest = testGroup "methodFilter"
@@ -81,9 +81,9 @@ methodFilterTest = testGroup "methodFilter"
 
 httpVersionApp :: Application
 httpVersionApp = runApiary def $ do
-    http09 . action $ contentType "text/plain" >> lbs "09"
-    http10 . action $ contentType "text/plain" >> lbs "10"
-    http11 . action $ contentType "text/plain" >> lbs "11"
+    http09 . action $ contentType "text/plain" >> bytes "09"
+    http10 . action $ contentType "text/plain" >> bytes "10"
+    http11 . action $ contentType "text/plain" >> bytes "11"
 
 httpVersionTest :: Test
 httpVersionTest = testGroup "httpVersionFilter" 
@@ -97,7 +97,7 @@ httpVersionTest = testGroup "httpVersionFilter"
 rootFilterApp :: Application
 rootFilterApp = runApiary def .  root . action $ do
     contentType "text/html"
-    lbs "root"
+    bytes "root"
 
 rootFilterTest :: Test
 rootFilterTest = testGroup "rootFilter"
@@ -111,7 +111,7 @@ rootFilterTest = testGroup "rootFilter"
 anyFilterApp :: Application
 anyFilterApp = runApiary def $ [capture|/test|] . anyPath . action $ do
     contentType "text/plain"
-    lbs "hello"
+    bytes "hello"
 
 anyFilterTest :: Test
 anyFilterTest = testGroup "anyPath"
@@ -124,11 +124,11 @@ anyFilterTest = testGroup "anyPath"
 
 captureApp :: Application
 captureApp = runApiary def $ do
-    [capture|/foo|]  . action $ contentType "text/plain" >> lbs "foo"
-    [capture|/:Int|] . method GET . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["Int", L.pack $ show i])
-    [capture|/:Double|] . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["Double", L.pack $ show i])
-    [capture|/bar/:L.ByteString/:Int|] . action $ \s i -> contentType "text/plain" >> lbs (L.unwords [s, L.pack $ show i])
-    [capture|/:L.ByteString|] . action $ \s -> contentType "text/plain" >> lbs (L.unwords ["fall", s])
+    [capture|/foo|]  . action $ contentType "text/plain" >> bytes "foo"
+    [capture|/:Int|] . method GET . action $ \i -> contentType "text/plain" >> bytes "Int " >> showing i
+    [capture|/:Double|] . action $ \i -> contentType "text/plain" >> bytes "Double " >> showing i
+    [capture|/bar/:L.ByteString/:Int|] . action $ \s i -> contentType "text/plain" >> lazyBytes s >> char ' ' >> showing i
+    [capture|/:L.ByteString|] . action $ \s -> contentType "text/plain" >> bytes "fall " >> lazyBytes s
 
 captureTest :: Test
 captureTest = testGroup "capture"
@@ -145,15 +145,15 @@ captureTest = testGroup "capture"
 --------------------------------------------------------------------------------
 
 queryApp f g h = runApiary def $ do
-    _ <- (f "foo" pInt)             . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "Int", L.pack $ show i])
-    _ <- (g "foo" pString)          . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "String", L.pack $ show i])
-    (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> lbs (L.unwords ["foo", "Maybe String", L.pack $ show i])
+    _ <- (f "foo" pInt)             . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
+    _ <- (g "foo" pString)          . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
+    (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
 
 queryCheckApp :: Application
 queryCheckApp = runApiary def $ do
-    ("foo" ?: pInt)           . action $ contentType "text/plain" >> lbs (L.unwords ["foo", "Int"])
-    ("foo" ?: pString)        . action $ contentType "text/plain" >> lbs (L.unwords ["foo", "String"])
-    ("foo" ?: pMaybe pString) . action $ contentType "text/plain" >> lbs (L.unwords ["foo", "Maybe String"])
+    ("foo" ?: pInt)           . action $ contentType "text/plain" >> bytes "foo Int"
+    ("foo" ?: pString)        . action $ contentType "text/plain" >> bytes "foo String"
+    ("foo" ?: pMaybe pString) . action $ contentType "text/plain" >> bytes "foo Maybe String"
 
 queryFirstTest :: Test
 queryFirstTest = testGroup "First"
@@ -243,10 +243,10 @@ queryTest = testGroup "query"
 multipleFilter1App :: Application
 multipleFilter1App = runApiary def $ do
     root $ do
-        method GET  . action $ contentType "text/plain" >> lbs "GET /"
-        method POST . action $ contentType "text/html"  >> lbs "POST /"
+        method GET  . action $ contentType "text/plain" >> bytes "GET /"
+        method POST . action $ contentType "text/html"  >> bytes "POST /"
 
-    method DELETE . action $ contentType "text/plain" >> lbs "DELETE ANY"
+    method DELETE . action $ contentType "text/plain" >> bytes "DELETE ANY"
 
 multipleFilter1Test :: Test
 multipleFilter1Test = testGroup "multiple test1: root, method"

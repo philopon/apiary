@@ -11,7 +11,6 @@ import Control.Monad
 import Control.Concurrent
 import Text.Blaze.Html
 import Data.Monoid
-import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
@@ -39,7 +38,7 @@ main = do
             precondition ("user " <> H.strong "defined" <> " precondition.") .
             noDoc . hasHeader "User-Agent" . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
             document "precondition test" .  action $
-                lbs "precondition"
+                bytes "precondition"
 
 
         -- you can add document group only as top level action.
@@ -49,7 +48,7 @@ main = do
                     n <- liftIO $ readMVar nm
                     a <- liftIO $ readMVar ag
                     contentType "application/json"
-                    lbs $ JSON.encode $ Test n a
+                    lazyBytes $ JSON.encode $ Test n a
 
                 method POST .
                     -- you can add query description using (??) function.
@@ -73,7 +72,7 @@ main = do
 
         -- no document function -> hidden route.
         root . method GET . action $ do
-            lbs "root"
+            bytes "root"
 
         -- you can generate API document with multiple action.
         -- rpHtml function format as captured route parameter.
@@ -82,10 +81,10 @@ main = do
                 precondition (rpHtml "Int" 1 <> " is even.") . document "twice" . action $ \i -> do
                     guard $ even i
                     contentType "text/plain"
-                    lbs (L.pack . show $ i * 2)
+                    showing (i * 2)
                 precondition (rpHtml "Int" 1 <> " is odd.") . document "succ" . action $ \i -> do
                     contentType "text/plain"
-                    lbs (L.pack . show $ succ i)
+                    showing (succ i)
 
         -- add documentation page route.
         [capture|/api/documentation|] . method GET . document "this page" . action $

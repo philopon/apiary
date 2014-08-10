@@ -28,6 +28,7 @@ import Network.HTTP.Types
 import Network.Wai
 import qualified Network.Wai.Parse as P
 
+import Data.Monoid
 import Data.Apiary.Param
 import Data.Apiary.Document
 import Data.Apiary.Document.Html
@@ -35,10 +36,13 @@ import Data.Default.Class
 
 import Blaze.ByteString.Builder
 import Text.Blaze.Html.Renderer.Utf8
+import qualified Blaze.ByteString.Builder as B
+import qualified Blaze.ByteString.Builder.Char.Utf8 as B
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 
 #ifndef WAI3
 import Data.Conduit
@@ -85,8 +89,33 @@ instance Default ApiaryConfig where
 
 --------------------------------------------------------------------------------
 
+data ResponseBody
+    = ResponseFile FilePath (Maybe FilePart)
+    | ResponseBuilder Builder
+    | ResponseStream StreamingBody
+    | ResponseRaw (IO S.ByteString -> (S.ByteString -> IO ()) -> IO ()) Response
+    | ResponseFunc (Status -> ResponseHeaders -> Response)
+
+instance Monoid ResponseBody where
+    mempty = ResponseBuilder mempty
+    ResponseBuilder a `mappend` ResponseBuilder b = ResponseBuilder $ a <> b
+    _ `mappend` b = b
+
+
+toResponse :: ActionState -> Response
+toResponse ActionState{..} = case actionResponse of
+    ResponseFile  f p -> responseFile    actionStatus actionHeaders f p
+    ResponseBuilder b -> responseBuilder actionStatus actionHeaders b
+#ifdef WAI3
+    ResponseStream  s -> responseStream  actionStatus actionHeaders s
+#else
+    ResponseStream  s -> responseSource  actionStatus actionHeaders s
+#endif
+    ResponseRaw   f r -> responseRaw f r
+    ResponseFunc    f -> f actionStatus actionHeaders
+
 data ActionState = ActionState
-    { actionResponse :: Response
+    { actionResponse :: ResponseBody
     , actionStatus   :: Status
     , actionHeaders  :: ResponseHeaders
     , actionReqBody  :: Maybe ([Param], [File])
@@ -95,7 +124,7 @@ data ActionState = ActionState
 
 initialState :: ApiaryConfig -> ActionState
 initialState conf = ActionState
-    { actionResponse = responseLBS (defaultStatus conf) (defaultHeaders conf) ""
+    { actionResponse = ResponseBuilder mempty
     , actionStatus   = defaultStatus  conf
     , actionHeaders  = defaultHeaders conf
     , actionReqBody  = Nothing
@@ -158,7 +187,7 @@ execActionT config doc m request = let send = return in
         Pass         -> notFound config request
 #endif
         Stop s       -> send s
-        Continue r _ -> send $ actionResponse r
+        Continue r _ -> send $ toResponse r
 
 --------------------------------------------------------------------------------
 
@@ -316,7 +345,7 @@ contentType c = modifyHeader
 
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT m a
-stop = ActionT $ \_ s _ -> return $ Stop (actionResponse s)
+stop = ActionT $ \_ s _ -> return $ Stop (toResponse s)
 
 -- | stop with response. since 0.4.2.0.
 stopWith :: Monad m => Response -> ActionT m a
@@ -374,7 +403,7 @@ redirectTemporary to = do
         then redirectWith temporaryRedirect307 to
         else redirectWith status302            to
 
--- | Raw response constructor. since 0.10.
+-- | set raw response constructor. since 0.10.
 --
 -- example(use pipes-wai)
 --
@@ -384,11 +413,15 @@ redirectTemporary to = do
 -- @
 --
 rawResponse :: Monad m => (Status -> ResponseHeaders -> Response) -> ActionT m ()
-rawResponse f = modifyState (\s -> s { actionResponse = f (actionStatus s) (actionHeaders s)} )
+rawResponse f = modifyState (\s -> s { actionResponse = ResponseFunc f } )
+
+-- | reset response body to no response. since v0.15.2.
+reset :: Monad m => ActionT m ()
+reset = modifyState (\s -> s { actionResponse = mempty } )
 
 -- | set response body file content, without set Content-Type. since 0.1.0.0.
 file' :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
-file' f p = rawResponse (\s h -> responseFile s h f p)
+file' f p = modifyState (\s -> s { actionResponse = ResponseFile f p } )
 
 -- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
 file :: Monad m => FilePath -> Maybe FilePart -> ActionT m ()
@@ -397,21 +430,41 @@ file f p = do
     contentType (mime f)
     file' f p
 
--- | set response body builder. since 0.1.0.0.
+-- | append response body from builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT m ()
-builder b = rawResponse (\s h -> responseBuilder s h b)
+builder b = modifyState (\s -> s { actionResponse = actionResponse s <> ResponseBuilder b } )
 
--- | set response body lazy bytestring. since 0.1.0.0.
-lbs :: Monad m => L.ByteString -> ActionT m ()
-lbs l = rawResponse (\s h -> responseLBS s h l)
+-- | append response body from strict bytestring. since 0.15.2.
+bytes :: Monad m => S.ByteString -> ActionT m ()
+bytes = builder . B.fromByteString
+
+-- | append response body from lazy bytestring. since 0.15.2.
+lazyBytes :: Monad m => L.ByteString -> ActionT m ()
+lazyBytes = builder . B.fromLazyByteString
+
+-- | append response body from strict text. encoding UTF-8. since 0.15.2.
+text :: Monad m => T.Text -> ActionT m ()
+text = builder . B.fromText
+
+-- | append response body from lazy text. encoding UTF-8. since 0.15.2.
+lazyText :: Monad m => TL.Text -> ActionT m ()
+lazyText = builder . B.fromLazyText
+
+-- | append response body from show. encoding UTF-8. since 0.15.2.
+showing :: (Monad m, Show a) => a -> ActionT m ()
+showing = builder . B.fromShow
+
+-- | append response body from string. encoding UTF-8. since 0.15.2.
+string :: Monad m => String -> ActionT m ()
+string = builder . B.fromString
+
+-- | append response body from char. encoding UTF-8. since 0.15.2.
+char :: Monad m => Char -> ActionT m ()
+char = builder . B.fromChar
 
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT m ()
-#ifdef WAI3
-stream str = rawResponse (\s h -> responseStream s h str)
-#else
-stream str = rawResponse (\s h -> responseSource s h str)
-#endif
+stream str = modifyState (\s -> s { actionResponse = ResponseStream str })
 
 {-# DEPRECATED source "use stream" #-}
 source :: Monad m => StreamingBody -> ActionT m ()
@@ -425,3 +478,8 @@ redirectFound       = redirectWith found302
 -- | redirect with 303 See Other. since 0.3.3.0.
 redirectSeeOther    :: Monad m => S.ByteString -> ActionT m ()
 redirectSeeOther    = redirectWith seeOther303
+
+{-# DEPRECATED lbs "use lazyBytes" #-}
+-- | append response body from lazy bytestring. since 0.1.0.0.
+lbs :: Monad m => L.ByteString -> ActionT m ()
+lbs = lazyBytes

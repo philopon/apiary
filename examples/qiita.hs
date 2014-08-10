@@ -3,7 +3,6 @@
 
 import Web.Apiary
 import Network.Wai.Handler.Warp
-import qualified Data.ByteString.Lazy.Char8 as L
 
 main :: IO ()
 main = run 3000 . runApiary def $ do
@@ -12,11 +11,13 @@ main = run 3000 . runApiary def $ do
             action $ \age name -> do
                 guard (age >= 18)
                 contentType "text/html"
-                lbs . L.concat $ ["<h1>Hello, ", name, "!</h1>\n"]
+                bytes "<h1>Hello, "
+                lazyBytes name
+                bytes  "!</h1>\n"
 
             action $ \_ _ -> do
                 contentType "text/html"
-                lbs "R18\n"
+                bytes "R18\n"
 
         method POST . action $ \age name -> do
             liftIO $ print (age, name)
@@ -27,4 +28,4 @@ main = run 3000 . runApiary def $ do
 
     root . method GET . action $ do
         contentType "text/html"
-        lbs "<h1>Hello world!</h1>\n"
+        bytes "<h1>Hello world!</h1>\n"

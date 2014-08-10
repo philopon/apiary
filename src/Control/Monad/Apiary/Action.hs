@@ -22,10 +22,14 @@ module Control.Monad.Apiary.Action
     , ContentType
     , contentType
     -- *** response body
+    , reset
     , file
     , file'
     , builder
-    , lbs
+    , bytes, lazyBytes
+    , text,  lazyText
+    , showing
+    , string, char
     , stream
     , rawResponse
 
@@ -37,7 +41,7 @@ module Control.Monad.Apiary.Action
     , redirectWith
    
     -- * deprecated
-    , redirectFound, redirectSeeOther, source
+    , redirectFound, redirectSeeOther, source, lbs
     ) where
 
 import Control.Monad.Apiary.Action.Internal
