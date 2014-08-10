@@ -1,0 +1,100 @@
+Benchmarking HELLO
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.42ms  634.59us  19.08ms   80.86%
+    Req/Sec    30.89k     3.23k   49.89k    68.43%
+  1747135 requests in 30.00s, 214.94MB read
+Requests/sec:  58238.71
+Transfer/sec:      7.16MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.42ms  773.72us  15.62ms   71.54%
+    Req/Sec    30.86k     2.69k   50.40k    74.90%
+  1749926 requests in 30.00s, 215.28MB read
+Requests/sec:  58330.97
+Transfer/sec:      7.18MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.40ms  774.39us  57.44ms   76.69%
+    Req/Sec    31.13k     2.98k   42.67k    69.39%
+  1758027 requests in 30.00s, 216.28MB read
+Requests/sec:  58601.84
+Transfer/sec:      7.21MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.40ms    0.96ms  20.31ms   67.58%
+    Req/Sec    31.04k     2.90k   61.20k    72.31%
+  1760118 requests in 30.00s, 216.54MB read
+Requests/sec:  58671.04
+Transfer/sec:      7.22MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.44ms  765.81us  16.64ms   73.87%
+    Req/Sec    30.69k     2.72k   65.36k    72.83%
+  1742034 requests in 30.00s, 214.31MB read
+Requests/sec:  58067.60
+Transfer/sec:      7.14MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.43ms  572.83us  18.22ms   83.92%
+    Req/Sec    30.87k     2.85k   42.11k    70.50%
+  1746225 requests in 30.00s, 214.83MB read
+Requests/sec:  58207.68
+Transfer/sec:      7.16MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.42ms  600.72us  24.42ms   79.50%
+    Req/Sec    30.88k     2.92k   52.70k    68.74%
+  1743079 requests in 30.00s, 214.44MB read
+Requests/sec:  58102.55
+Transfer/sec:      7.15MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.40ms    0.97ms  14.85ms   65.80%
+    Req/Sec    31.25k     3.23k   63.89k    70.58%
+  1764337 requests in 30.00s, 217.06MB read
+Requests/sec:  58811.79
+Transfer/sec:      7.24MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.38ms    1.02ms  42.93ms   69.21%
+    Req/Sec    31.23k     3.19k   59.00k    73.07%
+  1763349 requests in 30.00s, 216.93MB read
+Requests/sec:  58778.53
+Transfer/sec:      7.23MB
+-----------------------------------------------
+Running 30s test @ http://localhost:8080/echo/hello-world
+  2 threads and 200 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     3.37ms    1.28ms  18.12ms   61.06%
+    Req/Sec    31.47k     3.35k   63.00k    71.53%
+  1779514 requests in 30.00s, 218.92MB read
+Requests/sec:  59317.38
+Transfer/sec:      7.30MB
+=================== summary ===================
+ghc version:  7.8.2
+bench target: apiary-0.15.1
+bench:        HELLO
+bench mode:   30s * 10
+average:      58512.81
+stdev:        395.55
+=================== oneline ===================
+7.8.2,apiary-0.15.1,HELLO,30s,10,58512.81,395.55

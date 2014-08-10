@@ -1,8 +1,13 @@
 #!/bin/bash
 
-if [ $# -ge 1 ]; then
-  MACHINE=$1
+if [ $# -eq 1 ]; then
+  NTHREAD=$1
+  MACHINE=`uname -n`
+elif [ $# -eq 2 ]; then
+  NTHREAD=$1
+  MACHINE=$2
 else
+  NTHREAD=1
   MACHINE=`uname -n`
 fi
 
@@ -19,6 +24,6 @@ for PKG in apiary-0.14.0.1 apiary-0.15.0 apiary-0.15.1 Spock-0.6.2.1 scotty-0.8.
 
   mkdir -p results/$MACHINE/$PKG
   for BENCH in HELLO PARAM DEEP AFTER_DEEP; do
-    ./bench.sh $FRAMEWORK $BENCH > results/$MACHINE/$PKG/$BENCH.log
+    ./bench.sh $FRAMEWORK $BENCH $NTHREAD > results/$MACHINE/$NTHREAD/$PKG/$BENCH.log
   done
 done

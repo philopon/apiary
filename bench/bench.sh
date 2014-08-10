@@ -4,34 +4,45 @@
 TMPDIR=./tmp
 # arguments
 
-HELP="$0 FRAMEWORK BENCH [BENCH_TIME=30s] [NBENCH=10] [PORT=8080]
+HELP="$0 FRAMEWORK BENCH [THREAD=1] [BENCH_TIME=30s] [NBENCH=10] [PORT=8080]
     FRAMEWORK: apiary, scotty, Spock
     BENCH: HELLO, PARAM, DEEP, AFTER_DEEP"
 
 if [ $# -eq 2 ]; then
   PROG=$1
   BENCH=$2
+  THREAD=1
   BENCHTIME="30s"
   NBENCH=10
   PORT=8080
 elif [ $# -eq 3 ]; then
   PROG=$1
   BENCH=$2
-  BENCHTIME=$3
-  NBENCH="10"
+  THREAD=$3
+  BENCHTIME="30s"
+  NBENCH=10
   PORT=8080
 elif [ $# -eq 4 ]; then
   PROG=$1
   BENCH=$2
-  BENCHTIME=$3
-  NBENCH=$4
+  THREAD=$3
+  BENCHTIME=$4
+  NBENCH=10
   PORT=8080
 elif [ $# -eq 5 ]; then
   PROG=$1
   BENCH=$2
-  BENCHTIME=$3
-  NBENCH=$4
-  PORT=$5
+  THREAD=$3
+  BENCHTIME=$4
+  NBENCH=$5
+  PORT=8080
+elif [ $# -eq 6 ]; then
+  PROG=$1
+  BENCH=$2
+  THREAD=$3
+  BENCHTIME=$4
+  NBENCH=$5
+  PORT=$6
 else
   echo "$HELP"
   exit 1
@@ -40,7 +51,7 @@ fi
 GHCVERSION=`ghc --numeric-version`
 FRAMEWORKVERSION=`cabal sandbox hc-pkg list | grep $PROG | xargs echo`
 
-WRK="wrk -t8 -c400 -d$BENCHTIME"
+WRK="wrk -t2 -c200 -d$BENCHTIME"
 
 HELLO_URL="http://localhost:$PORT/echo/hello-world"
 PARAM_URL="http://localhost:$PORT/echo/plain/hello/12"
@@ -65,7 +76,7 @@ fi
 # start server 
 echo -n "server start. " >&2
 if [ -e ./dist/build/$PROG/$PROG ]; then
-  ./dist/build/$PROG/$PROG $PORT &
+  ./dist/build/$PROG/$PROG $PORT +RTS -N$THREAD &
   sleep 3
   pid=$!
   echo "pid: $pid" >&2
