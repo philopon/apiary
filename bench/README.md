@@ -22,7 +22,7 @@ benchmarks
 ---
 1. HELLO (no capture)
 2. PARAM (capture route parameter)
-3. DEEP  (deep and match route)
+3. DEEP  (deep and many routes)
 3. AFTER_DEEP (after DEEP route)
 
 
