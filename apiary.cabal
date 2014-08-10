@@ -31,13 +31,13 @@ description:
   404 Page Notfound.
   @
   .
-    * high performance(benchmark: <https://github.com/philopon/apiary/blob/v0.15.2/bench>).
+    * High performance(benchmark: <https://github.com/philopon/apiary/blob/v0.15.2/bench>).
   .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
-    * type safe route filter.
+    * Type safe route filter.
   .
-    * auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.15.2/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.15.2/examples/api.html>).
+    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.15.2/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.15.2/examples/api.html>).
   .
   more examples: <https://github.com/philopon/apiary/blob/v0.15.2/examples/>
 
