@@ -5,6 +5,8 @@
 import Test.Framework
 import Test.Framework.Providers.HUnit
 
+import Control.Monad
+
 import Web.Apiary
 import Network.Wai
 import Network.Wai.Test
@@ -56,10 +58,10 @@ helloWorldApp = runApiary def $ action $ do
     bytes "hello"
 
 helloWorldAllTest :: Test
-helloWorldAllTest = testGroup "helloWorld" 
-    [ testReq "GET /"    $ assertPlain200 "hello" helloWorldApp
-    , testReq "GET /foo" $ assertPlain200 "hello" helloWorldApp
-    , testReq "POST /"   $ assertPlain200 "hello" helloWorldApp
+helloWorldAllTest = testGroup "helloWorld" $ map ($ helloWorldApp)
+    [ testReq "GET /"    . assertPlain200 "hello"
+    , testReq "GET /foo" . assertPlain200 "hello"
+    , testReq "POST /"   . assertPlain200 "hello"
     ]
 
 --------------------------------------------------------------------------------
@@ -70,11 +72,11 @@ methodFilterApp = runApiary def $ do
     method POST  . action $ contentType "text/plain" >> bytes "POST"
 
 methodFilterTest :: Test
-methodFilterTest = testGroup "methodFilter"
-    [ testReq "GET /"    $ assertPlain200 "GET" methodFilterApp
-    , testReq "POST /"   $ assertPlain200 "POST" methodFilterApp
-    , testReq "GET /foo" $ assertPlain200 "GET" methodFilterApp
-    , testReq "DELETE /" $ assert404 methodFilterApp
+methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
+    [ testReq "GET /"    . assertPlain200 "GET"
+    , testReq "POST /"   . assertPlain200 "POST"
+    , testReq "GET /foo" . assertPlain200 "GET"
+    , testReq "DELETE /" . assert404
     ]
 
 --------------------------------------------------------------------------------
@@ -86,10 +88,10 @@ httpVersionApp = runApiary def $ do
     http11 . action $ contentType "text/plain" >> bytes "11"
 
 httpVersionTest :: Test
-httpVersionTest = testGroup "httpVersionFilter" 
-    [ testReq "GET / HTTP/0.9" $ assertPlain200 "09" httpVersionApp
-    , testReq "GET / HTTP/1.0" $ assertPlain200 "10" httpVersionApp
-    , testReq "GET / HTTP/1.1" $ assertPlain200 "11" httpVersionApp
+httpVersionTest = testGroup "httpVersionFilter" $ map ($ httpVersionApp)
+    [ testReq "GET / HTTP/0.9" . assertPlain200 "09"
+    , testReq "GET / HTTP/1.0" . assertPlain200 "10"
+    , testReq "GET / HTTP/1.1" . assertPlain200 "11"
     ]
 
 --------------------------------------------------------------------------------
@@ -100,11 +102,11 @@ rootFilterApp = runApiary def .  root . action $ do
     bytes "root"
 
 rootFilterTest :: Test
-rootFilterTest = testGroup "rootFilter"
-    [ testReq "GET /"           $ assertHtml200 "root" rootFilterApp
-    , testReq "POST /"          $ assertHtml200 "root" rootFilterApp
-    , testReq "GET /neko"       $ assert404 rootFilterApp
-    , testReq "GET /index.html" $ assertHtml200 "root" rootFilterApp
+rootFilterTest = testGroup "rootFilter" $ map ($ rootFilterApp)
+    [ testReq "GET /"           . assertHtml200 "root"
+    , testReq "POST /"          . assertHtml200 "root"
+    , testReq "GET /neko"       . assert404
+    , testReq "GET /index.html" . assertHtml200 "root"
     ]
 
 --------------------------------------------------------------------------------
@@ -114,10 +116,10 @@ anyFilterApp = runApiary def $ [capture|/test|] . anyPath . action $ do
     bytes "hello"
 
 anyFilterTest :: Test
-anyFilterTest = testGroup "anyPath"
-    [ testReq "GET /"          $ assert404 anyFilterApp
-    , testReq "GET /test"      $ assertPlain200 "hello" anyFilterApp
-    , testReq "POST /test/foo" $ assertPlain200 "hello" anyFilterApp
+anyFilterTest = testGroup "anyPath" $ map ($ anyFilterApp)
+    [ testReq "GET /"          . assert404
+    , testReq "GET /test"      . assertPlain200 "hello"
+    , testReq "POST /test/foo" . assertPlain200 "hello"
     ]
 
 --------------------------------------------------------------------------------
@@ -131,15 +133,15 @@ captureApp = runApiary def $ do
     [capture|/:L.ByteString|] . action $ \s -> contentType "text/plain" >> bytes "fall " >> lazyBytes s
 
 captureTest :: Test
-captureTest = testGroup "capture"
-    [ testReq "GET /foo" $ assertPlain200 "foo" captureApp
-    , testReq "GET /12"   $ assertPlain200 "Int 12" captureApp
-    , testReq "GET /12.4" $ assertPlain200 "Double 12.4" captureApp
-    , testReq "POST /12"  $ assertPlain200 "Double 12.0" captureApp
-    , testReq "GET /bar"  $ assertPlain200 "fall bar" captureApp
-    , testReq "GET /baz"  $ assertPlain200 "fall baz" captureApp
-    , testReq "GET /bar/nyan/12"       $ assertPlain200 "nyan 12" captureApp
-    , testReq "GET /bar/nyan/12/other" $ assert404 captureApp
+captureTest = testGroup "capture" $ map ($ captureApp)
+    [ testReq "GET /foo"  . assertPlain200 "foo"
+    , testReq "GET /12"   . assertPlain200 "Int 12"
+    , testReq "GET /12.4" . assertPlain200 "Double 12.4"
+    , testReq "POST /12"  . assertPlain200 "Double 12.0"
+    , testReq "GET /bar"  . assertPlain200 "fall bar"
+    , testReq "GET /baz"  . assertPlain200 "fall baz"
+    , testReq "GET /bar/nyan/12"       . assertPlain200 "nyan 12"
+    , testReq "GET /bar/nyan/12/other" . assert404
     ]
 
 --------------------------------------------------------------------------------
@@ -156,76 +158,70 @@ queryCheckApp = runApiary def $ do
     ("foo" ?: pMaybe pString) . action $ contentType "text/plain" >> bytes "foo Maybe String"
 
 queryFirstTest :: Test
-queryFirstTest = testGroup "First"
-    [ testReq "GET /" $ assert404 app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String Nothing" app
-    , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String Nothing" app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int 12" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String \"a\"" app
-    , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int 12" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo Int 12" app
+queryFirstTest = testGroup "First" $ map ($ queryApp (=:) (=:) (=:))
+    [ testReq "GET /" . assert404
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String Nothing"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int 12"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String \"a\""
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int 12"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int 12"
     ]
-  where app = queryApp (=:) (=:) (=:)
 
 queryOneTest :: Test
-queryOneTest = testGroup "One"
-    [ testReq "GET /" $ assert404 app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String Nothing" app
-    , testReq "GET /?foo&foo=3" $ assert404 app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int 12" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String \"a\"" app
-    , testReq "GET /?foo=12&foo=23" $ assert404 app
-    , testReq "GET /?foo=12&foo=b" $ assert404 app
+queryOneTest = testGroup "One" $ map ($ queryApp (=!:) (=!:) (=!:))
+    [ testReq "GET /" . assert404
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
+    , testReq "GET /?foo&foo=3" . assert404
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int 12"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String \"a\""
+    , testReq "GET /?foo=12&foo=23" . assert404
+    , testReq "GET /?foo=12&foo=b" . assert404
     ]
-  where app = queryApp (=!:) (=!:) (=!:)
 
 queryOptionTest :: Test
-queryOptionTest = testGroup "Option"
-    [ testReq "GET /" $ assertPlain200 "foo Int Nothing" app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String Just Nothing" app
-    , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String Just Nothing" app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int Just 12" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String Just \"a\"" app
-    , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int Just 12" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo String Just \"12\"" app
+queryOptionTest = testGroup "Option" $ map ($ queryApp (=?:) (=?:) (=?:))
+    [ testReq "GET /" . assertPlain200 "foo Int Nothing"
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String Just Nothing"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String Just Nothing"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int Just 12"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String Just \"a\""
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int Just 12"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String Just \"12\""
     ]
-  where app = queryApp (=?:) (=?:) (=?:)
 
 queryCheckTest :: Test
-queryCheckTest = testGroup "Check"
-    [ testReq "GET /" $ assert404 app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String" app
-    , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String" app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String" app
-    , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo String" app
+queryCheckTest = testGroup "Check" $ map ($ queryCheckApp)
+    [ testReq "GET /" . assert404
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String"
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String"
     ]
-  where app = queryCheckApp
 
 queryManyTest :: Test
-queryManyTest = testGroup "Many"
-    [ testReq "GET /" $ assertPlain200 "foo Int []" app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String [Nothing]" app
-    , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String [Nothing,Just \"3\"]" app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int [12]" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String [\"a\"]" app
-    , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int [12,23]" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo String [\"12\",\"b\"]" app
+queryManyTest = testGroup "Many" $ map ($ queryApp (=*:) (=*:) (=*:))
+    [ testReq "GET /" . assertPlain200 "foo Int []"
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String [Nothing]"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String [Nothing,Just \"3\"]"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int [12]"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String [\"a\"]"
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int [12,23]"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String [\"12\",\"b\"]"
     ]
-  where app = queryApp (=*:) (=*:) (=*:)
 
 querySomeTest :: Test
-querySomeTest = testGroup "Some"
-    [ testReq "GET /" $ assert404 app
-    , testReq "GET /?foo" $ assertPlain200 "foo Maybe String [Nothing]" app
-    , testReq "GET /?foo&foo=3" $ assertPlain200 "foo Maybe String [Nothing,Just \"3\"]" app
-    , testReq "GET /?foo=12" $ assertPlain200 "foo Int [12]" app
-    , testReq "GET /?foo=a" $ assertPlain200 "foo String [\"a\"]" app
-    , testReq "GET /?foo=12&foo=23" $ assertPlain200 "foo Int [12,23]" app
-    , testReq "GET /?foo=12&foo=b" $ assertPlain200 "foo String [\"12\",\"b\"]" app
+querySomeTest = testGroup "Some" $ map ($ queryApp (=+:) (=+:) (=+:))
+    [ testReq "GET /" . assert404
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String [Nothing]"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String [Nothing,Just \"3\"]"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int [12]"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String [\"a\"]"
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int [12,23]"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String [\"12\",\"b\"]"
     ]
-  where app = queryApp (=+:) (=+:) (=+:)
 
 
 queryTest :: Test
@@ -239,6 +235,24 @@ queryTest = testGroup "query"
     ]
 
 --------------------------------------------------------------------------------
+stopApp :: Application
+stopApp = runApiary def $ do
+    [capture|/a/:Int|] . action $ \i -> do
+        contentType "text/plain"
+        when (i == 1) $ bytes "one\n"
+        if i `mod` 2 == 0 then bytes "even\n" else bytes "odd\n"
+        when (i == 2) stop
+        bytes "after stop"
+
+stopTest :: Test
+stopTest = testGroup "stop" $ map ($ stopApp)
+    [ testReq "GET /a/0" . assertPlain200 "even\nafter stop"
+    , testReq "GET /a/1" . assertPlain200 "one\nodd\nafter stop"
+    , testReq "GET /a/2" . assertPlain200 "even\n"
+    , testReq "GET /a/3" . assertPlain200 "odd\nafter stop"
+    ]
+
+--------------------------------------------------------------------------------
 
 multipleFilter1App :: Application
 multipleFilter1App = runApiary def $ do
@@ -246,7 +260,7 @@ multipleFilter1App = runApiary def $ do
         method GET  . action $ contentType "text/plain" >> bytes "GET /"
         method POST . action $ contentType "text/html"  >> bytes "POST /"
 
-    method DELETE . action $ contentType "text/plain" >> bytes "DELETE ANY"
+    method DELETE . action   $ contentType "text/plain" >> bytes "DELETE ANY"
 
 multipleFilter1Test :: Test
 multipleFilter1Test = testGroup "multiple test1: root, method"
@@ -259,6 +273,7 @@ multipleFilter1Test = testGroup "multiple test1: root, method"
 --------------------------------------------------------------------------------
 
 
+
 main :: IO ()
 main = defaultMain 
     [ helloWorldAllTest
@@ -268,6 +283,7 @@ main = defaultMain
     , anyFilterTest
     , captureTest
     , queryTest
+    , stopTest
     , multipleFilter1Test
     ]
 
