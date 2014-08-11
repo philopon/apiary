@@ -67,7 +67,6 @@ import Data.Proxy
 import Data.String
 import Data.Reflection
 
-import Data.Apiary.SList
 import Data.Apiary.Param
 import Data.Apiary.Document
 import Data.Apiary.Method
@@ -163,7 +162,7 @@ query QueryKey{..} p =
 -- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
 -- @
 (=:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
-     -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
+     -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
 k =: t = query k (Strategy.pFirst t)
 
 -- | get one matched paramerer. since 0.5.0.0.
@@ -174,7 +173,7 @@ k =: t = query k (Strategy.pFirst t)
 -- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
 -- @
 (=!:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
-      -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
+      -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
 k =!: t = query k (Strategy.pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
@@ -185,7 +184,7 @@ k =!: t = query k (Strategy.pOne t)
 -- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
 -- @
 (=?:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
-      -> ApiaryT (Snoc as (Maybe a)) n m b -> ApiaryT as n m b
+      -> ApiaryT (Maybe a ': as) n m b -> ApiaryT as n m b
 k =?: t = query k (Strategy.pOption t)
 
 -- | check parameger given and type. since 0.5.0.0.
@@ -205,7 +204,7 @@ k ?: t = query k (Strategy.pCheck t)
 -- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
 -- @
 (=*:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
-      -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
+      -> ApiaryT ([a] ': as) n m b -> ApiaryT as n m b
 k =*: t = query k (Strategy.pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
@@ -214,7 +213,7 @@ k =*: t = query k (Strategy.pMany t)
 -- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
 -- @
 (=+:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
-      -> ApiaryT (Snoc as [a]) n m b -> ApiaryT as n m b
+      -> ApiaryT ([a] ': as) n m b -> ApiaryT as n m b
 k =+: t = query k (Strategy.pSome t)
 
 -- | query exists checker.
@@ -244,13 +243,13 @@ eqHeader k v = header' Strategy.pCheck (\(k',v') -> k == k' && v == v') . Just $
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: Monad n => HT.HeaderName
-       -> ApiaryT (Snoc as S.ByteString) n m b -> ApiaryT as n m b
+       -> ApiaryT (S.ByteString ': as) n m b -> ApiaryT as n m b
 header n = header' Strategy.pFirst ((n ==) . fst) . Just $
     toHtml (show n) <> " header requred"
 
 -- | filter by headers up to 100 entries. since 0.6.0.0.
 headers :: Monad n => HT.HeaderName
-        -> ApiaryT (Snoc as [S.ByteString]) n m b -> ApiaryT as n m b
+        -> ApiaryT ([S.ByteString] ': as) n m b -> ApiaryT as n m b
 headers n = header' limit100 ((n ==) . fst) . Just $
     toHtml (show n) <> " header requred"
   where

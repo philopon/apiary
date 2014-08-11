@@ -10,6 +10,7 @@ import Language.Haskell.TH.Quote
 import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 
 import qualified Data.Text as T
+import Data.String
 import Data.Proxy
 
 preCap :: String -> [String]
@@ -50,7 +51,7 @@ mkCap ((':':tyStr):as) = do
             N n  -> [|Just $(varE n)|]
     [|Capture.fetch (Proxy :: Proxy $(conT ty)) $d . $(mkCap as)|]
 mkCap (eq:as) = do
-    [|(Capture.path $(stringE eq)) . $(mkCap as) |]
+    [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
 
 -- | capture QuasiQuoter. since 0.1.0.0.
 --

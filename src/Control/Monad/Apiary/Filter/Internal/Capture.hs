@@ -34,9 +34,9 @@ endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
 endPath = focus' id Nothing (EndPath:) return
 
 -- | get first path and drill down. since 0.11.0.
-fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
+fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
 fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
-        Just r  -> sSnoc l r <$ modifyState (\s -> s {actionFetches = fs})
+        Just r  -> (r ::: l) <$ modifyState (\s -> s {actionFetches = fs})
         Nothing -> mzero

@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE CPP #-}
@@ -36,12 +36,12 @@ getQuery readf _ kf = map readf . map snd . filter kf
 -- | get first matched key( [0,) params to Type.). since 0.5.0.0.
 data Option a deriving Typeable
 instance Strategy Option where
-    type SNext Option as a = Snoc as (Maybe a)
+    type SNext Option as a = Maybe a ': as
     readStrategy rf k p q l =
         let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
-           else Just . sSnoc l $ case catMaybes rs of
+           else Just . (::: l) $ case catMaybes rs of
                []  -> Nothing
                a:_ -> Just a
     strategyRep _ = StrategyRep "optional"
@@ -49,58 +49,58 @@ instance Strategy Option where
 -- | get first matched key ( [1,) params to Maybe Type.) since 0.5.0.0.
 data First a deriving Typeable
 instance Strategy First where
-    type SNext First as a = Snoc as a
+    type SNext First as a = a ': as
     readStrategy rf k p q l =
         case getQuery rf p k q of
-            Just a:_ -> Just $ sSnoc l a
+            Just a:_ -> Just $ a ::: l
             _        -> Nothing
     strategyRep _ = StrategyRep "first"
 
 -- | get key ( [1,1] param to Type.) since 0.5.0.0.
 data One a deriving Typeable
 instance Strategy One where
-    type SNext One as a = Snoc as a
+    type SNext One as a = a ': as
     readStrategy rf k p q l =
         case getQuery rf p k q of
-            [Just a] -> Just $ sSnoc l a
+            [Just a] -> Just $ a ::: l
             _        -> Nothing
     strategyRep _ = StrategyRep "one"
 
 -- | get parameters ( [0,) params to [Type] ) since 0.5.0.0.
 data Many a deriving Typeable
 instance Strategy Many where
-    type SNext Many as a = Snoc as [a]
+    type SNext Many as a = [a] ': as
     readStrategy rf k p q l =
         let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
-           else Just $ sSnoc l (catMaybes rs)
+           else Just $ (catMaybes rs) ::: l
     strategyRep _ = StrategyRep "many"
 
 -- | get parameters ( [1,) params to [Type] ) since 0.5.0.0.
 data Some a deriving Typeable
 instance Strategy Some where
-    type SNext Some as a = Snoc as [a]
+    type SNext Some as a = [a] ': as
     readStrategy rf k p q l =
         let rs = getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
                [] -> Nothing
-               as -> Just $ sSnoc l as
+               as -> Just $ as ::: l
     strategyRep _ = StrategyRep "some"
 
 -- | get parameters with upper limit ( [1,n] to [Type]) since 0.6.0.0.
 data LimitSome u a deriving Typeable
 instance (Reifies u Int) => Strategy (LimitSome u) where
-    type SNext (LimitSome u) as a = Snoc as [a]
+    type SNext (LimitSome u) as a = [a] ': as
     readStrategy rf k p q l =
         let rs = take (reflectLimit p) $ getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
                [] -> Nothing
-               as -> Just $ sSnoc l as
+               as -> Just $ as ::: l
     strategyRep _ = StrategyRep . T.pack $ "less then " ++ show (reflect (Proxy :: Proxy u))
 
 reflectLimit :: Reifies n Int => proxy (LimitSome n a) -> Int

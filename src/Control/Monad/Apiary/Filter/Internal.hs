@@ -1,3 +1,6 @@
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+
 module Control.Monad.Apiary.Filter.Internal
     ( function, function', function_, focus
     ) where
@@ -21,8 +24,8 @@ function d f = focus d $ \c -> getRequest >>= \r -> case f c r of
 
 -- | filter and append argument.
 function' :: Monad n => (Doc -> Doc) -> (Request -> Maybe a)
-          -> ApiaryT (Snoc as a) n m b -> ApiaryT as n m b
-function' d f = function d $ \c r -> sSnoc c `fmap` f r
+          -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
+function' d f = function d $ \c r -> (::: c) `fmap` f r
 
 -- | filter only(not modify arguments).
 function_ :: Monad n => (Doc -> Doc) -> (Request -> Bool) 
