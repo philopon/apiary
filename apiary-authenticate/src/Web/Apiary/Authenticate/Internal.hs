@@ -1,5 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -88,7 +90,7 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
         toByteString (HTTP.encodePathSegments (authPrefix config ++ authReturnToPath config))
 
-authorized :: Auth -> Apiary (Snoc as OpenId) a -> Apiary as a
+authorized :: Auth -> Apiary (OpenId ': as) a -> Apiary as a
 authorized Auth{..} = session authSession (authSessionName config) (pOne (Proxy :: Proxy OpenId))
 
 authConfig :: Auth -> AuthConfig

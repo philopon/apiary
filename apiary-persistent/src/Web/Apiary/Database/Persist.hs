@@ -1,4 +1,6 @@
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ConstraintKinds #-}
@@ -68,8 +70,8 @@ instance BoolLike [a] where
 sql :: (BoolLike a, Functor n, Monad n, MonadBaseControl IO (ActionT n), HasPersist)
     => Maybe Html 
     -> SqlPersistT (ResourceT (ActionT n)) a
-    -> ApiaryT (Snoc as (UnBool a)) n m b
+    -> ApiaryT (UnBool a ': as) n m b
     -> ApiaryT as n m b
 sql doc p = focus (maybe id DocPrecondition doc) $ \l -> do
     r <- runSql p
-    maybe empty (\i -> return $ sSnoc l i) $ unBool r
+    maybe empty (\i -> return $ i ::: l) $ unBool r

@@ -1,6 +1,8 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.Authenticate (
     E.AuthConfig(..), E.Provider(..)
@@ -26,7 +28,6 @@ import Web.Apiary.ClientSession
 
 import Data.Reflection
 import Data.Default.Class
-import Data.Apiary.SList
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 
@@ -44,7 +45,7 @@ authHandler :: (Functor m, Monad m, Functor n, MonadIO n, HasAuth) => ApiaryT c 
 authHandler = E.authHandler given
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
-authorized :: HasAuth => Apiary (Snoc as E.OpenId) a -> Apiary as a
+authorized :: HasAuth => Apiary (E.OpenId ': as) a -> Apiary as a
 authorized = E.authorized given
 
 -- | delete session. since 0.7.0.0.
