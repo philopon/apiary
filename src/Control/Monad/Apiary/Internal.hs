@@ -225,11 +225,11 @@ focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env
     } cont
 
 -- | splice ActionT ApiaryT.
-action :: Monad n => Fn (Reverse c) (ActionT n ()) -> ApiaryT c n m ()
+action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
 action = action' . apply
 
 -- | like action. but not apply arguments. since 0.8.0.0.
-action' :: Monad n => (SList (Reverse c) -> ActionT n ()) -> ApiaryT c n m ()
+action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
 action' a = do
     env <- getApiaryEnv
     addRoute $ ApiaryWriter
@@ -237,7 +237,7 @@ action' a = do
             (rootPattern $ envConfig env)
             (renderMethod <$> envMethod env)
             (envPath env [])
-            (envFilter env >>= \c -> a (sReverse c)))
+            (envFilter env >>= \c -> a c))
         (envDoc env Action:)
 --------------------------------------------------------------------------------
 
@@ -269,7 +269,7 @@ noDoc = insDoc DocDropNext
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since 0.4.2.0
-actionWithPreAction :: Monad n => (SList (Reverse xs) -> ActionT n a)
-                    -> Fn (Reverse xs) (ActionT n ()) -> ApiaryT xs n m ()
+actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
+                    -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
 actionWithPreAction pa a = do
     action' $ \c -> pa c >> apply a c
