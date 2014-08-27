@@ -12,6 +12,6 @@ for pkg in . `cat submodules`; do
   cd $dir/$pkg
   cabal clean
   file=`cabal sdist | awk '{print $4}'`
-  cabal upload -u HirotomoMoriwaki -p $password $file
+  cabal upload $file
   cd ..
 done
