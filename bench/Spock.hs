@@ -4,6 +4,7 @@
 import System.Environment
 import Web.Spock
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Encoding as TL
 
 main :: IO ()
 main = do
@@ -13,7 +14,7 @@ main = do
         get "/echo/plain/:param/:int" $ do
             Just p <- param "param"
             Just i <- param "int"
-            text . TL.concat $ replicate i p
+            lazyBytes . TL.encodeUtf8 . TL.concat $ replicate i p
 
         subcomponent "/deep/foo/bar/baz" $ do
             get "0" $ text "deep"

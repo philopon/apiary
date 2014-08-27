@@ -12,14 +12,14 @@ else
 fi
 
 
-for PKG in apiary-0.16.0 Spock-0.6.3 scotty-0.9.0; do
+for PKG in apiary-0.16.0 Spock-0.6.3.0 scotty-0.9.0; do
   FRAMEWORK=`echo $PKG | awk -F'-' '{print $1}'`
   VERSION=`echo $PKG | awk -F'-' '{print $2}'`
 
   cabal sandbox hc-pkg unregister $FRAMEWORK
   cabal install ./$PKG
   cabal clean
-  cabal configure
+  cabal configure -f$FRAMEWORK
   cabal build $FRAMEWORK
 
   mkdir -p results/$MACHINE/$NTHREAD/$PKG

@@ -5,11 +5,10 @@ import sys
 
 results = {}
 
-fws = [ 'apiary-0.14.0.1'
-      , 'apiary-0.15.0'
-      , 'apiary-0.15.1'
-      , 'scotty-0.8.2'
-      , 'Spock-0.6.2.1'
+fws = [ 'apiary-0.15.2'
+      , 'apiary-0.16.0'
+      , 'scotty-0.9.0'
+      , 'Spock-0.6.3.0'
       ]
 
 maxFwLen = len(max(fws, key=len))

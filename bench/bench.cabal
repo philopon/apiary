@@ -15,27 +15,47 @@ extra-source-files:  bench.sh
                    , stdev.awk
 cabal-version:       >=1.10
 
+flag apiary
+  default: False
+flag scotty
+  default: False
+flag Spock
+  default: False
+
 executable apiary
   main-is:             apiary.hs
-  build-depends:       base >=4.7 && <4.8
-                     , apiary >=0.14
-                     , warp
-                     , text
+  if flag(apiary)
+    build-depends:       base >=4.7 && <4.8
+                       , apiary >=0.14
+                       , warp
+                       , text
+    buildable: True
+  else
+    buildable: False
   ghc-options:         -Wall -O2 -threaded
   default-language:    Haskell2010
 
 executable scotty
   main-is:             scotty.hs
-  build-depends:       base >=4.7 && <4.8
-                     , scotty >=0.8
-                     , text
+  if flag(scotty)
+    build-depends:       base >=4.7 && <4.8
+                       , scotty >=0.8
+                       , text
+    buildable: True
+  else
+    buildable: False
+
   ghc-options:         -Wall -O2 -threaded
   default-language:    Haskell2010
 
 executable Spock
   main-is:             Spock.hs
-  build-depends:       base >=4.7 && <4.8
-                     , Spock >=0.6.1
-                     , text
+  if flag(Spock)
+    build-depends:       base >=4.7 && <4.8
+                       , Spock >=0.6.3
+                       , text
+    buildable: True
+  else
+    buildable: False
   ghc-options:         -Wall -O2 -threaded
   default-language:    Haskell2010
