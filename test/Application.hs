@@ -149,9 +149,15 @@ captureTest = testGroup "capture" $ map ($ captureApp)
 --------------------------------------------------------------------------------
 
 queryApp f g h = runApiary def $ do
-    _ <- (f "foo" pInt)             . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
-    _ <- (g "foo" pString)          . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
+    _ <- (f "foo" pInt)        . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
+    _ <- (g "foo" pString)     . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
     (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
+
+queryOptionalApp :: Application
+queryOptionalApp = runApiary def $ do
+    ("foo" =?!: (5 :: Int))                   . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
+    ("foo" =?!: ("bar" :: String))            . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
+    ("foo" =?!: (Just "baz" :: Maybe String)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
 
 queryCheckApp :: Application
 queryCheckApp = runApiary def $ do
@@ -190,6 +196,17 @@ queryOptionTest = testGroup "Option" $ map ($ queryApp (=?:) (=?:) (=?:))
     , testReq "GET /?foo=a" . assertPlain200 "foo String Just \"a\""
     , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int Just 12"
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String Just \"12\""
+    ]
+
+queryOptionalTest :: Test
+queryOptionalTest = testGroup "Optional" $ map ($ queryOptionalApp)
+    [ testReq "GET /" . assertPlain200 "foo Int 5"
+    , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
+    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String Nothing"
+    , testReq "GET /?foo=12" . assertPlain200 "foo Int 12"
+    , testReq "GET /?foo=a" . assertPlain200 "foo String \"a\""
+    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int 12"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String \"12\""
     ]
 
 queryCheckTest :: Test
@@ -231,6 +248,7 @@ queryTest = testGroup "query"
     [ queryFirstTest
     , queryOneTest
     , queryOptionTest
+    , queryOptionalTest
     , queryCheckTest
     , queryManyTest
     , querySomeTest

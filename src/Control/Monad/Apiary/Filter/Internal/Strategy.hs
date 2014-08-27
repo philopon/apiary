@@ -41,9 +41,22 @@ instance Strategy Option where
         in if any isNothing rs
            then Nothing
            else Just . (::: l) $ case catMaybes rs of
-               []  -> Nothing
                a:_ -> Just a
+               []  -> Nothing
     strategyRep _ = StrategyRep "optional"
+
+data Optional a = Optional T.Text a deriving Typeable
+instance Strategy Optional where
+    type SNext Optional as a = a ': as
+    readStrategy rf k p@(Optional _ def) q l =
+        let rs = getQuery rf p k q
+        in if any isNothing rs
+           then Nothing
+           else Just . (::: l) $ case catMaybes rs of
+               a:_ -> a
+               []  -> def
+    strategyRep (Optional tr _) = StrategyRep $
+        "Optional(default: " `T.append` tr `T.append` ")"
 
 -- | get first matched key ( [1,) params to Maybe Type.) since 0.5.0.0.
 data First a = First deriving Typeable
@@ -118,6 +131,10 @@ instance Strategy Check where
 -- | construct Option proxy. since 0.5.1.0.
 pOption :: proxy a -> Option a
 pOption _ = Option
+
+-- | construct Optional proxy. since 0.15.3.
+pOptional :: Show a => a -> Optional a
+pOptional def = Optional (T.pack $ show def) def
 
 -- | construct First proxy. since 0.5.1.0.
 pFirst :: proxy a -> First a

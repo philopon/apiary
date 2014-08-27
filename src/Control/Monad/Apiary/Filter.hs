@@ -28,7 +28,7 @@ module Control.Monad.Apiary.Filter (
     , QueryKey(..), (??)
     , query
     -- *** specified operators
-    , (=:), (=!:), (=?:), (?:), (=*:), (=+:)
+    , (=:), (=!:), (=?:), (=?!:), (?:), (=*:), (=+:)
     , hasQuery
 
     -- ** header matcher
@@ -134,9 +134,9 @@ QueryKey k _ ?? d = QueryKey k (Just d)
 -- examples:
 --
 -- @
--- query "key" (Proxy :: Proxy ('First' Int)) -- get first \'key\' query parameter as Int.
--- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
--- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
+-- query "key" ('First'  :: First Int) -- get first \'key\' query parameter as Int.
+-- query "key" ('Option' :: Option (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
+-- query "key" ('Many'   :: Many String) -- get all \'key\' query parameter as String.
 -- @
 query :: forall a as w n m b. 
       (ReqParam a, Strategy.Strategy w, MonadIO n)
@@ -158,7 +158,7 @@ query QueryKey{..} p =
 -- | get first matched paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (pFirst pInt) == query "key" (Proxy :: Proxy (First Int))
+-- "key" =: pInt == query "key" (pFirst pInt) == query "key" (First :: First Int)
 -- @
 (=:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
      -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
@@ -169,7 +169,7 @@ k =: t = query k (Strategy.pFirst t)
 -- when more one parameger given, not matched.
 --
 -- @
--- "key" =: pInt == query "key" (pOne pInt) == query "key" (Proxy :: Proxy (One Int))
+-- "key" =: pInt == query "key" (pOne pInt) == query "key" (One :: One Int)
 -- @
 (=!:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
@@ -177,21 +177,32 @@ k =!: t = query k (Strategy.pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
 --
--- when illegal type parameter given, fail mather(don't give Nothing).
+-- when illegal type parameter given, fail match(don't give Nothing).
 --
 -- @
--- "key" =: pInt == query "key" (pOption pInt) == query "key" (Proxy :: Proxy (Option Int))
+-- "key" =: pInt == query "key" (pOption pInt) == query "key" (Option :: Option Int)
 -- @
 (=?:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT (Maybe a ': as) n m b -> ApiaryT as n m b
 k =?: t = query k (Strategy.pOption t)
+
+-- | get optional first paramerer with default. since 0.15.3.
+--
+-- when illegal type parameter given, fail match(don't give Nothing).
+--
+-- @
+-- "key" =: (0 :: Int) == query "key" (pOptional (0 :: Int)) == query "key" (Optional 0 :: Optional Int)
+-- @
+(=?!:) :: (MonadIO n, ReqParam a, Show a) => QueryKey -> a
+       -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
+k =?!: v = query k (Strategy.pOptional v)
 
 -- | check parameger given and type. since 0.5.0.0.
 --
 -- If you wan't to allow any type, give 'pVoid'.
 --
 -- @
--- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Proxy :: Proxy (Check Int))
+-- "key" =: pInt == query "key" (pCheck pInt) == query "key" (Check :: Check Int)
 -- @
 (?:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
      -> ApiaryT as n m b -> ApiaryT as n m b
@@ -200,7 +211,7 @@ k ?: t = query k (Strategy.pCheck t)
 -- | get many paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (pMany pInt) == query "key" (Proxy :: Proxy (Many Int))
+-- "key" =: pInt == query "key" (pMany pInt) == query "key" (Many :: Many Int)
 -- @
 (=*:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT ([a] ': as) n m b -> ApiaryT as n m b
@@ -209,7 +220,7 @@ k =*: t = query k (Strategy.pMany t)
 -- | get some paramerer. since 0.5.0.0.
 --
 -- @
--- "key" =: pInt == query "key" (pSome pInt) == query "key" (Proxy :: Proxy (Some Int))
+-- "key" =: pInt == query "key" (pSome pInt) == query "key" (Some :: Some Int)
 -- @
 (=+:) :: (MonadIO n, ReqParam a) => QueryKey -> proxy a 
       -> ApiaryT ([a] ': as) n m b -> ApiaryT as n m b
@@ -218,7 +229,7 @@ k =+: t = query k (Strategy.pSome t)
 -- | query exists checker.
 --
 -- @
--- hasQuery q = 'query' q (Proxy :: Proxy ('Check' ()))
+-- hasQuery q = 'query' q (Check :: 'Check' ())
 -- @
 --
 hasQuery :: (MonadIO n) => QueryKey -> ApiaryT c n m a -> ApiaryT c n m a
