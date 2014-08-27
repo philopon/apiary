@@ -65,7 +65,6 @@ import qualified Data.ByteString.Char8 as SC
 import Data.Monoid
 import Data.Proxy
 import Data.String
-import Data.Reflection
 
 import Data.Apiary.Param
 import Data.Apiary.Document
@@ -139,10 +138,10 @@ QueryKey k _ ?? d = QueryKey k (Just d)
 -- query "key" (Proxy :: Proxy ('Option' (Maybe Int)) -- get first \'key\' query parameter as Int. allow without param or value.
 -- query "key" (Proxy :: Proxy ('Many' String) -- get all \'key\' query parameter as String.
 -- @
-query :: forall a as w n m b proxy. 
+query :: forall a as w n m b. 
       (ReqParam a, Strategy.Strategy w, MonadIO n)
       => QueryKey
-      -> proxy (w a)
+      -> w a
       -> ApiaryT (Strategy.SNext w as a) n m b
       -> ApiaryT as n m b
 query QueryKey{..} p =
@@ -152,9 +151,9 @@ query QueryKey{..} p =
 
         maybe mzero return $
             Strategy.readStrategy id ((queryKey ==) . fst) p 
-            (reqParams (Proxy :: Proxy a) r q f) l
+            (reqParams p r q f) l
   where
-    doc = DocQuery queryKey (Strategy.strategyRep (Proxy :: Proxy w)) (reqParamRep (Proxy :: Proxy a)) queryDesc
+    doc = DocQuery queryKey (Strategy.strategyRep p) (reqParamRep (Proxy :: Proxy a)) queryDesc
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
@@ -223,7 +222,7 @@ k =+: t = query k (Strategy.pSome t)
 -- @
 --
 hasQuery :: (MonadIO n) => QueryKey -> ApiaryT c n m a -> ApiaryT c n m a
-hasQuery q = query q (Proxy :: Proxy (Strategy.Check ()))
+hasQuery q = query q (Strategy.Check :: Strategy.Check ())
 
 --------------------------------------------------------------------------------
 
@@ -250,15 +249,12 @@ header n = header' Strategy.pFirst ((n ==) . fst) . Just $
 -- | filter by headers up to 100 entries. since 0.6.0.0.
 headers :: Monad n => HT.HeaderName
         -> ApiaryT ([S.ByteString] ': as) n m b -> ApiaryT as n m b
-headers n = header' limit100 ((n ==) . fst) . Just $
+headers n = header' (Strategy.pLimitSome 100) ((n ==) . fst) . Just $
     toHtml (show n) <> " header requred"
-  where
-    limit100 :: Proxy x -> Proxy (Strategy.LimitSome $(int 100) x)
-    limit100 _ = Proxy
 
 -- | low level header filter. since 0.6.0.0.
 header' :: (Strategy.Strategy w, Monad n)
-        => (forall x. Proxy x -> Proxy (w x))
+        => (forall x. Proxy x -> w x)
         -> (HT.Header -> Bool)
         -> Maybe Html
         -> ApiaryT (Strategy.SNext w as S.ByteString) n m b

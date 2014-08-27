@@ -13,7 +13,6 @@
 module Control.Monad.Apiary.Filter.Internal.Strategy where
 
 import Data.Maybe
-import Data.Reflection
 import qualified Data.Text as T
 
 import Data.Apiary.Proxy
@@ -24,17 +23,17 @@ class Strategy (w :: * -> *) where
     type SNext w (as :: [*]) a  :: [*]
     readStrategy :: (v -> Maybe a)
                  -> ((k,v) -> Bool)
-                 -> proxy (w a)
+                 -> w a
                  -> [(k, v)]
                  -> SList as 
                  -> Maybe (SList (SNext w as a))
-    strategyRep :: proxy w -> StrategyRep
+    strategyRep :: forall a. w a -> StrategyRep
 
-getQuery :: (v -> Maybe a) -> proxy (w a) -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
+getQuery :: (v -> Maybe a) -> w a -> ((k,v) -> Bool) -> [(k, v)] -> [Maybe a]
 getQuery readf _ kf = map readf . map snd . filter kf
 
 -- | get first matched key( [0,) params to Type.). since 0.5.0.0.
-data Option a deriving Typeable
+data Option a = Option deriving Typeable
 instance Strategy Option where
     type SNext Option as a = Maybe a ': as
     readStrategy rf k p q l =
@@ -47,7 +46,7 @@ instance Strategy Option where
     strategyRep _ = StrategyRep "optional"
 
 -- | get first matched key ( [1,) params to Maybe Type.) since 0.5.0.0.
-data First a deriving Typeable
+data First a = First deriving Typeable
 instance Strategy First where
     type SNext First as a = a ': as
     readStrategy rf k p q l =
@@ -57,7 +56,7 @@ instance Strategy First where
     strategyRep _ = StrategyRep "first"
 
 -- | get key ( [1,1] param to Type.) since 0.5.0.0.
-data One a deriving Typeable
+data One a = One deriving Typeable
 instance Strategy One where
     type SNext One as a = a ': as
     readStrategy rf k p q l =
@@ -67,7 +66,7 @@ instance Strategy One where
     strategyRep _ = StrategyRep "one"
 
 -- | get parameters ( [0,) params to [Type] ) since 0.5.0.0.
-data Many a deriving Typeable
+data Many a = Many deriving Typeable
 instance Strategy Many where
     type SNext Many as a = [a] ': as
     readStrategy rf k p q l =
@@ -78,7 +77,7 @@ instance Strategy Many where
     strategyRep _ = StrategyRep "many"
 
 -- | get parameters ( [1,) params to [Type] ) since 0.5.0.0.
-data Some a deriving Typeable
+data Some a = Some deriving Typeable
 instance Strategy Some where
     type SNext Some as a = [a] ': as
     readStrategy rf k p q l =
@@ -91,26 +90,20 @@ instance Strategy Some where
     strategyRep _ = StrategyRep "some"
 
 -- | get parameters with upper limit ( [1,n] to [Type]) since 0.6.0.0.
-data LimitSome u a deriving Typeable
-instance (Reifies u Int) => Strategy (LimitSome u) where
-    type SNext (LimitSome u) as a = [a] ': as
-    readStrategy rf k p q l =
-        let rs = take (reflectLimit p) $ getQuery rf p k q
+data LimitSome a = LimitSome {-# UNPACK #-} !Int deriving Typeable
+instance Strategy LimitSome where
+    type SNext LimitSome as a = [a] ': as
+    readStrategy rf k p@(LimitSome lim) q l =
+        let rs = take lim $ getQuery rf p k q
         in if any isNothing rs
            then Nothing
            else case catMaybes rs of
                [] -> Nothing
                as -> Just $ as ::: l
-    strategyRep _ = StrategyRep . T.pack $ "less then " ++ show (reflect (Proxy :: Proxy u))
-
-reflectLimit :: Reifies n Int => proxy (LimitSome n a) -> Int
-reflectLimit p = reflect $ asTyInt p
-  where
-    asTyInt :: proxy (LimitSome u a) -> Proxy u
-    asTyInt _ = Proxy
+    strategyRep (LimitSome lim) = StrategyRep . T.pack $ "less then " ++ show lim
 
 -- | type check ( [0,) params to No argument ) since 0.5.0.0.
-data Check a deriving Typeable
+data Check a = Check deriving Typeable
 instance Strategy Check where
     type SNext Check as a = as
     readStrategy rf k p q l =
@@ -123,25 +116,29 @@ instance Strategy Check where
     strategyRep _ = StrategyRep "check"
 
 -- | construct Option proxy. since 0.5.1.0.
-pOption :: proxy a -> Proxy (Option a)
-pOption _ = Proxy
+pOption :: proxy a -> Option a
+pOption _ = Option
 
 -- | construct First proxy. since 0.5.1.0.
-pFirst :: proxy a -> Proxy (First a)
-pFirst _ = Proxy
+pFirst :: proxy a -> First a
+pFirst _ = First
 
 -- | construct One proxy. since 0.5.1.0.
-pOne :: proxy a -> Proxy (One a)
-pOne _ = Proxy
+pOne :: proxy a -> One a
+pOne _ = One
 
 -- | construct Many proxy. since 0.5.1.0.
-pMany :: proxy a -> Proxy (Many a)
-pMany _ = Proxy
+pMany :: proxy a -> Many a
+pMany _ = Many
 
 -- | construct Some proxy. since 0.5.1.0.
-pSome :: proxy a -> Proxy (Some a)
-pSome _ = Proxy
+pSome :: proxy a -> Some a
+pSome _ = Some
+
+-- | construct LimitSome proxy. since 0.15.3.
+pLimitSome :: Int -> proxy a -> LimitSome a
+pLimitSome lim _ = LimitSome lim
 
 -- | construct Check proxy. since 0.5.1.0.
-pCheck :: proxy a -> Proxy (Check a)
-pCheck _ = Proxy
+pCheck :: proxy a -> Check a
+pCheck _ = Check
