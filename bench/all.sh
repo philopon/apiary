@@ -12,7 +12,7 @@ else
 fi
 
 
-for PKG in apiary-0.14.0.1 apiary-0.15.0 apiary-0.15.1 Spock-0.6.2.1 scotty-0.8.2; do
+for PKG in apiary-0.16.0 Spock-0.6.3 scotty-0.9.0; do
   FRAMEWORK=`echo $PKG | awk -F'-' '{print $1}'`
   VERSION=`echo $PKG | awk -F'-' '{print $2}'`
 
