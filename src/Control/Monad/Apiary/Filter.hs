@@ -37,6 +37,7 @@ module Control.Monad.Apiary.Filter (
     , headers
     , header
     , header'
+    , accept
 
     -- ** other
     , ssl
@@ -47,8 +48,10 @@ module Control.Monad.Apiary.Filter (
     ) where
 
 import Network.Wai as Wai
+import Network.Wai.Parse
 import qualified Network.HTTP.Types as HT
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
 
@@ -275,3 +278,11 @@ header' pf kf d = function pc $ \l r ->
   where
     pc = maybe id DocPrecondition d
 
+-- | require Accept header and set response Content-Type. since 0.16.0.
+accept :: Monad n => ContentType -> ApiaryT as n m b -> ApiaryT as n m b
+accept ect = focus (DocPrecondition "") $ \c ->
+    (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
+        Nothing -> mzero
+        Just ct -> if ect == fst (parseContentType ct)
+                   then contentType ect >> return c
+                   else mzero

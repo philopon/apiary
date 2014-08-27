@@ -24,33 +24,29 @@ testReq str f =
     in testCase str $ f (setPath (setVersion version $ (defaultRequest { requestMethod = S.pack meth })) (S.pack p))
   where
     setVersion [] r = r
-    setVersion v r | v == " HTTP/1.1" = r { Network.Wai.httpVersion = HTTP.http11 }
-                   | v == " HTTP/1.0" = r { Network.Wai.httpVersion = HTTP.http10 }
+    setVersion v r | v == " HTTP/1.0" = r { Network.Wai.httpVersion = HTTP.http10 }
                    | v == " HTTP/0.9" = r { Network.Wai.httpVersion = HTTP.http09 }
-                   | otherwise        = error "unknown HTTP version"
-
+                   | otherwise        = r { Network.Wai.httpVersion = HTTP.http11 }
 --------------------------------------------------------------------------------
 
-assertPlain200 :: L.ByteString -> Application -> Request -> IO ()
-assertPlain200 body app req = flip runSession app $ do
+assertRequest :: Int -> (Maybe S.ByteString) -> L.ByteString -> Application -> Request -> IO ()
+assertRequest sc ct body app req = flip runSession app $ do
     res <- request req
     assertBody body res
-    assertStatus 200 res
-    assertContentType "text/plain" res
+    assertStatus sc res
+    maybe (return ()) (flip assertContentType res) ct
+
+assertPlain200 :: L.ByteString -> Application -> Request -> IO ()
+assertPlain200 = assertRequest 200 (Just "text/plain")
 
 assertHtml200 :: L.ByteString -> Application -> Request -> IO ()
-assertHtml200 body app req = flip runSession app $ do
-    res <- request req
-    assertBody body res
-    assertStatus 200 res
-    assertContentType "text/html" res
+assertHtml200 = assertRequest 200 (Just "text/html")
+
+assertJson200 :: L.ByteString -> Application -> Request -> IO ()
+assertJson200 = assertRequest 200 (Just "application/json")
 
 assert404 :: Application -> Request -> IO ()
-assert404 app req = flip runSession app $ do
-    res <- request req
-    assertBody "404 Page Notfound.\n" res
-    assertStatus 404 res
-    assertContentType "text/plain" res
+assert404 = assertRequest 404 (Just "text/plain") "404 Page Notfound.\n"
 
 --------------------------------------------------------------------------------
 
@@ -274,6 +270,25 @@ stopTest = testGroup "stop" $ map ($ stopApp)
 
 --------------------------------------------------------------------------------
 
+acceptApp :: Application
+acceptApp = runApiary def $ [capture|/|] $ do
+    accept "application/json" . action $ bytes "json"
+    accept "text/html"        . action $ bytes "html"
+    action                             $ bytes "other"
+
+acceptTest :: Test
+acceptTest = testGroup "accept" $ map ($ acceptApp)
+    [ testReq "GET / application/json" . (\a r -> assertJson200 "json"   a $ addA "application/json" r)
+    , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"   a $ addA "text/html"  r)
+    , testReq "GET / text/plain"       . (\a r -> assertRequest 200 Nothing "other" a $ addA "text/plain" r)
+    , testReq "GET /"                  . assertRequest 200 Nothing "other"
+    ]
+  where
+    addA :: S.ByteString -> Request -> Request
+    addA ct r = r {requestHeaders = ("Accept", ct) : filter (("Accept" ==) . fst) (requestHeaders r)}
+
+--------------------------------------------------------------------------------
+
 multipleFilter1App :: Application
 multipleFilter1App = runApiary def $ do
     root $ do
@@ -302,6 +317,7 @@ applicationTests = testGroup "Application"
     , captureTest
     , queryTest
     , stopTest
+    , acceptTest
     , multipleFilter1Test
     ]
 
