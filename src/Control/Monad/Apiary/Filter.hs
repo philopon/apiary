@@ -65,6 +65,7 @@ import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Text.Blaze.Html
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
+import qualified Data.Text.Encoding as T
 import Data.Monoid
 import Data.Proxy
 import Data.String
@@ -280,7 +281,7 @@ header' pf kf d = function pc $ \l r ->
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad n => ContentType -> ApiaryT as n m b -> ApiaryT as n m b
-accept ect = focus (DocPrecondition "") $ \c ->
+accept ect = focus (DocPrecondition $ "Accept: " <> toHtml (T.decodeUtf8 ect)) $ \c ->
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
         Just ct -> if ect == fst (parseContentType ct)

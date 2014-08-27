@@ -56,7 +56,7 @@ instance Strategy Optional where
                a:_ -> a
                []  -> def
     strategyRep (Optional tr _) = StrategyRep $
-        "Optional(default: " `T.append` tr `T.append` ")"
+        "default:" `T.append` tr
 
 -- | get first matched key ( [1,) params to Maybe Type.) since 0.5.0.0.
 data First a = First deriving Typeable

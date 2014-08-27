@@ -18,12 +18,15 @@ module Data.Apiary.Param where
 
 import Network.Wai
 
+import Control.Monad
+
 import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.Apiary.Proxy
 
 import Data.String(IsString)
+import Data.Time.Calendar
 import qualified Data.Text.Read as TR
 import Data.Text.Encoding.Error
 import qualified Data.Text as T
@@ -113,6 +116,7 @@ instance Path S.ByteString where readPath = Just . T.encodeUtf8;  pathRep _ = ty
 instance Path L.ByteString where readPath = Just . TL.encodeUtf8 . TL.fromStrict; pathRep _ = typeRep (Proxy :: Proxy Text)
 instance Path String       where readPath = Just . T.unpack;      pathRep _ = typeRep (Proxy :: Proxy Text)
 
+
 --------------------------------------------------------------------------------
 
 class Query a where
@@ -156,7 +160,7 @@ instance Query Word64  where readQuery = maybe Nothing readBSWord; qTypeRep = ty
 instance Query Double  where readQuery = maybe Nothing readBSDouble; qTypeRep = typeRep
 instance Query Float   where readQuery = maybe Nothing (fmap realToFrac . readBSDouble); qTypeRep = typeRep
 
-instance Query T.Text  where
+instance Query T.Text where
     readQuery  = fmap $ T.decodeUtf8With lenientDecode
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
@@ -172,9 +176,49 @@ instance Query L.ByteString where
     readQuery  = fmap L.fromStrict
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
-instance Query String       where
+instance Query String where
     readQuery  = fmap S.unpack
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
+
+-- | fuzzy date parse. three decimal split by 1 char.
+-- if year < 100 then + 2000. since 0.16.0.
+--
+-- example:
+--
+-- * 2014-02-05
+-- * 14-2-5
+-- * 14.2.05
+instance Query Day where
+    readQuery = (>>= \s0 -> do
+        (y, s1) <- SL.readDecimal s0
+        when (S.null s1) Nothing
+        (m, s2) <- SL.readDecimal (S.tail s1)
+        when (S.null s2) Nothing
+        (d, s3) <- SL.readDecimal (S.tail s2)
+        unless (S.null s3) Nothing
+        let y' = if y < 100 then 2000 + y else y
+        return $ fromGregorian y' m d)
+    qTypeRep _ = typeRep (Proxy :: Proxy Day)
+
+-- | fuzzy date parse. three decimal split by 1 char.
+-- if year < 100 then + 2000. since 0.16.0.
+--
+-- example:
+--
+-- * 2014-02-05
+-- * 14-2-5
+-- * 14.2.05
+instance Path Day where
+    readPath s0 = either (const Nothing) Just $ do
+        (y, s1) <- TR.decimal s0
+        when (T.null s1) (Left "")
+        (m, s2) <- TR.decimal (T.tail s1)
+        when (T.null s2) (Left "")
+        (d, s3) <- TR.decimal (T.tail s2)
+        unless (T.null s3) (Left "")
+        let y' = if y < 100 then 2000 + y else y
+        return $ fromGregorian y' m d
+    pathRep _ = typeRep (Proxy :: Proxy Day)
 
 -- | allow no parameter. but check parameter type.
 instance Query a => Query (Maybe a) where
