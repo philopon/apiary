@@ -132,7 +132,7 @@ instance Strategy Check where
 pOption :: proxy a -> Option a
 pOption _ = Option
 
--- | construct Optional proxy. since 0.15.3.
+-- | construct Optional proxy. since 0.16.0.
 pOptional :: Show a => a -> Optional a
 pOptional def = Optional (T.pack $ show def) def
 
@@ -152,7 +152,7 @@ pMany _ = Many
 pSome :: proxy a -> Some a
 pSome _ = Some
 
--- | construct LimitSome proxy. since 0.15.3.
+-- | construct LimitSome proxy. since 0.16.0.
 pLimitSome :: Int -> proxy a -> LimitSome a
 pLimitSome lim _ = LimitSome lim
 

@@ -46,7 +46,7 @@ csrfToken :: (MonadIO m, HasSession) => ActionT m S.ByteString
 csrfToken = I.csrfToken given
 
 session :: (Functor n, MonadIO n, Strategy w, Query a, HasSession)
-        => S.ByteString -> proxy (w a)
+        => S.ByteString -> w a
         -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session = I.session given
 

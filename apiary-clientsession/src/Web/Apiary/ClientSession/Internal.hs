@@ -176,7 +176,7 @@ csrfToken Session{..} = do
                            }
 
 session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
-        -> S.ByteString -> proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
+        -> S.ByteString -> w a -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
 session sess k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime

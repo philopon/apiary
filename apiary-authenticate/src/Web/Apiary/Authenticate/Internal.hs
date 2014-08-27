@@ -129,6 +129,7 @@ instance Query (OpenId_ T.Text) where
     readQuery (Just s) = case decodeOrFail (L.fromStrict s) of
         Right (s',_,a) | L.null s' -> Just a
         _                          -> Nothing
+    qTypeRep = typeRep
 
 type OpenId = OpenId_ T.Text
 

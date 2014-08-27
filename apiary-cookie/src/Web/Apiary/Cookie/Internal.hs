@@ -41,7 +41,7 @@ cond p t f a = if p a then t a else f a
 -- @
 cookie :: (Strategy w, Query a, Functor n, Monad n)
        => S.ByteString
-       -> proxy (w a)
+       -> w a
        -> ApiaryT (SNext w as a) n m b
        -> ApiaryT as n m b
 cookie k p = function (DocPrecondition $ toHtml (show k) <> " cookie required") $ \l r ->

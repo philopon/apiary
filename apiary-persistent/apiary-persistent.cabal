@@ -1,5 +1,5 @@
 name:                apiary-persistent
-version:             0.15.3
+version:             0.16.0
 synopsis:            persistent support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
@@ -21,7 +21,7 @@ library
   other-modules:       
   build-depends:       base               >=4.6    && <4.8
                      , persistent         >=1.3    && <1.4
-                     , apiary             >=0.15.3 && <0.16
+                     , apiary             >=0.15.3 && <0.17
                      , monad-logger       >=0.3    && <0.4
                      , resourcet          >=1.1    && <1.2
                      , mtl                >=2.1    && <2.3

@@ -186,7 +186,7 @@ k =!: t = query k (Strategy.pOne t)
       -> ApiaryT (Maybe a ': as) n m b -> ApiaryT as n m b
 k =?: t = query k (Strategy.pOption t)
 
--- | get optional first paramerer with default. since 0.15.3.
+-- | get optional first paramerer with default. since 0.16.0.
 --
 -- when illegal type parameter given, fail match(don't give Nothing).
 --
