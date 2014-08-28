@@ -31,7 +31,7 @@ description:
   404 Page Notfound.
   @
   .
-    * High performance(benchmark: <https://github.com/philopon/apiary/blob/v0.16.0/bench>).
+    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v0.16.0>).
   .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
