@@ -26,15 +26,16 @@ import qualified Data.Text as T
 import Text.Blaze.Html
 
 -- | check first path and drill down. since 0.11.0.
-path :: Monad n => T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+path :: Monad actM => T.Text -> ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 path p = focus' (DocPath p) Nothing (Exact p:) return
 
 -- | check consumed paths. since 0.11.1.
-endPath :: (Functor n, Monad n) => ApiaryT c n m a -> ApiaryT c n m a
+endPath :: (Functor actM, Monad actM) => ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 endPath = focus' id Nothing (EndPath:) return
 
 -- | get first path and drill down. since 0.11.0.
-fetch :: (Path a, Functor n, Monad n) => proxy a -> Maybe Html -> ApiaryT (a ': as) n m b -> ApiaryT as n m b
+fetch :: (Path p, Functor actM, Monad actM) => proxy p -> Maybe Html
+      -> ApiaryT exts (p ': prms) actM m a -> ApiaryT exts prms actM m a
 fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of

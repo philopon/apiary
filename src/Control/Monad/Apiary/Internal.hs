@@ -12,6 +12,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Control.Monad.Apiary.Internal where
 
@@ -27,33 +28,36 @@ import Control.Monad.Apiary.Action.Internal
 
 import Data.List
 import Data.Apiary.SList
+import Data.Apiary.Extension
+import Data.Apiary.Extension.Internal
 import Data.Apiary.Document
-import Data.Monoid
+import Data.Monoid hiding (All)
 import Text.Blaze.Html
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 import Data.Apiary.Method
 import qualified Data.HashMap.Strict as H
 
-data Router n = Router
-    { children   :: H.HashMap T.Text (Router n)
-    , capturing  :: Maybe (Router n)
-    , anyMatch   :: Maybe (PathMethod n)
-    , pathMethod :: PathMethod n
+data Router exts actM = Router
+    { children   :: H.HashMap T.Text (Router exts actM)
+    , capturing  :: Maybe (Router exts actM)
+    , anyMatch   :: Maybe (PathMethod exts actM)
+    , pathMethod :: PathMethod exts actM
     }
 
-data PathMethod n = PathMethod
-    { methodMap :: H.HashMap S.ByteString (ActionT n ())
-    , anyMethod :: Maybe (ActionT n ())
+data PathMethod exts actM = PathMethod
+    { methodMap :: H.HashMap S.ByteString (ActionT exts actM ())
+    , anyMethod :: Maybe (ActionT exts actM ())
     }
 
-emptyRouter :: Router n
+emptyRouter :: Router exts actM
 emptyRouter = Router H.empty Nothing Nothing emptyPathMethod
 
-emptyPathMethod :: PathMethod n
+emptyPathMethod :: PathMethod exts actM
 emptyPathMethod = PathMethod H.empty Nothing
 
-insertRouter :: Monad n => [T.Text] -> Maybe S.ByteString -> [PathElem] -> ActionT n () -> Router n -> Router n
+insertRouter :: Monad actM => [T.Text] -> Maybe S.ByteString -> [PathElem]
+             -> ActionT exts actM () -> Router exts actM -> Router exts actM
 insertRouter rootPat mbMethod paths act = loop paths
   where
     loop [EndPath] (Router cln cap anp pm) =
@@ -82,41 +86,45 @@ data PathElem = Exact {-# UNPACK #-} !T.Text
               | EndPath
               | AnyPath
 
-data ApiaryEnv n c = ApiaryEnv
-    { envFilter :: ActionT n (SList c)
+data ApiaryEnv exts prms actM = ApiaryEnv
+    { envFilter :: ActionT exts actM (SList prms)
     , envMethod :: Maybe Method
     , envPath   :: [PathElem] -> [PathElem]
     , envConfig :: ApiaryConfig
     , envDoc    :: Doc -> Doc
+    , envExts   :: Extensions exts
     }
 
-initialEnv :: Monad n => ApiaryConfig -> ApiaryEnv n '[]
-initialEnv conf = ApiaryEnv (return SNil) Nothing id conf id
+initialEnv :: Monad actM => Extensions exts -> ApiaryConfig -> ApiaryEnv exts '[] actM
+initialEnv exts conf = ApiaryEnv (return SNil) Nothing id conf id exts
 
-data ApiaryWriter n = ApiaryWriter
-    { writerRouter :: Router n -> Router n
+initialEnv' :: Monad actM => ApiaryConfig -> ApiaryEnv '[] '[] actM
+initialEnv' conf = ApiaryEnv (return SNil) Nothing id conf id noExtension
+
+data ApiaryWriter exts actM = ApiaryWriter
+    { writerRouter :: Router exts actM -> Router exts actM
     , writerDoc    :: [Doc] -> [Doc]
     }
 
-instance Monoid (ApiaryWriter n) where
+instance Monoid (ApiaryWriter exts actM) where
     mempty = ApiaryWriter id id
     ApiaryWriter ra da `mappend` ApiaryWriter rb db = ApiaryWriter (ra . rb) (da . db)
 
 -- | most generic Apiary monad. since 0.8.0.0.
-newtype ApiaryT c n m a = ApiaryT { unApiaryT :: forall b.
-    ApiaryEnv n c
-    -> (a -> ApiaryWriter n -> m b)
+newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
+    ApiaryEnv exts prms actM
+    -> (a -> ApiaryWriter exts actM -> m b)
     -> m b 
     }
 apiaryT :: Monad m
-        => (ApiaryEnv n c -> m (a, ApiaryWriter n))
-        -> ApiaryT c n m a
+        => (ApiaryEnv exts prms actM -> m (a, ApiaryWriter exts actM))
+        -> ApiaryT exts prms actM m a
 apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a,w) -> cont a w
 
 -- | no transformer. (ActionT IO, ApiaryT Identity)
-type Apiary c = ApiaryT c IO Identity
+type Apiary exts prms = ApiaryT exts prms IO Identity
 
-routerToAction :: Monad n => Router n -> ActionT n ()
+routerToAction :: Monad actM => Router exts actM -> ActionT exts actM ()
 routerToAction router = getRequest >>= go
   where
     go req = loop id router (pathInfo req)
@@ -140,23 +148,31 @@ routerToAction router = getRequest >>= go
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
-runApiaryT :: (Monad n, Monad m) => (forall b. n b -> IO b) -> ApiaryConfig
-           -> ApiaryT '[] n m a -> m Application
-runApiaryT run conf m = unApiaryT m (initialEnv conf) (\_ w -> return w) >>= \wtr -> do
+runApiaryTWith :: (All Extension exts, Monad actM, Monad m) => (forall b. actM b -> IO b) -> ApiaryConfig
+               -> Extensions exts -> ApiaryT exts '[] actM m a -> m Application
+runApiaryTWith run conf exts m = unApiaryT m (initialEnv exts conf) (\_ w -> return w) >>= \wtr -> do
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-    return $! execActionT conf doc (hoistActionT run $ routerToAction rtr)
+    return $! execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
 
-runApiary :: ApiaryConfig -> Apiary '[] a -> Application
-runApiary conf m = runIdentity $ runApiaryT id conf m
+runApiaryT :: (Monad actM, Monad m) => (forall b. actM b -> IO b) -> ApiaryConfig
+           -> ApiaryT '[] '[] actM m a -> m Application
+runApiaryT run conf = runApiaryTWith run conf noExtension
+
+
+runApiaryWith :: All Extension exts => ApiaryConfig -> Extensions exts -> Apiary exts '[] a -> Application
+runApiaryWith conf exts m = runIdentity $ runApiaryTWith id conf exts m
+
+runApiary :: ApiaryConfig -> Apiary '[] '[] a -> Application
+runApiary conf = runApiaryWith conf noExtension
 
 --------------------------------------------------------------------------------
 
-instance Functor (ApiaryT c n m) where
+instance Functor (ApiaryT exts prms actM m) where
     fmap f m = ApiaryT $ \env cont ->
         unApiaryT m env $ \a hdr -> hdr `seq` cont (f a) hdr
 
-instance Monad n => Applicative (ApiaryT c n m) where
+instance Monad actM => Applicative (ApiaryT exts prms actM m) where
     pure x = ApiaryT $ \_ cont -> cont x mempty
     mf <*> ma = ApiaryT $ \env cont ->
         unApiaryT mf env $ \f hdr  ->
@@ -164,7 +180,7 @@ instance Monad n => Applicative (ApiaryT c n m) where
         let hdr'' = hdr <> hdr'
         in hdr'' `seq` cont (f a) hdr''
 
-instance Monad n => Monad (ApiaryT c n m) where
+instance Monad actM => Monad (ApiaryT exts prms actM m) where
     return x = ApiaryT $ \_ cont -> cont x mempty
     m >>= k = ApiaryT $ \env cont ->
         unApiaryT    m  env $ \a hdr  ->
@@ -172,51 +188,54 @@ instance Monad n => Monad (ApiaryT c n m) where
         let hdr'' = hdr <> hdr'
         in hdr'' `seq` cont b hdr''
 
-instance Monad n => MonadTrans (ApiaryT c n) where
+instance Monad actM => MonadTrans (ApiaryT exts prms actM) where
     lift m = ApiaryT $ \_ c -> m >>= \a -> c a mempty
 
-instance (Monad n, MonadIO m) => MonadIO (ApiaryT c n m) where
+instance (Monad actM, MonadIO m) => MonadIO (ApiaryT exts prms actM m) where
     liftIO m = ApiaryT $ \_ c -> liftIO m >>= \a -> c a mempty
 
-instance (Monad n, MonadBase b m) => MonadBase b (ApiaryT c n m) where
+instance (Monad actM, MonadBase b m) => MonadBase b (ApiaryT exts prms actM m) where
     liftBase m = ApiaryT $ \_ c -> liftBase m >>= \a -> c a mempty
 
-instance Monad n => MonadTransControl (ApiaryT c n) where
-    newtype StT (ApiaryT c n) a = StTApiary' { unStTApiary' :: (a, ApiaryWriter n) }
+instance Monad actM => MonadTransControl (ApiaryT exts prms actM) where
+    newtype StT (ApiaryT exts prms actM) a = StTApiary' { unStTApiary' :: (a, ApiaryWriter exts actM) }
     liftWith f = apiaryT $ \env ->
         liftM (\a -> (a, mempty)) 
         (f $ \t -> liftM StTApiary' $ unApiaryT t env (\a w -> return (a,w)))
     restoreT m = apiaryT $ \_ -> liftM unStTApiary' m
 
-instance (Monad n, MonadBaseControl b m) => MonadBaseControl b (ApiaryT c n m) where
-    newtype StM (ApiaryT c n m) a = StMApiary' { unStMApiary' :: ComposeSt (ApiaryT c n) m a }
+instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts prms actM m) where
+    newtype StM (ApiaryT exts prms actM m) a = StMApiary' { unStMApiary' :: ComposeSt (ApiaryT exts prms actM) m a }
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
 --------------------------------------------------------------------------------
 
-getApiaryEnv :: Monad n => ApiaryT c n m (ApiaryEnv n c)
+getApiaryEnv :: Monad actM => ApiaryT exts prms actM m (ApiaryEnv exts prms actM)
 getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
-apiaryConfig :: Monad n => ApiaryT c n m ApiaryConfig
+apiaryConfig :: Monad actM => ApiaryT exts prms actM m ApiaryConfig
 apiaryConfig = liftM envConfig getApiaryEnv
 
-addRoute :: Monad n => ApiaryWriter n -> ApiaryT c n m ()
+apiaryExt :: (Extension e, Member e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
+apiaryExt p = liftM (get p . unExtensions . envExts) getApiaryEnv
+
+addRoute :: Monad actM => ApiaryWriter exts actM -> ApiaryT exts prms actM m ()
 addRoute r = ApiaryT $ \_ cont -> cont () r
 
 -- | filter by action. since 0.6.1.0.
-focus :: Monad n
+focus :: Monad actM
       => (Doc -> Doc)
-      -> (SList c -> ActionT n (SList c'))
-      -> ApiaryT c' n m a -> ApiaryT c n m a
+      -> (SList prms -> ActionT exts actM (SList prms'))
+      -> ApiaryT exts prms' actM m a -> ApiaryT exts prms actM m a
 focus d g m = focus' d Nothing id g m
 
-focus' :: Monad n
+focus' :: Monad actM
        => (Doc -> Doc)
        -> Maybe Method
        -> ([PathElem] -> [PathElem])
-       -> (SList c -> ActionT n (SList c'))
-       -> ApiaryT c' n m a -> ApiaryT c n m a
+       -> (SList prms -> ActionT exts actM (SList prms'))
+       -> ApiaryT exts prms' actM m a -> ApiaryT exts prms actM m a
 focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env 
     { envFilter = envFilter env >>= g 
     , envMethod = maybe (envMethod env) Just meth
@@ -225,11 +244,11 @@ focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env
     } cont
 
 -- | splice ActionT ApiaryT.
-action :: Monad n => Fn c (ActionT n ()) -> ApiaryT c n m ()
+action :: Monad actM => Fn prms (ActionT exts actM ()) -> ApiaryT exts prms actM m ()
 action = action' . apply
 
 -- | like action. but not apply arguments. since 0.8.0.0.
-action' :: Monad n => (SList c -> ActionT n ()) -> ApiaryT c n m ()
+action' :: Monad actM => (SList prms -> ActionT exts actM ()) -> ApiaryT exts prms actM m ()
 action' a = do
     env <- getApiaryEnv
     addRoute $ ApiaryWriter
@@ -237,39 +256,38 @@ action' a = do
             (rootPattern $ envConfig env)
             (renderMethod <$> envMethod env)
             (envPath env [])
-            (envFilter env >>= \c -> a c))
+            (envFilter env >>= \prms -> a prms))
         (envDoc env Action:)
 --------------------------------------------------------------------------------
 
-insDoc :: (Doc -> Doc) -> ApiaryT c n m a -> ApiaryT c n m a
+insDoc :: (Doc -> Doc) -> ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 insDoc d m = ApiaryT $ \env cont -> unApiaryT m env
     { envDoc = envDoc env . d } cont
 
 -- | API document group. since 0.12.0.0.
 --
 -- only top level group recognized.
-group :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+group :: T.Text -> ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 group = insDoc . DocGroup
 
 -- | add API document. since 0.12.0.0.
 --
 -- It use only filters prior document,
 -- so you should be placed document directly in front of action.
-document :: T.Text -> ApiaryT c n m a -> ApiaryT c n m a
+document :: T.Text -> ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 document = insDoc . Document
 
 -- | add user defined precondition. since 0.13.0.
-precondition :: Html -> ApiaryT c n m a -> ApiaryT c n m a
+precondition :: Html -> ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 precondition = insDoc . DocPrecondition
 
-noDoc :: ApiaryT c n m a -> ApiaryT c n m a
+noDoc :: ApiaryT exts prms actM m a -> ApiaryT exts prms actM m a
 noDoc = insDoc DocDropNext
 
 --------------------------------------------------------------------------------
 
 {-# DEPRECATED actionWithPreAction "use action'" #-}
 -- | execute action before main action. since 0.4.2.0
-actionWithPreAction :: Monad n => (SList xs -> ActionT n a)
-                    -> Fn xs (ActionT n ()) -> ApiaryT xs n m ()
-actionWithPreAction pa a = do
-    action' $ \c -> pa c >> apply a c
+actionWithPreAction :: Monad actM => (SList xs -> ActionT exts actM a)
+                    -> Fn xs (ActionT exts actM ()) -> ApiaryT exts xs actM m ()
+actionWithPreAction pa a = action' $ \prms -> pa prms >> apply a prms

@@ -6,6 +6,9 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 
 module Data.Apiary.SList where
 
@@ -48,3 +51,11 @@ sReverse l = rev l SNil
     rev SNil a = a
     rev (x:::xs) a = rev xs (x:::a)
 
+class Member a (as :: [*]) where
+    get :: proxy a -> SList as -> a
+
+instance Member a (a ': as) where
+    get _ (a ::: _) = a
+
+instance Member a as => Member a (a' ': as) where
+    get p (_ ::: as) = get p as

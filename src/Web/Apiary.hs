@@ -15,6 +15,8 @@ module Web.Apiary
     , module Control.Monad.Apiary.Filter.Internal.Strategy
     -- | FilePart(..)
     , module Network.Wai
+    -- | Method(..)
+    , module Data.Apiary.Method
     ) where
  
 import Web.Apiary.TH
@@ -30,3 +32,4 @@ import Control.Monad (MonadPlus(..), msum, mfilter, guard)
 
 import Data.Default.Class
 import Data.Apiary.Param
+import Data.Apiary.Method(Method(..))

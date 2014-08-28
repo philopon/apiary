@@ -14,6 +14,7 @@ module Control.Monad.Apiary.Action
     , getReqParams
     , File(..)
     , getReqFiles
+    , getExt
 
     -- ** setter
     , status

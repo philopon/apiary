@@ -2,8 +2,11 @@ module Control.Monad.Apiary
     ( ApiaryT, Apiary
     , runApiary
     , runApiaryT
+    , runApiaryTWith
+    , runApiaryWith
     -- * getter
     , apiaryConfig
+    , apiaryExt
     -- * execute action
     , action, action'
     -- * API documentation
