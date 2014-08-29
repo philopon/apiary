@@ -100,11 +100,13 @@ initialEnv exts conf = ApiaryEnv (return SNil) Nothing id conf id exts
 data ApiaryWriter exts actM = ApiaryWriter
     { writerRouter :: Router exts actM -> Router exts actM
     , writerDoc    :: [Doc] -> [Doc]
+    , writerMw     :: Middleware
     }
 
 instance Monoid (ApiaryWriter exts actM) where
-    mempty = ApiaryWriter id id
-    ApiaryWriter ra da `mappend` ApiaryWriter rb db = ApiaryWriter (ra . rb) (da . db)
+    mempty = ApiaryWriter id id id
+    ApiaryWriter ra da am `mappend` ApiaryWriter rb db bm
+        = ApiaryWriter (ra . rb) (da . db) (am . bm)
 
 -- | most generic Apiary monad. since 0.8.0.0.
 newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
@@ -148,7 +150,8 @@ runApiaryTWith (Initializer ir) conf run m = do
     wtr  <- unApiaryT m (initialEnv exts conf) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-    return $! execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
+        mw  = writerMw wtr
+    return $! mw $ execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
 
 runApiaryWith :: Monad m => Initializer '[] m exts
               -> ApiaryConfig -> ApiaryT exts '[] IO m () -> m Application
@@ -252,6 +255,11 @@ action' a = do
             (envPath env [])
             (envFilter env >>= \prms -> a prms))
         (envDoc env Action:)
+        id
+
+middleware :: Monad actM => Middleware -> ApiaryT exts prms actM m ()
+middleware mw = addRoute (ApiaryWriter id id mw)
+
 --------------------------------------------------------------------------------
 
 insDoc :: (Doc -> Doc) -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()

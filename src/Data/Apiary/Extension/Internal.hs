@@ -11,11 +11,9 @@ module Data.Apiary.Extension.Internal where
 newtype Initializer i m o = Initializer 
     {unInitializer :: Extensions i -> m (Extensions o)}
 
-class Extension a
-
 data Extensions (es :: [*]) where
     NoExtension  :: Extensions '[]
-    AddExtension :: Extension e => (e :: *) -> Extensions es -> Extensions (e ': es)
+    AddExtension :: (e :: *) -> Extensions es -> Extensions (e ': es)
 
 class Has a (as :: [*]) where
     getExtension :: proxy a -> Extensions as -> a

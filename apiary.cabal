@@ -75,6 +75,7 @@ library
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.Extension
+                       Data.Apiary.Extension.Internal
                        Data.Apiary.SList
                        Data.Apiary.Param
                        Data.Apiary.Method
@@ -82,8 +83,7 @@ library
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
 
-  other-modules:       Data.Apiary.Extension.Internal
-                       Control.Monad.Apiary.Internal
+  other-modules:       Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Action.Internal
                        Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Capture.TH

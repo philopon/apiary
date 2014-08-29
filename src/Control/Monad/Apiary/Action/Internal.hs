@@ -287,7 +287,7 @@ getRequest = liftM actionRequest getEnv
 getConfig :: Monad m => ActionT exts m ApiaryConfig
 getConfig = liftM actionConfig getEnv
 
-getExt :: (Extension e, Has e exts, Monad m) => proxy e -> ActionT exts m e
+getExt :: (Has e exts, Monad m) => proxy e -> ActionT exts m e
 getExt p = liftM (getExtension p . actionExts) getEnv
 
 getDocuments :: Monad m => ActionT exts m Documents

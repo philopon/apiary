@@ -8,6 +8,8 @@ module Control.Monad.Apiary
     , apiaryExt
     -- * execute action
     , action, action'
+    -- * middleware
+    , middleware
     -- * API documentation
     , group
     , document
