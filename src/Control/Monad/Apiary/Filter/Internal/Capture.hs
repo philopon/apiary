@@ -30,11 +30,11 @@ path :: Monad actM => T.Text -> ApiaryT exts prms actM m () -> ApiaryT exts prms
 path p = focus' (DocPath p) Nothing (Exact p:) return
 
 -- | check consumed paths. since 0.11.1.
-endPath :: (Functor actM, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+endPath :: (Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 endPath = focus' id Nothing (EndPath:) return
 
 -- | get first path and drill down. since 0.11.0.
-fetch :: (Path p, Functor actM, Monad actM) => proxy p -> Maybe Html
+fetch :: (Path p, Monad actM) => proxy p -> Maybe Html
       -> ApiaryT exts (p ': prms) actM m () -> ApiaryT exts prms actM m ()
 fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM actionFetches getState >>= \case
     []   -> mzero

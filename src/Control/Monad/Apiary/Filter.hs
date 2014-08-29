@@ -109,11 +109,11 @@ http11 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m 
 http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
-root :: (Functor m, Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 root = focus' DocRoot Nothing (RootPath:) return
 
 -- | match all subsequent path. since 0.15.0.
-anyPath :: (Functor m, Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 anyPath = focus' id Nothing (AnyPath:) return
 
 --------------------------------------------------------------------------------

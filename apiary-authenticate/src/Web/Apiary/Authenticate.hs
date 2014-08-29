@@ -53,12 +53,12 @@ initAuth :: (Has Session exts, MonadBaseControl IO m)
 initAuth = initAuthWith tlsManagerSettings
 
 -- | default auth handlers. since 0.8.0.0.
-authHandler :: (Functor m, Monad m, Functor actM, MonadIO actM, Has I.Auth exts, Has Session exts)
+authHandler :: (Monad m, MonadIO actM, Has I.Auth exts, Has Session exts)
             => ApiaryT exts prms actM m ()
 authHandler = apiaryExt (Proxy :: Proxy I.Auth) >>= I.authHandler 
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
-authorized :: (Has I.Auth exts, Functor actM, MonadIO actM, Has Session exts)
+authorized :: (Has I.Auth exts, MonadIO actM, Has Session exts)
            => ApiaryT exts (I.OpenId ': prms) actM m () -> ApiaryT exts prms actM m ()
 authorized m = do
     a <- apiaryExt (Proxy :: Proxy I.Auth)

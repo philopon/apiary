@@ -60,7 +60,7 @@ setSessionWith cfg k v = do
     sess <- getExt (Proxy :: Proxy I.Session)
     I.setSession sess { I.sessionConfig = cfg } k v
 
-session :: (Has I.Session exts, Query a, Strategy w, Functor actM, MonadIO actM)
+session :: (Has I.Session exts, Query a, Strategy w, MonadIO actM)
         => S.ByteString -> w a
         -> ApiaryT exts (SNext w prms a) actM m ()
         -> ApiaryT exts prms actM m ()
@@ -77,8 +77,9 @@ csrfToken :: (Has I.Session exts, MonadIO m) => ActionT exts m S.ByteString
 csrfToken = getExt (Proxy :: Proxy I.Session) >>= I.csrfToken
 
 -- | check csrf token. since 0.9.0.0.
-checkToken :: (Has I.Session exts, Functor actM, MonadIO actM)
+checkToken :: (Has I.Session exts, MonadIO actM)
            => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 checkToken m = do
     sess <- apiaryExt (Proxy :: Proxy I.Session)
     I.checkToken sess m
+

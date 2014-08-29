@@ -51,7 +51,7 @@ cond p t f a = if p a then t a else f a
 -- cookie "baz" (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
 -- cookie "baz" (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
 -- @
-cookie :: (Strategy w, Query p, Functor actM, Monad actM)
+cookie :: (Strategy w, Query p, Monad actM)
        => S.ByteString
        -> w p
        -> ApiaryT exts (SNext w prms p) actM m ()

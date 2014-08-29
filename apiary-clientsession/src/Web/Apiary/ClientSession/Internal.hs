@@ -175,16 +175,16 @@ csrfToken Session{..} = do
                            , setCookieHttpOnly = False
                            }
 
-session :: (Functor actM, MonadIO actM, Strategy w, Query a) => Session
+session :: (MonadIO actM, Strategy w, Query a) => Session
         -> S.ByteString -> w a -> ApiaryT exts (SNext w prms a) actM m () -> ApiaryT exts prms actM m ()
 session sess k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime
     let mbr = readStrategy readQuery ((k ==) . fst) p
             (map (second $ getSessionValue sess t) $ cookie' r) l
-    maybe empty return mbr
+    maybe mzero return mbr
 
-checkToken :: (Functor actM, MonadIO actM)
+checkToken :: MonadIO actM
            => Session
            -> ApiaryT exts prms actM m ()
            -> ApiaryT exts prms actM m ()
