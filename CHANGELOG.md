@@ -1,3 +1,11 @@
+# 0.16.0
+* new Extension API.
+* add middleware function.
+* remove Typeable restriction from Path/Query class.
+* add Optional strategy, (=?!:) query fetcher.
+* add accept filter.
+* add Path/Query instances to Day.
+
 # 0.15.2
 * you can set status and response headers anywhere.
 * deprecate lbs.
