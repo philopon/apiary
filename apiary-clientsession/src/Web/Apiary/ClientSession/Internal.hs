@@ -24,9 +24,8 @@ import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
 import Web.Apiary.Wai
-import Web.Apiary hiding (Default(..))
+import Web.Apiary
 import Web.Apiary.Cookie
-import Web.Apiary.Cookie.Internal
 import Web.ClientSession 
 import qualified Network.HTTP.Types as HTTP
 
@@ -46,9 +45,9 @@ import qualified Data.ByteString.Char8 as SC
 import qualified Data.ByteString.Lazy as L
 
 data Session = Session
-    { key       :: Key
-    , tokenGen  :: IORef AESRNG
-    , config    :: SessionConfig
+    { key           :: Key
+    , tokenGen      :: IORef AESRNG
+    , sessionConfig :: SessionConfig
     }
 
 data KeySource
@@ -60,12 +59,13 @@ instance IsString KeySource where
 
 -- | generate and embed key at compile time. since 0.13.2.
 --
--- This function embed as SessionConfig with default config. so you can configure it.
--- but don't configure sessionKey.
+-- This function embed as SessionsessionConfig with default sessionConfig. so you can sessionConfigure it.
+-- but DON'T sessionConfigure sessionKey.
+--
+-- this function is convenient when create heroku project.
 -- 
 -- @
--- withSession $embedDefaultKeyConfig { csrfTokenCookieName = \"foo\" } $ run 3000 . runApiary def $ do
---     route define ...
+-- embedsessionConfig = $embedDefaultKeysessionConfig { csrfTokenCookieName = \"foo\" }
 -- @
 embedKeyConfig :: FilePath -> ExpQ
 embedKeyConfig keyfile = do
@@ -97,6 +97,8 @@ data SessionConfig = SessionConfig
     , sessionHttpOnly       :: Bool
     , sessionSecure         :: Bool
 
+    , sessionTimeoutAction  :: forall e m. MonadIO m => ActionT e m ()
+
     , angularXsrfCookieName :: Maybe S.ByteString
     , csrfTokenCookieName   :: S.ByteString
 
@@ -104,10 +106,17 @@ data SessionConfig = SessionConfig
     , csrfTokenLength       :: Int
     }
 
+defaultCheckTokenFailAction :: Monad actM => ActionT exts actM ()
+defaultCheckTokenFailAction = do
+    reset
+    status status401
+    bytes "session timeout\n"
+    stop
+
 instance Default SessionConfig where
     def = SessionConfig
         (KeyFile defaultKeyFile) (24 * 60 * 60) Nothing Nothing True True
-        Nothing "_token" (Right "_token") 40
+        defaultCheckTokenFailAction Nothing "_token" (Right "_token") 40
 
 withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
 withSession cfg@SessionConfig{..} m = do
@@ -151,9 +160,9 @@ getSessionValue Session{key = k} c s = decrypt k s >>= \s' -> case decodeOrFail 
         Right (_, _, (BinUTCTime t, v)) -> if c < t then Just v else Nothing
         _ -> Nothing
 
-setSession :: MonadIO m => Session -> S.ByteString -> S.ByteString -> ActionT m ()
+setSession :: MonadIO m => Session -> S.ByteString -> S.ByteString -> ActionT exts m ()
 setSession sess k v = do
-    s <- liftIO $ mkSessionCookie (config sess) (key sess) k v
+    s <- liftIO $ mkSessionCookie (sessionConfig sess) (key sess) k v
     setCookie s
 
 newToken :: Int -> IORef AESRNG -> IO S.ByteString
@@ -162,12 +171,12 @@ newToken len gen = do
   where 
     swap (a,b) = (b,a)
 
-csrfToken :: MonadIO m => Session -> ActionT m S.ByteString
+csrfToken :: MonadIO m => Session -> ActionT exts m S.ByteString
 csrfToken Session{..} = do
-    tok <- liftIO $ newToken (csrfTokenLength config) tokenGen 
-    sc <- liftIO $ mkSessionCookie config key (csrfTokenCookieName config) tok
+    tok <- liftIO $ newToken (csrfTokenLength sessionConfig) tokenGen 
+    sc <- liftIO $ mkSessionCookie sessionConfig key (csrfTokenCookieName sessionConfig) tok
     setCookie sc
-    maybe (return ()) (setCookie . ngCookie sc tok) (angularXsrfCookieName config)
+    maybe (return ()) (setCookie . ngCookie sc tok) (angularXsrfCookieName sessionConfig)
     return tok
   where
     ngCookie sc tok k = sc { setCookieName     = k
@@ -175,32 +184,31 @@ csrfToken Session{..} = do
                            , setCookieHttpOnly = False
                            }
 
-session :: (Functor n, MonadIO n, Strategy w, Query a) => Session
-        -> S.ByteString -> proxy (w a) -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
+session :: (MonadIO actM, Strategy w, Query a) => Session
+        -> S.ByteString -> w a -> ApiaryT exts (SNext w prms a) actM m () -> ApiaryT exts prms actM m ()
 session sess k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
     r   <- getRequest
     t   <- liftIO getCurrentTime
     let mbr = readStrategy readQuery ((k ==) . fst) p
             (map (second $ getSessionValue sess t) $ cookie' r) l
-    maybe empty return mbr
+    maybe mzero return mbr
 
-checkToken :: (Functor n, MonadIO n)
+checkToken :: MonadIO actM
            => Session
-           -> ApiaryT c n m a
-           -> ApiaryT c n m a
+           -> ApiaryT exts prms actM m ()
+           -> ApiaryT exts prms actM m ()
 checkToken sess@Session{..} = focus (DocPrecondition "CSRF token required") $ \l -> do
     r <- getRequest
     p <- getReqParams
 
     t <- liftIO getCurrentTime
     let stok = getSessionValue sess t =<< 
-               lookup (csrfTokenCookieName config) (cookie' r)
+               lookup (csrfTokenCookieName sessionConfig) (cookie' r)
     guard (isJust stok)
     
-    qtok <- return . join $ case csrfTokenCheckingName config of
+    qtok <- return . join $ case csrfTokenCheckingName sessionConfig of
         Right name -> lookup name $ reqParams pByteString r p []
         Left name  -> lookup name $ map (\(k,v) -> (k, Just v)) $ requestHeaders r
     guard (isJust qtok)
 
-    if qtok == stok then return l else empty
-
+    if qtok == stok then return l else sessionTimeoutAction sessionConfig >> mzero

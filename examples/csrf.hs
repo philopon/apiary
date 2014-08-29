@@ -5,7 +5,7 @@ import Web.Apiary.ClientSession
 import Network.Wai.Handler.Warp
 import qualified Data.ByteString.Char8 as S
 
-page :: Monad m => S.ByteString -> ActionT m ()
+page :: Monad m => S.ByteString -> ActionT exts m ()
 page tok = do
     contentType "text/html"
     bytes "<form method=\"POST\" action=\"/\">"
@@ -15,7 +15,7 @@ page tok = do
     bytes "</form>"
 
 main :: IO ()
-main = withSession def { sessionSecure = False } $ run 3000 . runApiary def $ do
+main = server (run 3000) . runApiaryWith (initSession def {sessionSecure = False}) def $ do
     root $ do  
         -- set valid session key.
         method GET . action $ csrfToken >>= page

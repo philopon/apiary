@@ -6,6 +6,9 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 
 module Data.Apiary.SList where
 
@@ -17,27 +20,23 @@ data SList (as :: [*]) where
 
 infixr :::
 
-deriving instance All Show as => Show (SList as)
-
-type family Fn (as :: [*]) r
-type instance Fn '[] r = r
-type instance Fn (x ': xs) r = x -> Fn xs r
-
-type family Snoc (as :: [*]) a :: [*]
-type instance Snoc '[] a = a ': '[]
-type instance Snoc (x ': xs) a = x ': Snoc xs a
-
 type family All (c :: * -> Constraint) (as :: [*]) :: Constraint
 type instance All c '[] = ()
 type instance All c (a ': as) = (c a, All c as)
 
-apply :: Fn xs r -> SList xs -> r
-apply v SNil = v
-apply f (a ::: as) = apply (f a) as
+deriving instance All Show as => Show (SList as)
 
-sSnoc :: SList as -> a -> SList (Snoc as a)
-sSnoc SNil       a = a ::: SNil
-sSnoc (x ::: xs) a = x ::: sSnoc xs a
+type family Apply (as :: [*]) r
+type instance Apply '[] r = r
+type instance Apply (x ': xs) r = x -> Apply xs r
+
+type Fn c a = Apply (Reverse c) a
+apply :: Fn c r -> SList c -> r
+apply f l = apply' f $ sReverse l
+
+apply' :: Apply xs r -> SList xs -> r
+apply' v SNil = v
+apply' f (a ::: as) = apply' (f a) as
 
 type family Rev (l :: [*]) (a :: [*]) :: [*]
 type instance Rev '[] a = a
@@ -51,4 +50,3 @@ sReverse l = rev l SNil
     rev :: SList as -> SList bs -> SList (Rev as bs)
     rev SNil a = a
     rev (x:::xs) a = rev xs (x:::a)
-

@@ -41,14 +41,14 @@ ioToSource src send flush = fix $ \loop -> do
 #endif
 
 -- | eventsource with io action. since 0.11.3.
-eventSourceIO :: Monad m => IO ServerEvent -> ActionT m ()
+eventSourceIO :: Monad m => IO ServerEvent -> ActionT exts m ()
 eventSourceIO io = do
     status status200
     contentType "text/event-stream"
     stream $ ioToSource io
 
 -- | eventsource with chan. since 0.11.3.
-eventSourceChan :: MonadIO m => Chan ServerEvent -> ActionT m ()
+eventSourceChan :: MonadIO m => Chan ServerEvent -> ActionT exts m ()
 eventSourceChan chan = do
     chan' <- liftIO $ dupChan chan
     eventSourceIO (readChan chan')

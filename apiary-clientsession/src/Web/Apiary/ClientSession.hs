@@ -1,56 +1,86 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.ClientSession
-    ( HasSession
+    ( I.Session
+    -- * config
     , I.SessionConfig(..), I.KeySource(..)
-    , withSession
     , I.embedKeyConfig, I.embedDefaultKeyConfig
+    -- * initializer
+    , initSession
+    -- * getter
+    , getSessionConfig
     -- * setter
     , setSession
     , csrfToken
+    -- ** with sessionConfig
+    , setSessionWith
     -- * filter
     , session
     , checkToken
     -- * Reexport
-    , module Data.Default.Class
     -- | deleteCookie
     , module Web.Apiary.Cookie
     ) where
 
 import Web.Apiary
 
-import Data.Default.Class
+import Data.Apiary.Extension
+import Data.Apiary.Proxy
+
 import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
-import Data.Reflection
 import qualified Data.ByteString as S
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
-type HasSession = Given I.Session
+initSession :: MonadIO m => I.SessionConfig -> Initializer' m I.Session
+initSession c = initializer $ I.withSession c return
 
-withSession :: MonadIO m => I.SessionConfig -> (HasSession => m b) -> m b
-withSession c m = I.withSession c (\s -> give s m)
+setSession :: (Has I.Session exts, MonadIO m)
+           => S.ByteString -> S.ByteString
+           -> ActionT exts m ()
+setSession k v = do
+    sess <- getExt (Proxy :: Proxy I.Session)
+    I.setSession sess k v
 
-setSession :: (MonadIO m, HasSession)
-           => S.ByteString -> S.ByteString -> ActionT m ()
-setSession = I.setSession given
+getSessionConfig :: (Has I.Session exts, Monad m)
+                 => ActionT exts m I.SessionConfig
+getSessionConfig = do
+    sess <- getExt (Proxy :: Proxy I.Session)
+    return $ I.sessionConfig sess
+
+setSessionWith :: (Has I.Session exts, MonadIO m)
+               => I.SessionConfig
+               -> S.ByteString -> S.ByteString
+               -> ActionT exts m ()
+setSessionWith cfg k v = do
+    sess <- getExt (Proxy :: Proxy I.Session)
+    I.setSession sess { I.sessionConfig = cfg } k v
+
+session :: (Has I.Session exts, Query a, Strategy w, MonadIO actM)
+        => S.ByteString -> w a
+        -> ApiaryT exts (SNext w prms a) actM m ()
+        -> ApiaryT exts prms actM m ()
+session k w m = do
+    sess <- apiaryExt (Proxy :: Proxy I.Session)
+    I.session sess k w m
 
 -- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64),
 --
 -- set it client session cookie, set XSRF-TOKEN header(when Just angularXsrfCookieName),
 --
 -- and return value. since 0.9.0.0.
-csrfToken :: (MonadIO m, HasSession) => ActionT m S.ByteString
-csrfToken = I.csrfToken given
-
-session :: (Functor n, MonadIO n, Strategy w, Query a, HasSession)
-        => S.ByteString -> proxy (w a)
-        -> ApiaryT (SNext w as a) n m b -> ApiaryT as n m b
-session = I.session given
+csrfToken :: (Has I.Session exts, MonadIO m) => ActionT exts m S.ByteString
+csrfToken = getExt (Proxy :: Proxy I.Session) >>= I.csrfToken
 
 -- | check csrf token. since 0.9.0.0.
-checkToken :: (Functor n, MonadIO n, HasSession)
-           => ApiaryT c n m a -> ApiaryT c n m a
-checkToken = I.checkToken given
+checkToken :: (Has I.Session exts, MonadIO actM)
+           => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+checkToken m = do
+    sess <- apiaryExt (Proxy :: Proxy I.Session)
+    I.checkToken sess m
+

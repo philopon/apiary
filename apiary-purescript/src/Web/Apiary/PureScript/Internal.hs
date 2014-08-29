@@ -20,6 +20,7 @@ import Control.Applicative
 
 import Web.Apiary
 
+import Data.Default.Class
 import Data.IORef
 import Data.Typeable
 import qualified Data.HashMap.Strict as H
@@ -100,7 +101,7 @@ compile opt p = do
         Left l           -> throwIO (CompileError l)
         Right (js, _, _) -> return js
 
-pureScript :: MonadIO m => PureScript -> FilePath -> ActionT m ()
+pureScript :: MonadIO m => PureScript -> FilePath -> ActionT exts m ()
 pureScript env p = do
     contentType "text/javascript"
     s <- liftIO . try $ 

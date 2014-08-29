@@ -4,7 +4,8 @@ import Control.Monad.Eff
 import Network.XHR
 import Debug.Trace
 
-main :: Eff (trace :: Trace, xhr :: XHR) Unit
-main = do
-    let cbs = defaultConfig { onLoadEnd = \x -> print (responseText x) }
-    post cbs "/api/12" {test: 24}
+main =
+    post defaultAjaxOptions { onReadyStateChange = onSuccess $ \res -> do
+        txt <- getResponseText res
+        print txt
+    } "/api/12" {} (urlEncoded {test: 24})

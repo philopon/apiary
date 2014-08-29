@@ -3,18 +3,26 @@ module Web.Apiary
     , module Control.Monad.Apiary.Action
     , module Control.Monad.Apiary.Filter
     , module Data.Apiary.Param
-    , act
-    -- * reexports
-    , module Data.Default.Class
-    , module Network.HTTP.Types.Status
-    -- | MonadIO
-    , module Control.Monad.Trans
-    -- | MonadPlus(..), msum, mfilter, guard
-    , module Control.Monad
     -- | Strategy Proxies
     , module Control.Monad.Apiary.Filter.Internal.Strategy
+    -- | Method(..)
+    , module Data.Apiary.Method
+    -- | (+>)
+    , module Data.Apiary.Extension
+    , act
+
+    -- * reexports
+    , module Network.HTTP.Types.Status
+    -- | def
+    , module Data.Default.Class
+    -- | MonadIO
+    , module Control.Monad.IO.Class
+    -- | MonadPlus(..), msum, mfilter, guard, (>=>)
+    , module Control.Monad
     -- | FilePart(..)
     , module Network.Wai
+    -- | Html
+    , module Text.Blaze.Html
     ) where
  
 import Web.Apiary.TH
@@ -25,8 +33,11 @@ import Control.Monad.Apiary
 import Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Filter
 import Control.Monad.Apiary.Filter.Internal.Strategy (pFirst, pOne, pOption, pCheck, pMany, pSome)
-import Control.Monad.Trans(MonadIO(..))
-import Control.Monad (MonadPlus(..), msum, mfilter, guard)
+import Control.Monad.IO.Class(MonadIO(..))
+import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 
-import Data.Default.Class
+import Data.Default.Class(def)
 import Data.Apiary.Param
+import Data.Apiary.Extension((+>))
+import Data.Apiary.Method(Method(..))
+import Text.Blaze.Html(Html)

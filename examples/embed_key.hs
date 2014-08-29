@@ -6,7 +6,7 @@ import Web.Apiary.ClientSession
 import Network.Wai.Handler.Warp
 
 main :: IO ()
-main = withSession $embedDefaultKeyConfig { sessionSecure = False } $ run 3000 . runApiary def $ do
+main = server (run 3000) . runApiaryWith (initSession $embedDefaultKeyConfig { sessionSecure = False } ) def $ do
     root . method GET $ do
         session "test" (pOne pLazyByteString) . action $ \test -> do
             lazyBytes "session: "

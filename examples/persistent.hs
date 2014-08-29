@@ -5,6 +5,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 import Web.Apiary
 import Web.Apiary.Database.Persist
@@ -12,8 +13,6 @@ import Network.Wai.Handler.Warp
 import Database.Persist.Sqlite
 import Database.Persist.TH
 import Web.Apiary.Logger
-import qualified Data.ByteString.Lazy.Char8 as L
-import Control.Monad.Logger
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 Number 
@@ -22,36 +21,52 @@ Number
 |]
 
 main :: IO ()
--- give logging setting.
-main = withLogger def $ withLogger' def {bufferSize = 0 } $ \immediate -> 
+--                                        logger extension   persist extension
+main = server (run 3000) . runApiaryWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite" 10) migrateAll) def $ do
+--                                                        ~~
+--                                                        compose 2 extension intializer.
 
-    -- give sql setting.
-    withWithSqlPool (withSqlitePool ":memory:" 10) $ do
+    -- root : list up all database entities.
+    root . sql Nothing   (selectList ([] :: [Filter Number]) [])   Just . action $ \q -> do
+    --         ~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   ~~~~
+    --         docuemnt  persist selector                          check filter success or not.
 
-        -- logging by Given logging setting from 'withLogger'. 
-        -- so logging stderr(buffered).
-        -- you can change this behaviour by first argument of withLogger.
-        runGivenLoggerT . runSql $ runMigration migrateAll
+        -- logging.
+        logging "root accessed.\n"
+        mapM_ (\a -> showing a >> char '\n' ) q
 
-        run 3000 . runApiary def $ do
-            root . sql Nothing (selectList ([] :: [Filter Number]) []) . action $ \q -> do
+    -- /:Int : numberd counter
+    [capture|/:Int|] $ do
 
-                -- logging.
-                logging "root accessed.\n"
+        -- GET: get counter.
+        method GET . action $ \i -> do
 
-                lbs $ L.pack (show q)
+            -- execute persistent
+            c <- runSql $ count [NumberNumber ==. i]
+            showing c
+            char '\n'
 
-            [capture|/:Int|] $ do
-                method GET . action $ \i -> do
+        -- POST: increment counter.
+        method POST . action $ \i -> do
+            runSql $ insert_ (Number i)
 
-                    -- if you want to do local logging action.
-                    -- logging stdout immediately.
-                    c <- runStdoutLoggingT . runSql $ count [NumberNumber ==. i]
-                    lbs $ L.pack (show c)
+        -- DELETE: reset counter.
+        method DELETE . action $ \i -> do
+            runSql $ deleteWhere [NumberNumber ==. i]
 
-                method POST . action $ \i -> do
-                    _ <- immediate $ runSql $ insert (Number i)
-                    return ()
-
-                method DELETE . action $ \i -> do
-                    runSql $ deleteWhere [NumberNumber ==. i]
+{-
+$ curl -XGET  localhost:3000
+$ curl -XGET  localhost:3000/1
+0
+$ curl -XPOST localhost:3000/1
+$ curl -XGET  localhost:3000/1
+1
+$ curl -XPOST localhost:3000/2
+$ curl -XPOST localhost:3000/2
+$ curl -XGET  localhost:3000
+Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 1}}, entityVal = Number {numberNumber = 1}}
+Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 2}}, entityVal = Number {numberNumber = 2}}
+Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 3}}, entityVal = Number {numberNumber = 2}}
+$ curl -XDELETE localhost:3000/2
+Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 1}}, entityVal = Number {numberNumber = 1}}
+-}

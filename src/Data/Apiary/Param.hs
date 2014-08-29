@@ -18,12 +18,15 @@ module Data.Apiary.Param where
 
 import Network.Wai
 
+import Control.Monad
+
 import Data.Int
 import Data.Word
 import Data.Proxy
 import Data.Apiary.Proxy
 
 import Data.String(IsString)
+import Data.Time.Calendar
 import qualified Data.Text.Read as TR
 import Data.Text.Encoding.Error
 import qualified Data.Text as T
@@ -63,12 +66,12 @@ data QueryRep
     | Check
     deriving (Show, Eq)
 
-class Typeable a => Path a where
+class Path a where
     readPath :: T.Text  -> Maybe a
     pathRep  :: proxy a -> TypeRep
-    pathRep = typeRep
 
 instance Path Char where
+    pathRep = typeRep
     readPath s
         | T.null s  = Nothing
         | otherwise = Just $ T.head s
@@ -89,23 +92,23 @@ readTextDouble = readText TR.double
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
-instance Path Bool    where readPath = Just . jsToBool
+instance Path Bool    where readPath = Just . jsToBool; pathRep = typeRep
 
-instance Path Int     where readPath = readTextInt
-instance Path Int8    where readPath = readTextInt
-instance Path Int16   where readPath = readTextInt
-instance Path Int32   where readPath = readTextInt
-instance Path Int64   where readPath = readTextInt
-instance Path Integer where readPath = readTextInt
+instance Path Int     where readPath = readTextInt; pathRep = typeRep
+instance Path Int8    where readPath = readTextInt; pathRep = typeRep
+instance Path Int16   where readPath = readTextInt; pathRep = typeRep
+instance Path Int32   where readPath = readTextInt; pathRep = typeRep
+instance Path Int64   where readPath = readTextInt; pathRep = typeRep
+instance Path Integer where readPath = readTextInt; pathRep = typeRep
 
-instance Path Word    where readPath = readTextWord
-instance Path Word8   where readPath = readTextWord
-instance Path Word16  where readPath = readTextWord
-instance Path Word32  where readPath = readTextWord
-instance Path Word64  where readPath = readTextWord
+instance Path Word    where readPath = readTextWord; pathRep = typeRep
+instance Path Word8   where readPath = readTextWord; pathRep = typeRep
+instance Path Word16  where readPath = readTextWord; pathRep = typeRep
+instance Path Word32  where readPath = readTextWord; pathRep = typeRep
+instance Path Word64  where readPath = readTextWord; pathRep = typeRep
 
-instance Path Double  where readPath = readTextDouble
-instance Path Float   where readPath = fmap realToFrac . readTextDouble
+instance Path Double  where readPath = readTextDouble; pathRep = typeRep
+instance Path Float   where readPath = fmap realToFrac . readTextDouble; pathRep = typeRep
 
 instance Path  T.Text      where readPath = Just;                 pathRep _ = typeRep (Proxy :: Proxy Text)
 instance Path TL.Text      where readPath = Just . TL.fromStrict; pathRep _ = typeRep (Proxy :: Proxy Text)
@@ -113,14 +116,14 @@ instance Path S.ByteString where readPath = Just . T.encodeUtf8;  pathRep _ = ty
 instance Path L.ByteString where readPath = Just . TL.encodeUtf8 . TL.fromStrict; pathRep _ = typeRep (Proxy :: Proxy Text)
 instance Path String       where readPath = Just . T.unpack;      pathRep _ = typeRep (Proxy :: Proxy Text)
 
+
 --------------------------------------------------------------------------------
 
-class Typeable a => Query a where
+class Query a where
     readQuery :: Maybe S.ByteString -> Maybe a
     queryRep  :: proxy a            -> QueryRep
     queryRep = Strict . qTypeRep
     qTypeRep  :: proxy a            -> TypeRep
-    qTypeRep = typeRep
 
 readBS :: (S.ByteString -> Maybe (a, S.ByteString))
        -> S.ByteString -> Maybe a
@@ -139,25 +142,25 @@ readBSDouble = readBS SL.readDouble
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
-instance Query Bool    where readQuery = fmap jsToBool
+instance Query Bool    where readQuery = fmap jsToBool; qTypeRep = typeRep
 
-instance Query Int     where readQuery = maybe Nothing readBSInt
-instance Query Int8    where readQuery = maybe Nothing readBSInt
-instance Query Int16   where readQuery = maybe Nothing readBSInt
-instance Query Int32   where readQuery = maybe Nothing readBSInt
-instance Query Int64   where readQuery = maybe Nothing readBSInt
-instance Query Integer where readQuery = maybe Nothing readBSInt
+instance Query Int     where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
+instance Query Int8    where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
+instance Query Int16   where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
+instance Query Int32   where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
+instance Query Int64   where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
+instance Query Integer where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
 
-instance Query Word    where readQuery = maybe Nothing readBSWord
-instance Query Word8   where readQuery = maybe Nothing readBSWord
-instance Query Word16  where readQuery = maybe Nothing readBSWord
-instance Query Word32  where readQuery = maybe Nothing readBSWord
-instance Query Word64  where readQuery = maybe Nothing readBSWord
+instance Query Word    where readQuery = maybe Nothing readBSWord; qTypeRep = typeRep
+instance Query Word8   where readQuery = maybe Nothing readBSWord; qTypeRep = typeRep
+instance Query Word16  where readQuery = maybe Nothing readBSWord; qTypeRep = typeRep
+instance Query Word32  where readQuery = maybe Nothing readBSWord; qTypeRep = typeRep
+instance Query Word64  where readQuery = maybe Nothing readBSWord; qTypeRep = typeRep
 
-instance Query Double  where readQuery = maybe Nothing readBSDouble
-instance Query Float   where readQuery = maybe Nothing (fmap realToFrac . readBSDouble)
+instance Query Double  where readQuery = maybe Nothing readBSDouble; qTypeRep = typeRep
+instance Query Float   where readQuery = maybe Nothing (fmap realToFrac . readBSDouble); qTypeRep = typeRep
 
-instance Query T.Text  where
+instance Query T.Text where
     readQuery  = fmap $ T.decodeUtf8With lenientDecode
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
@@ -173,15 +176,57 @@ instance Query L.ByteString where
     readQuery  = fmap L.fromStrict
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
-instance Query String       where
+instance Query String where
     readQuery  = fmap S.unpack
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
+
+-- | fuzzy date parse. three decimal split by 1 char.
+-- if year < 100 then + 2000. since 0.16.0.
+--
+-- example:
+--
+-- * 2014-02-05
+-- * 14-2-5
+-- * 14.2.05
+instance Query Day where
+    readQuery = (>>= \s0 -> do
+        (y, s1) <- SL.readDecimal s0
+        when (S.null s1) Nothing
+        (m, s2) <- SL.readDecimal (S.tail s1)
+        when (S.null s2) Nothing
+        (d, s3) <- SL.readDecimal (S.tail s2)
+        unless (S.null s3) Nothing
+        let y' = if y < 100 then 2000 + y else y
+        return $ fromGregorian y' m d)
+    qTypeRep _ = typeRep (Proxy :: Proxy Day)
+
+-- | fuzzy date parse. three decimal split by 1 char.
+-- if year < 100 then + 2000. since 0.16.0.
+--
+-- example:
+--
+-- * 2014-02-05
+-- * 14-2-5
+-- * 14.2.05
+instance Path Day where
+    readPath s0 = either (const Nothing) Just $ do
+        (y, s1) <- TR.decimal s0
+        when (T.null s1) (Left "")
+        (m, s2) <- TR.decimal (T.tail s1)
+        when (T.null s2) (Left "")
+        (d, s3) <- TR.decimal (T.tail s2)
+        unless (T.null s3) (Left "")
+        let y' = if y < 100 then 2000 + y else y
+        return $ fromGregorian y' m d
+    pathRep _ = typeRep (Proxy :: Proxy Day)
 
 -- | allow no parameter. but check parameter type.
 instance Query a => Query (Maybe a) where
     readQuery (Just a) = Just `fmap` readQuery (Just a)
     readQuery Nothing  = Just Nothing
     queryRep _         = Nullable $ qTypeRep (Proxy :: Proxy a)
+    qTypeRep _         = maybeCon `mkTyConApp` [qTypeRep (Proxy :: Proxy a)]
+      where maybeCon = typeRepTyCon $ typeOf (Nothing :: Maybe ())
 
 -- | always success. for check existence.
 instance Query () where
