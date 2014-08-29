@@ -1,6 +1,6 @@
 #!/usr/bin/env bash -eu
 
-path=(".")
+path=("." "./examples")
 for p in `cat submodules`; do
   path=("${path[@]}" "./$p")
 done
