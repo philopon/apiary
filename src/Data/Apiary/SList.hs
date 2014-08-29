@@ -6,6 +6,9 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 
 module Data.Apiary.SList where
 
@@ -47,4 +50,3 @@ sReverse l = rev l SNil
     rev :: SList as -> SList bs -> SList (Rev as bs)
     rev SNil a = a
     rev (x:::xs) a = rev xs (x:::a)
-

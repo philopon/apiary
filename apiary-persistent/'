@@ -11,25 +11,23 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+{-
 module Web.Apiary.Database.Persist
-    ( Persist
+    ( Migrator(..), With, Persist
     -- * initializer
-    , Migrator(..), With
-    , initPersist,     initPersistNoLog
-    , initPersistPool, initPersistPoolNoLog
-    -- ** low level
-    , initPersist', initPersistPool'
+    , persist,     persistNoLog,     persist'
+    , persistPool, persistPoolNoLog, persistPool'
     -- * query
     , runSql
     -- * filter
     , sql
     ) where
-
+-}
 import Data.Pool
 import Control.Monad
 import Control.Monad.Logger
-import Control.Monad.Trans.Reader
-import Control.Monad.Trans.Control
+import Control.Monad.Reader
+import Control.Monad.Trans.Resource
 
 import Database.Persist.Sql
 
@@ -54,52 +52,59 @@ data Persist
 
 type With c m = forall a. (c -> m a) -> m a
 
-initPersist' :: (MonadIO n, MonadBaseControl IO n)
-             => (forall a. Extensions exts -> n a -> m a)
-             -> With Connection n
-             -> Migrator
-             -> Initializer exts m (Persist ': exts)
-initPersist' run with migr = Initializer $ \e ->
-    run e $ with $ \conn -> do
-        doMigration migr conn
-        return $ addExtension (PersistConn conn) e
+initPersist' :: (MonadIO m, MonadBaseControl IO m)
+             => With Connection m -> Migrator -> Initializer es m (Persist ': es)
+initPersist' with migr = Initializer $ \e -> with $ \conn -> do
+    -- doMigration migr conn
+    return $ addExtension (PersistConn conn) e
 
--- | construct persist extension initializer with no connection pool.
---
--- example: 
---
--- @
--- initPersist (withSqliteConn "db.sqlite") migrateAll
--- @
 initPersist :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
             => With Connection (LogWrapper exts m) -> Migration
             -> Initializer exts m (Persist ': exts)
-initPersist w = initPersist' runLogWrapper w . Logging
+initPersist w m = Initializer $ \e -> runLogWrapper e $
+    unInitializer (initPersist' w $ Logging m) e
 
 initPersistNoLog :: (MonadIO m, MonadBaseControl IO m)
                  => With Connection (NoLoggingT m)
                  -> Migration -> Initializer es m (Persist ': es)
-initPersistNoLog w = initPersist' (const runNoLoggingT) w . Silent
+initPersistNoLog w m = Initializer $ \e ->
+    runNoLoggingT $ unInitializer (initPersist' w $ Silent m) e
 
-initPersistPool' :: (MonadIO n, MonadBaseControl IO n)
+--initPersistPool' :: (MonadIO m, MonadBaseControl IO m)
+--                 => With ConnectionPool m -> Migrator
+--                 -> Initializer es m (Persist ': es)
+initPersistPool' :: (MonadIO m, MonadBaseControl IO m)
                  => (forall a. Extensions exts -> n a -> m a)
                  -> With ConnectionPool n
                  -> Migrator
                  -> Initializer exts m (Persist ': exts)
 initPersistPool' run with migr = Initializer $ \e ->
     run e $ with $ \pool -> do
-        withResource pool $ doMigration migr
-        return $ addExtension (PersistPool pool) e
+    -- withResource pool $ doMigration migr
+    return $ addExtension (PersistPool pool) e
+
+
+{-
+initPersistPool' run with migr = Initializer $ \e -> with $ \pool -> do
+    -- withResource pool $ doMigration migr
+    run $ addExtension (PersistPool pool) e
+
+initPersistPool' :: (MonadIO m, MonadBaseControl IO m)
+                 => With ConnectionPool m -> Migrator
+                 -> Initializer es m (Persist ': es)
+initPersistPool' with migr = Initializer $ \e -> with $ \pool -> do
+    -- withResource pool $ doMigration migr
+    return $ addExtension (PersistPool pool) e
 
 initPersistPool :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
                 => With ConnectionPool (LogWrapper exts m) -> Migration
                 -> Initializer exts m (Persist ': exts)
-initPersistPool w = initPersistPool' runLogWrapper w . Logging
+initPersistPool w m = Initializer $ \e -> runLogWrapper e $
+    unInitializer (initPersistPool' w $ Logging m) e
 
-initPersistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
-                     => With ConnectionPool (NoLoggingT m) -> Migration
-                     -> Initializer exts m (Persist ': exts)
-initPersistPoolNoLog w = initPersistPool' (const runNoLoggingT) w . Silent
+persistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
+                 => With ConnectionPool (NoLoggingT m) -> Migration -> Initializer es m (Persist ': es)
+persistPoolNoLog w m = Initializer $ \e -> runNoLoggingT $ unInitializer (persistPool' w $ Silent m) e
 
 doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> Connection -> m ()
 doMigration migr conn = case migr of
@@ -108,7 +113,6 @@ doMigration migr conn = case migr of
     Unsafe  m -> runReaderT (runMigrationUnsafe m) conn
     NoMigrate -> return ()
 
--- | execute sql in action.
 runSql :: (Has Persist exts, MonadBaseControl IO m)
        => SqlPersistT (ActionT exts m) a -> ActionT exts m a
 runSql a = getExt (Proxy :: Proxy Persist) >>= \case
@@ -117,7 +121,7 @@ runSql a = getExt (Proxy :: Proxy Persist) >>= \case
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (Has Persist exts, MonadBaseControl IO actM)
-    => Maybe Html -- ^ documentation.
+    => Maybe Html
     -> SqlPersistT (ActionT exts actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
     -> ApiaryT exts (b ': prms) actM m () -> ApiaryT exts prms actM m ()
@@ -125,3 +129,4 @@ sql doc q p = focus (maybe id DocPrecondition doc) $ \l ->
     fmap p (runSql q) >>= \case
         Nothing -> mzero
         Just a  -> return (a ::: l)
+        -}

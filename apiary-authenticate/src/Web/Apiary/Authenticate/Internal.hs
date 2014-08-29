@@ -6,6 +6,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Web.Apiary.Authenticate.Internal where
 
@@ -15,13 +16,12 @@ import Control.Applicative
 import Control.Monad.Trans.Resource
 import Control.Monad.Apiary.Filter.Internal
 
-import Network.HTTP.Client.TLS(tlsManagerSettings)
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Client as Client
 
 import Web.Authenticate.OpenId
-import Web.Apiary hiding(Default(..))
-import Web.Apiary.ClientSession.Explicit
+import Web.Apiary
+import Web.Apiary.ClientSession
 import qualified Web.Apiary.Wai as Wai
 
 import Data.Binary
@@ -30,6 +30,8 @@ import Data.Maybe
 import Data.List
 import Data.Apiary.SList
 import Data.Apiary.Proxy
+import Data.Apiary.Extension
+import Data.Default.Class
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString.Char8 as S
@@ -39,15 +41,16 @@ import qualified Data.Text.Encoding as T
 
 
 data AuthConfig = AuthConfig
-    { authSessionName  :: S.ByteString
-    , authSuccessPage  :: S.ByteString
-    , authUrl          :: T.Text
+    { authSessionName   :: S.ByteString
+    , authSuccessPage   :: S.ByteString
+    , authSessionConfig :: SessionConfig
+    , authUrl           :: T.Text
 
-    , authPrefix       :: [T.Text]
-    , authReturnToPath :: [T.Text]
-    , authLogoutPath   :: [T.Text]
+    , authPrefix        :: [T.Text]
+    , authReturnToPath  :: [T.Text]
+    , authLogoutPath    :: [T.Text]
 
-    , providers        :: [(T.Text, Provider)]
+    , providers         :: [(T.Text, Provider)]
     }
 
 data Provider = Provider
@@ -57,32 +60,29 @@ data Provider = Provider
     }
 
 instance Default AuthConfig where
-    def = AuthConfig "_ID" "/" "http://localhost:3000" ["auth"] ["return_to"] ["logout"] $ 
+    def = AuthConfig "_ID" "/" def "http://localhost:3000" ["auth"] ["return_to"] ["logout"] $ 
         [ ("google", Provider "https://www.google.com/accounts/o8/id" Nothing [])
         , ("yahoo",  Provider "http://me.yahoo.com/"                  Nothing [])
         ]
 
 data Auth = Auth
-    { manager     :: Client.Manager
-    , config      :: AuthConfig
-    , authSession :: Session
+    { manager           :: Client.Manager
+    , config            :: AuthConfig
     }
 
-withAuth :: Session -> AuthConfig -> (Auth -> IO a) -> IO a
-withAuth sess = withAuthWith sess tlsManagerSettings
+authWith :: MonadBaseControl IO m
+         => Client.Manager
+         -> AuthConfig -> (Auth -> m a) -> m a
+authWith mgr conf m = m (Auth mgr conf)
 
-withAuthWith :: Session -> Client.ManagerSettings
-             -> AuthConfig -> (Auth -> IO a) -> IO a
-withAuthWith sess s conf m = Client.withManager s $ \mgr -> 
-    m (Auth mgr conf sess)
-
-authHandler :: (Functor m, Monad m, Functor n, MonadIO n) => Auth -> ApiaryT c n m ()
+authHandler :: (Functor m, Monad m, Functor actM, MonadIO actM, Has Session exts)
+            => Auth -> ApiaryT exts prms actM m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function id (\_ r -> if p `isPrefixOf` Wai.pathInfo r then Just SNil else Nothing)
 
     retH = pfxPath (authPrefix config ++ authReturnToPath config) . method GET . action $
-        returnAction authSession manager (authSessionName config) (authSuccessPage config)
+        returnAction (authSessionConfig config) manager (authSessionName config) (authSuccessPage config)
 
     go name Provider{..} = pfxPath (authPrefix config ++ [name]) . method GET . action $
         authAction manager providerUrl returnTo realm parameters
@@ -90,8 +90,9 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
         toByteString (HTTP.encodePathSegments (authPrefix config ++ authReturnToPath config))
 
-authorized :: Auth -> Apiary (OpenId ': as) a -> Apiary as a
-authorized Auth{..} = session authSession (authSessionName config) (pOne (Proxy :: Proxy OpenId))
+authorized :: (Functor actM, MonadIO actM, Has Session exts)
+           => Auth -> ApiaryT exts (OpenId ': prms) actM m () -> ApiaryT exts prms actM m ()
+authorized Auth{..} = session (authSessionName config) (pOne (Proxy :: Proxy OpenId))
 
 authConfig :: Auth -> AuthConfig
 authConfig = config
@@ -104,11 +105,11 @@ authRoutes auth =
     map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix (config auth) ++ [k])) $
     providers (config auth)
 
-authLogout :: Monad m => Auth -> ActionT m ()
+authLogout :: Monad m => Auth -> ActionT exts m ()
 authLogout auth = deleteCookie (authSessionName $ config auth)
 
 authAction :: MonadIO m => Client.Manager -> T.Text -> T.Text
-           -> Maybe T.Text -> [(T.Text, T.Text)] -> ActionT m ()
+           -> Maybe T.Text -> [(T.Text, T.Text)] -> ActionT exts m ()
 authAction mgr uri returnTo realm param = do
     fw <- liftIO . runResourceT $ getForwardUrl uri returnTo realm param mgr
     redirect $ T.encodeUtf8 fw
@@ -139,12 +140,13 @@ toOpenId r = OpenId_
     (oirParams r)
     (identifier <$> oirClaimed r)
 
-returnAction :: (Functor m, MonadIO m)
-             => Session -> Client.Manager -> S.ByteString -> S.ByteString -> ActionT m ()
-returnAction sess mgr key to = do
+returnAction :: (Functor m, MonadIO m, Has Session exts)
+             => SessionConfig -> Client.Manager
+             -> S.ByteString -> S.ByteString -> ActionT exts m ()
+returnAction sc mgr key to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr
-    setSession sess key . L.toStrict $ encode (toOpenId r)
+    setSessionWith sc key . L.toStrict $ encode (toOpenId r)
     redirect to
   where
     queryElem (_, Nothing) = Nothing

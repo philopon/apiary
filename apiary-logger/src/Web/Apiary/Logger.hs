@@ -1,76 +1,119 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Web.Apiary.Logger (
+module Web.Apiary.Logger
+    ( Logger
     -- * configuration
-    I.LogDest(..), I.LogConfig(..), HasLogger
+    , LogDest(..), LogConfig(..)
     -- * initialize
-    , withLogger
-    , withLogger'
+    , initLogger
     -- * action
     , logging
     -- * wrapper
-    , GivenLoggerT(..)
-
-    -- * reexports
-    , module Data.Default.Class
+    , LogWrapper, runLogWrapper
     ) where
 
 import System.Log.FastLogger
 
-import Web.Apiary
-import qualified Web.Apiary.Logger.Internal as I
-
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Base
-import Control.Monad.Trans
-import Control.Monad.Trans.Control
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Control.Monad.Logger
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.Control
+import Control.Exception.Lifted
 
 import Data.Default.Class
-import Data.Reflection
 
-type HasLogger = Given I.Logger
+import Data.Apiary.Proxy
+import Web.Apiary
+import Data.Apiary.Extension
 
-withLogger :: I.LogConfig -> (HasLogger => IO a) -> IO a
-withLogger c m = I.withLogger c (\l -> give l m)
+data LogDest
+    = LogFile FilePath
+    | LogStdout
+    | LogStderr
+    | NoLog
 
-withLogger' :: I.LogConfig -> (((HasLogger => r) -> r) -> IO a) -> IO a
-withLogger' c m = I.withLogger c (\l -> m (give l))
+data LogConfig = LogConfig
+    { bufferSize :: BufSize
+    , logDest    :: LogDest
+    }
 
-logging :: (MonadIO m, HasLogger) => LogStr -> ActionT m ()
-logging = I.logging given
+instance Default LogConfig where
+    def = LogConfig defaultBufSize LogStderr
 
-newtype GivenLoggerT m a = GivenLoggerT { runGivenLoggerT :: m a }
-    deriving(Functor, Applicative, Monad, MonadIO)
+-- | logger extension data type.
+data Logger = Logger
+    { pushLog  :: LogStr -> IO ()
+    , closeLog :: IO ()
+    }
 
-instance MonadBase b m => MonadBase b (GivenLoggerT m) where
-    liftBase = GivenLoggerT . liftBase
+newLogger :: BufSize -> LogDest -> IO Logger
+newLogger s (LogFile p) = newFileLoggerSet s p >>= \l -> 
+    return $ Logger (pushLogStr l) (flushLogStr l)
+newLogger s LogStdout = newStdoutLoggerSet s >>= \l -> 
+    return $ Logger (pushLogStr l) (flushLogStr l)
+newLogger s LogStderr = newStderrLoggerSet s >>= \l -> 
+    return $ Logger (pushLogStr l) (flushLogStr l)
+newLogger _ NoLog = return $ Logger (\_ -> return ()) (return ())
 
-instance MonadTrans GivenLoggerT where
-    lift = GivenLoggerT
+-- | logger initializer.
+initLogger :: (MonadBaseControl IO m, MonadIO m) => LogConfig -> Initializer' m Logger
+initLogger LogConfig{..} = initializer $ bracket
+    (liftIO $ newLogger bufferSize logDest)
+    (liftIO . closeLog) $ return
 
-instance MonadBaseControl b m => MonadBaseControl b (GivenLoggerT m) where
-    newtype StM (GivenLoggerT m) a = StMGivenLogger { unStMGivenLogger :: ComposeSt GivenLoggerT m a }
-    liftBaseWith = defaultLiftBaseWith StMGivenLogger
-    restoreM     = defaultRestoreM   unStMGivenLogger
+-- | push log.
+logging :: (Has Logger exts, MonadIO m)
+        => LogStr -> ActionT exts m ()
+logging m = do
+    l <- getExt (Proxy :: Proxy Logger)
+    liftIO $ pushLog l m
 
-instance MonadTransControl GivenLoggerT where
-    newtype StT GivenLoggerT a = StGivenLogger { unStGivenLogger :: a }
-    liftWith f = GivenLoggerT $ f $ liftM StGivenLogger . runGivenLoggerT
-    restoreT   = GivenLoggerT . liftM unStGivenLogger
+instance (MonadIO m, Has Logger exts) => MonadLogger (ActionT exts m) where
+    monadLoggerLog loc src lv msg = do
+        l <- getExt (Proxy :: Proxy Logger)
+        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
 
-instance (MonadIO m, HasLogger) => MonadLogger (GivenLoggerT m) where
-    monadLoggerLog loc src lv msg = GivenLoggerT . liftIO $
-        I.pushLog given (defaultLogStr loc src lv (toLogStr msg))
+instance (Monad actM, MonadIO m, Has Logger exts) => MonadLogger (ApiaryT exts prms actM m) where
+    monadLoggerLog loc src lv msg = do
+        l <- apiaryExt (Proxy :: Proxy Logger)
+        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
 
-instance (MonadIO m, HasLogger) => MonadLogger (ActionT m) where
-    monadLoggerLog loc src lv msg =
-        I.logging given $ defaultLogStr loc src lv (toLogStr msg)
+-- | wrapper to use as MonadLogger using Logger Extenson.
+newtype LogWrapper exts m a =
+    LogWrapper { unLogWrapper :: ReaderT (Extensions exts) m a }
+    deriving ( Functor, Applicative
+             , Monad, MonadIO, MonadTrans, MonadBase b)
+
+runLogWrapper :: Extensions exts -> LogWrapper exts m a -> m a
+runLogWrapper e = flip runReaderT e . unLogWrapper
+
+instance (MonadIO m, Has Logger exts) => MonadLogger (LogWrapper exts m) where
+    monadLoggerLog loc src lv msg = do
+        l <- getExtension (Proxy :: Proxy Logger) `liftM` LogWrapper ask
+        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
+
+instance MonadTransControl (LogWrapper exts) where
+    newtype StT (LogWrapper exts) a = StLogWrapper { unStLogWrapper :: StT (ReaderT (Extensions exts)) a }
+    liftWith = defaultLiftWith LogWrapper unLogWrapper StLogWrapper
+    restoreT = defaultRestoreT LogWrapper unStLogWrapper
+
+instance MonadBaseControl b m => MonadBaseControl b (LogWrapper exts m) where
+    newtype StM (LogWrapper exts m) a = StMLogWrapper { unStMLogWrapper :: ComposeSt (LogWrapper exts) m a }
+    liftBaseWith = defaultLiftBaseWith StMLogWrapper
+    restoreM     = defaultRestoreM     unStMLogWrapper
