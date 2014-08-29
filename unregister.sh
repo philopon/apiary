@@ -7,7 +7,7 @@ for p in `cat submodules`; do
 done
 
 for p in ${pkgs[@]}; do
-  ghc-pkg unregister $p
+  cabal sandbox hc-pkg unregister $p
 done
 
-ghc-pkg unregister apiary
+cabal sandbox hc-pkg unregister apiary
