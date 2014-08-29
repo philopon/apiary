@@ -91,9 +91,10 @@ library
   build-depends:       base                 >=4.6   && <4.8
                      , template-haskell     >=2.8   && <2.10
 
+                     , transformers         >=0.2   && <0.5
+                     , transformers-base    >=0.4   && <0.5
                      , mtl                  >=2.1   && <2.3
                      , monad-control        >=0.3   && <0.4
-                     , transformers-base    >=0.4   && <0.5
                      , exceptions           >=0.6   && <0.7
 
                      , http-types           >=0.8   && <0.9
@@ -135,6 +136,7 @@ test-suite test-framework
                      , Method
   type:                exitcode-stdio-1.0
   build-depends:       base                 >=4.6   && <4.8
+                     , mtl                  >=2.1   && <2.3
                      , test-framework       >=0.8   && <0.9
                      , test-framework-hunit >=0.3   && <0.4
                      , apiary
