@@ -4,20 +4,17 @@
 
 module Web.Apiary.PureScript
     ( I.PureScriptConfig(..)
-    , HasPureScript
-    , withPureScript
+    , initPureScript
     , pureScript
     ) where
 
 import Web.Apiary
 import qualified Web.Apiary.PureScript.Internal as I
-import Data.Reflection
+import Data.Apiary.Extension
+import Data.Apiary.Proxy
 
-type HasPureScript = Given I.PureScript
+initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
+initPureScript conf = initializer $ I.withPureScript conf $ return 
 
-withPureScript :: MonadIO m => I.PureScriptConfig
-               -> (HasPureScript => m a) -> m a
-withPureScript conf m = I.withPureScript conf $ \p -> give p m
-
-pureScript :: (MonadIO m, HasPureScript) => FilePath -> ActionT m ()
-pureScript = I.pureScript given
+pureScript :: (Has I.PureScript exts, MonadIO m) => FilePath -> ActionT exts m ()
+pureScript m = getExt (Proxy :: Proxy I.PureScript) >>= flip I.pureScript m
