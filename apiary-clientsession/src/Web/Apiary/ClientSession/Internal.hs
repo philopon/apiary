@@ -97,6 +97,8 @@ data SessionConfig = SessionConfig
     , sessionHttpOnly       :: Bool
     , sessionSecure         :: Bool
 
+    , sessionTimeoutAction  :: forall e m. MonadIO m => ActionT e m ()
+
     , angularXsrfCookieName :: Maybe S.ByteString
     , csrfTokenCookieName   :: S.ByteString
 
@@ -104,10 +106,17 @@ data SessionConfig = SessionConfig
     , csrfTokenLength       :: Int
     }
 
+defaultCheckTokenFailAction :: Monad actM => ActionT exts actM ()
+defaultCheckTokenFailAction = do
+    reset
+    status status401
+    bytes "session timeout\n"
+    stop
+
 instance Default SessionConfig where
     def = SessionConfig
         (KeyFile defaultKeyFile) (24 * 60 * 60) Nothing Nothing True True
-        Nothing "_token" (Right "_token") 40
+        defaultCheckTokenFailAction Nothing "_token" (Right "_token") 40
 
 withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
 withSession cfg@SessionConfig{..} m = do
@@ -202,4 +211,4 @@ checkToken sess@Session{..} = focus (DocPrecondition "CSRF token required") $ \l
         Left name  -> lookup name $ map (\(k,v) -> (k, Just v)) $ requestHeaders r
     guard (isJust qtok)
 
-    if qtok == stok then return l else empty
+    if qtok == stok then return l else sessionTimeoutAction sessionConfig >> mzero
