@@ -31,9 +31,7 @@ import qualified Network.Wai.Parse as P
 
 import Data.Monoid hiding (All)
 import Data.Apiary.Extension
-import Data.Apiary.Extension.Internal
 import Data.Apiary.Param
-import Data.Apiary.SList
 import Data.Apiary.Document
 import Data.Apiary.Document.Html
 import Data.Default.Class
@@ -179,7 +177,7 @@ hoistActionT :: (Monad m, Monad n)
 hoistActionT run m = actionT $ \e s -> run (runActionT m e s)
 {-# INLINE hoistActionT #-}
 
-execActionT :: All Extension exts => ApiaryConfig -> Extensions exts -> Documents -> ActionT exts IO () -> Application
+execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts IO () -> Application
 #ifdef WAI3
 execActionT config exts doc m request send = 
 #else
@@ -289,8 +287,8 @@ getRequest = liftM actionRequest getEnv
 getConfig :: Monad m => ActionT exts m ApiaryConfig
 getConfig = liftM actionConfig getEnv
 
-getExt :: (Extension e, Member e exts, Monad m) => proxy e -> ActionT exts m e
-getExt p = liftM (get p . unExtensions . actionExts) getEnv
+getExt :: (Extension e, Has e exts, Monad m) => proxy e -> ActionT exts m e
+getExt p = liftM (getExtension p . actionExts) getEnv
 
 getDocuments :: Monad m => ActionT exts m Documents
 getDocuments = liftM actionDocuments getEnv
