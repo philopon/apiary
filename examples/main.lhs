@@ -9,7 +9,7 @@
 > import qualified Data.ByteString.Lazy.Char8 as L
 > 
 > main :: IO ()
-> main = run 3000 . runApiary def $ do
+> main = server (run 3000) . runApiary def $ do
 
 Apiary has 2 Monads, Apiary and Action.
 Apiary is filtering Request, Action is processing request.

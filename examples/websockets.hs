@@ -14,7 +14,7 @@ import System.Directory
 main :: IO ()
 main = do 
     setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
-    run 3000 . runApiary def $ do
+    server (run 3000) . runApiary def $ do
         [capture|/:Int|] . webSockets $ servApp
         root $ actionWithWebSockets (servApp 0) (file "websockets.html" Nothing)
 

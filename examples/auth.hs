@@ -7,18 +7,18 @@ import Web.Apiary.Authenticate
 import Web.Apiary.ClientSession
 import Network.Wai.Handler.Warp
 
-import Control.Monad
-import qualified Data.ByteString.Lazy.Char8 as L
+sc :: SessionConfig
+sc = def { sessionPath = Just "/", sessionSecure = False }
 
 main :: IO ()
-main = withSession def { sessionPath = Just "/", sessionSecure = False} $ withAuth def $ run 3000 . runApiary def $ do
+main = server (run 3000) . runApiaryWith (initSession def +> initAuth def {authSessionConfig = sc}) def $ do
 
     root . method GET $ do
         authorized . action $ \s -> do
             contentType "text/html"
 
             bytes "your id: "
-            lazyBytes . L.pack $ show s
+            showing s
             bytes " \n<a href=\"/logout\">logout</a>"
 
         cookie "message" (pOption pByteString) . action $ \mbmsg -> do
@@ -26,10 +26,10 @@ main = withSession def { sessionPath = Just "/", sessionSecure = False} $ withAu
 
             maybe (return ()) (\m -> mapM_ bytes ["<h1>", m, "</h1>"]) mbmsg
 
-            forM_ authRoutes $ \(n,r) -> do
+            authRoutes >>= mapM_ (\(n,r) -> do
                 mapM_ bytes ["<div><a href=\"", r, "\">"]
                 text n
-                bytes "</a></div>"
+                bytes "</a></div>")
 
             deleteCookie "message"
 
