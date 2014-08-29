@@ -75,7 +75,7 @@ authWith :: MonadBaseControl IO m
          -> AuthConfig -> (Auth -> m a) -> m a
 authWith mgr conf m = m (Auth mgr conf)
 
-authHandler :: (Functor m, Monad m, Functor actM, MonadIO actM, Has Session exts)
+authHandler :: (Monad m, MonadIO actM, Has Session exts)
             => Auth -> ApiaryT exts prms actM m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
@@ -90,7 +90,7 @@ authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
         toByteString (HTTP.encodePathSegments (authPrefix config ++ authReturnToPath config))
 
-authorized :: (Functor actM, MonadIO actM, Has Session exts)
+authorized :: (MonadIO actM, Has Session exts)
            => Auth -> ApiaryT exts (OpenId ': prms) actM m () -> ApiaryT exts prms actM m ()
 authorized Auth{..} = session (authSessionName config) (pOne (Proxy :: Proxy OpenId))
 
@@ -140,7 +140,7 @@ toOpenId r = OpenId_
     (oirParams r)
     (identifier <$> oirClaimed r)
 
-returnAction :: (Functor m, MonadIO m, Has Session exts)
+returnAction :: (MonadIO m, Has Session exts)
              => SessionConfig -> Client.Manager
              -> S.ByteString -> S.ByteString -> ActionT exts m ()
 returnAction sc mgr key to = do
