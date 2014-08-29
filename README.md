@@ -6,6 +6,7 @@ Simple web framework inspired by scotty.
 Feature
 ----
 * small core library.
+* high performance(benchmark: https://github.com/philopon/apiary-benchmark)
 * type level and nestable router.
 * auto generate API documents.
 
@@ -25,11 +26,11 @@ import Web.Apiary
 import Network.Wai.Handler.Warp
 
 main :: IO ()
-main = run 3000 . runApiary def $ do
+main = server (run 3000). runApiary def $ do
     action $ do
         bytes "Hello World!\n"
 ```
-display "Hello World!" in any path, parameter.
+display "Hello World!" at any path, parameter.
 
 routing
 ----
@@ -38,25 +39,33 @@ routing functions can nesting freely. and arguments are stocked on type level.
 this is routing monad named Apiary.
 
 ```haskell
-data Apiary c a
+data ApiaryT exts prms actM m a
 ```
 
-first argument of Apiary is stocked arguments.
+ext is global state for extension.
 
-initial arguments is empty, so type of runApiary is
+prms is stocked arguments.
+
+actM is base monad of ActionT. it's normally IO.
+
+initial prms is empty, so type of runApiary is
 
 ```haskell
-runApiary :: ApiaryConfig -> Apiary '[] a -> Application
+runApiary :: ApiaryConfig -> ApiaryT '[] '[] IO m () -> m Application
 ```
 
-WARNING: type signature of this section is pseudo code for explanation, but value is haskell code.
+this is little annoying, so use this type alias in this file.
+
+```haskell
+type Apiary prms a = ApiaryT '[] prms IO IO a
+```
 
 ### capture
 
 capture QuasiQuote: simple path router. :Type = read as Type, otherwise matching string.
 
 ```haskell
-[capture|/path/:Int|] :: Apiary (xs `Snoc` Int) b -> Apiary xs b
+[capture|/path/:Int|] :: Apiary (Int ': xs) () -> Apiary xs ()
 ```
 
 when first path == "path" and second path is readable as Int, filter successed.
@@ -66,13 +75,13 @@ when first path == "path" and second path is readable as Int, filter successed.
 you can route using query function.
 
 ```haskell
-query :: (Query a, Strategy w) => ByteString -> Proxy (w a) -> Apiary (SNext w as a) b -> Apiary as b 
+query :: (ReqParam a, Strategy w) => QueryKey -> w a -> Apiary (SNext w prms a) () -> Apiary  prms ()
 ```
 
 example:
 
 ```haskell
-query "key" (Proxy :: Proxy First Int)
+query "key" (First :: First Int)
 ```
 
 Strategy chooses query getting strategy. Predefined strategy is:
@@ -80,19 +89,22 @@ Strategy chooses query getting strategy. Predefined strategy is:
 * First(get first parameter)
 * One(get one parameter)
 * Option(get optional parameter)
+* Option(get optional parameter with default value)
 * Many(get zero or more parameters)
 * Some(get one or more parameters)
+* LimitSome(get one or more parameters with upper bound)
 * Check(check parameter exists).
 
 query function is little verbose, so there are shortcut functions. so, you can write:
 
 ```haskell
-("key" =: pDouble)          -- get first Double parameter
-("key" =!: pInt)            -- get one Int parameter
-("key" =?: pMaybe pString)  -- get optional String parameter which can ommit value.
-("key" ?: ())               -- check parameter exists.(not type checked)
-("key" =*: pText)           -- get zero or more Text parameters.
-("key" =*: pLazyByteString) -- get one or more lazy ByteString parameters.
+("key" =: pDouble)              -- get first Double parameter
+("key" =!: pInt)                -- get one Int parameter
+("key" =?: pString)             -- get optional String parameter which can ommit value.
+("key" =?!: ("foo" :: String))  -- get optional String parameter, default value is "foo".
+("key" ?: ())                   -- check parameter exists.(not type checked)
+("key" =*: pText)               -- get zero or more Text parameters.
+("key" =*: pLazyByteString)     -- get one or more lazy ByteString parameters.
 ```
 
 ### filter only routers
@@ -115,16 +127,22 @@ Action monad is use define create response.
 splice Action to Apiary, using action function.
 
 ```haskell
-action :: Monad m => Fn c (Action ()) -> Apiary c () 
+action :: Monad m => Fn prms (ActionT exts actM ()) -> ApiaryT exts prms actM m () 
 ```
 
-Fn c is apply stocked arguments.
+this is little annoying, so use this type alias in this file.
 
-so, when stock [] (initlal state) then ActionT m (),
-         stock [Int, Double]      then Int -> Double -> ActionT m ()
+```haskell
+type Action a = ActionT '[] IO a
+```
 
-you can use some getter(raw request, query string, request header),
-setter(status, response header, response body) 
+Fn prms is apply stocked arguments.
+
+so, when stock \[\] (initlal state) then ActionT m (),  
+stock [Double, Int]      then Int -> Double -> ActionT m ()
+
+you can use some getter(raw request, query string, request header),  
+setter(status, response header, response body)  
 and interupt and return current response(stop function).
 
 Example
@@ -138,21 +156,21 @@ import Network.Wai.Handler.Warp
 import qualified Data.ByteString.Lazy.Char8 as L
 
 main :: IO ()
-main = run 3000 . runApiary def $ do
+main = server (run 3000) . runApiary def $ do
     [capture|/:Int|] $ do
         -- freely
         ("query" =: pByteString) $ do
             -- nestable
             ("mbQuery" =?: pDouble) $ do
                 -- filters
-                stdMethod GET . action $ \int query mbQuery -> do
+                method GET . action $ \int query mbQuery -> do
                     contentType "text/plain"
                     bytes "GET\n"
                     showing int
                     bytes query
                     showing mbQuery
 
-                stdMethod DELETE . action $ \_ _ _ -> do
+                method DELETE . action $ \_ _ _ -> do
                     bytes "DELETE!\n"
 
             ("mbQuery" =: pLazyByteString) $ do
