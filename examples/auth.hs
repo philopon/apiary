@@ -11,7 +11,7 @@ sc :: SessionConfig
 sc = def { sessionPath = Just "/", sessionSecure = False }
 
 main :: IO ()
-main = server (run 3000) . runApiaryWith (initSession def +> initAuth def {authSessionConfig = sc}) def $ do
+main = server (run 3000) . runApiaryWith (initSession def >>> initAuth def {authSessionConfig = sc}) def $ do
 
     root . method GET $ do
         authorized . action $ \s -> do

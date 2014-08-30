@@ -117,7 +117,7 @@ newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
 apiaryT :: Monad m
         => (ApiaryEnv exts prms actM -> m (a, ApiaryWriter exts actM))
         -> ApiaryT exts prms actM m a
-apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a,w) -> cont a w
+apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a, w) -> cont a w
 
 routerToAction :: Monad actM => Router exts actM -> ActionT exts actM ()
 routerToAction router = getRequest >>= go
@@ -143,7 +143,7 @@ routerToAction router = getRequest >>= go
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
-runApiaryTWith :: (Monad actM, Monad m) => Initializer '[] m exts
+runApiaryTWith :: (Monad actM, Monad m) => Initializer m '[] exts
                -> ApiaryConfig -> (forall b. actM b -> IO b) -> ApiaryT exts '[] actM m () -> m Application
 runApiaryTWith (Initializer ir) conf run m = do
     exts <- ir NoExtension
@@ -153,7 +153,7 @@ runApiaryTWith (Initializer ir) conf run m = do
         mw  = writerMw wtr
     return $! mw $ execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
 
-runApiaryWith :: Monad m => Initializer '[] m exts
+runApiaryWith :: Monad m => Initializer m '[] exts
               -> ApiaryConfig -> ApiaryT exts '[] IO m () -> m Application
 runApiaryWith ef conf m = runApiaryTWith ef conf id m
 

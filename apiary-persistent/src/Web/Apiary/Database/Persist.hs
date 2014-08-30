@@ -58,7 +58,7 @@ initPersist' :: (MonadIO n, MonadBaseControl IO n)
              => (forall a. Extensions exts -> n a -> m a)
              -> With Connection n
              -> Migrator
-             -> Initializer exts m (Persist ': exts)
+             -> Initializer m exts (Persist ': exts)
 initPersist' run with migr = Initializer $ \e ->
     run e $ with $ \conn -> do
         doMigration migr conn
@@ -73,19 +73,19 @@ initPersist' run with migr = Initializer $ \e ->
 -- @
 initPersist :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
             => With Connection (LogWrapper exts m) -> Migration
-            -> Initializer exts m (Persist ': exts)
+            -> Initializer m exts (Persist ': exts)
 initPersist w = initPersist' runLogWrapper w . Logging
 
 initPersistNoLog :: (MonadIO m, MonadBaseControl IO m)
                  => With Connection (NoLoggingT m)
-                 -> Migration -> Initializer es m (Persist ': es)
+                 -> Migration -> Initializer m es (Persist ': es)
 initPersistNoLog w = initPersist' (const runNoLoggingT) w . Silent
 
 initPersistPool' :: (MonadIO n, MonadBaseControl IO n)
                  => (forall a. Extensions exts -> n a -> m a)
                  -> With ConnectionPool n
                  -> Migrator
-                 -> Initializer exts m (Persist ': exts)
+                 -> Initializer m exts (Persist ': exts)
 initPersistPool' run with migr = Initializer $ \e ->
     run e $ with $ \pool -> do
         withResource pool $ doMigration migr
@@ -93,12 +93,12 @@ initPersistPool' run with migr = Initializer $ \e ->
 
 initPersistPool :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
                 => With ConnectionPool (LogWrapper exts m) -> Migration
-                -> Initializer exts m (Persist ': exts)
+                -> Initializer m exts (Persist ': exts)
 initPersistPool w = initPersistPool' runLogWrapper w . Logging
 
 initPersistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
                      => With ConnectionPool (NoLoggingT m) -> Migration
-                     -> Initializer exts m (Persist ': exts)
+                     -> Initializer m exts (Persist ': exts)
 initPersistPoolNoLog w = initPersistPool' (const runNoLoggingT) w . Silent
 
 doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> Connection -> m ()

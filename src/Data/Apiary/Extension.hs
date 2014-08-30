@@ -14,7 +14,7 @@ module Data.Apiary.Extension
 
 import Data.Apiary.Extension.Internal
 
-type Initializer' m a = forall i. Initializer i m (a ': i)
+type Initializer' m a = forall i. Initializer m i (a ': i)
 
 addExtension :: e -> Extensions es -> Extensions (e ': es)
 addExtension = AddExtension
@@ -24,11 +24,12 @@ initializer m = Initializer $ \e -> do
     a <- m
     return (addExtension a e)
 
-preAction :: Monad m => m a -> Initializer i m i
+preAction :: Monad m => m a -> Initializer m i i
 preAction f = Initializer $ \e -> f >> return e
 
-(+>) :: Monad m => Initializer i m x -> Initializer x m o -> Initializer i m o
+{-# DEPRECATED (+>) "use (>>>)" #-}
+(+>) :: Monad m => Initializer m i x -> Initializer m x o -> Initializer m i o
 Initializer a +> Initializer b = Initializer $ \e -> a e >>= b
 
-noExtension :: Monad m => Initializer '[] m '[]
+noExtension :: Monad m => Initializer m '[] '[]
 noExtension = Initializer $ return

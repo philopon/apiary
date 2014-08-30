@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.16.0
+version:             0.17.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -31,15 +31,15 @@ description:
   404 Page Notfound.
   @
   .
-    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v0.16.0>).
+    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v0.17.0>).
   .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.16.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.16.0/examples/api.html>).
+    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.17.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.17.0/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.16.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.17.0/examples/>
 
 license:             MIT
 license-file:        LICENSE

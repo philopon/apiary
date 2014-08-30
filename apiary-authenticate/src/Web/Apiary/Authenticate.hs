@@ -37,19 +37,19 @@ import Data.Apiary.Extension.Internal
 
 initAuthWithManager :: (Has Session exts, MonadBaseControl IO m)
                     => Client.Manager -> I.AuthConfig
-                    -> Initializer exts m (I.Auth ': exts)
+                    -> Initializer m exts (I.Auth ': exts)
 initAuthWithManager mgr conf = Initializer $ \e -> do
     I.authWith mgr conf $ \a -> return $ addExtension a e
 
 initAuthWith :: (Has Session exts, MonadBaseControl IO m)
              => Client.ManagerSettings -> I.AuthConfig
-             -> Initializer exts m (I.Auth ': exts)
+             -> Initializer m exts (I.Auth ': exts)
 initAuthWith ms conf = Initializer $ \e -> do
     control $ \run -> Client.withManager ms $ \mgr ->
         I.authWith mgr conf $ \a -> run . return $ addExtension a e
 
 initAuth :: (Has Session exts, MonadBaseControl IO m)
-         => I.AuthConfig -> Initializer exts m (I.Auth ': exts)
+         => I.AuthConfig -> Initializer m exts (I.Auth ': exts)
 initAuth = initAuthWith tlsManagerSettings
 
 -- | default auth handlers. since 0.8.0.0.

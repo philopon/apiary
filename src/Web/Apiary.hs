@@ -23,12 +23,15 @@ module Web.Apiary
     , module Network.Wai
     -- | Html
     , module Text.Blaze.Html
+    -- | (>>>)
+    , module Control.Category
     ) where
  
 import Web.Apiary.TH
 import Network.Wai(FilePart(..))
 import Network.HTTP.Types.Status hiding (mkStatus)
 
+import Control.Category((>>>))
 import Control.Monad.Apiary
 import Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Filter

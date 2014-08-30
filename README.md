@@ -156,7 +156,7 @@ you can use simple extension api of apiary.
 type of extension initializer is:
 
 ```haskell
-newtype Initializer i m o = Initializer { unInitializer :: Extensions i -> m (Extensions o) }
+newtype Initializer m i o = Initializer { unInitializer :: Extensions i -> m (Extensions o) }
 
 data Extensions exts where
   NoExtension  :: Extensions `[]
@@ -166,7 +166,7 @@ data Extensions exts where
 you can construct initializer using
 
 ```haskell
-initializer :: Monad m => m e -> Initializer i m (e ': i)
+initializer :: Monad m => m e -> Initializer m i (e ': i)
 ```
 
 examples:
@@ -186,10 +186,10 @@ initLimitMsg lim = initializer (putStrLn "initialize limit" >> return (Limit lim
 you can use extensions using
 
 ```
-runApiaryWith :: Monad m => Initializer `[] m exts -> ApiaryConfig -> ApiaryT exts `[] IO m () -> m Application
+runApiaryWith :: Monad m => Initializer m `[] exts -> ApiaryConfig -> ApiaryT exts `[] IO m () -> m Application
 ```
 
-and you can combine two initializer using `(+>)`.
+and you can combine two initializer using `(>>>)`.
 
 Example
 ----

@@ -8,8 +8,14 @@
 
 module Data.Apiary.Extension.Internal where
 
-newtype Initializer i m o = Initializer 
+import Control.Category
+
+newtype Initializer m i o = Initializer 
     {unInitializer :: Extensions i -> m (Extensions o)}
+
+instance Monad m => Category (Initializer m) where
+    id    = Initializer return
+    Initializer a . Initializer b = Initializer $ \e -> b e >>= a
 
 data Extensions (es :: [*]) where
     NoExtension  :: Extensions '[]
