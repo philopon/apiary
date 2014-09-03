@@ -24,6 +24,7 @@ initializer m = Initializer $ \e -> do
     a <- m
     return (addExtension a e)
 
+{-# DEPRECATED preAction "DEPRECATED" #-}
 preAction :: Monad m => m a -> Initializer m i i
 preAction f = Initializer $ \e -> f >> return e
 
@@ -32,4 +33,4 @@ preAction f = Initializer $ \e -> f >> return e
 Initializer a +> Initializer b = Initializer $ \e -> a e >>= b
 
 noExtension :: Monad m => Initializer m '[] '[]
-noExtension = Initializer $ return
+noExtension = Initializer return
