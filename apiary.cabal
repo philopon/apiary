@@ -64,6 +64,10 @@ flag wai3
   description: use wai-3.0
   default: True
 
+flag tuning
+  description: build small application for tuning
+  default: False
+
 library
   exposed-modules:     Web.Apiary
                        Web.Apiary.Wai
@@ -128,6 +132,18 @@ library
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
   ghc-prof-options:    -O2 -Wall -auto-all
+  default-language:    Haskell2010
+
+executable tuning
+  main-is:             tuning.hs
+  ghc-options:         -Wall -O2 -threaded
+  if flag(tuning)
+    build-depends:     base                 >=4.6   && <4.8
+                     , apiary
+                     , warp
+    buildable:         True
+  else
+    buildable:           False
   default-language:    Haskell2010
 
 test-suite test-framework
