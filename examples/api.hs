@@ -28,7 +28,7 @@ main = do
     nm <- newMVar Nothing
     ag <- newMVar 0
 
-    server (run 3000) . runApiary def $ do
+    runApiary def (run 3000) $ do
 
         -- you can add route document using document function.
         -- condition which is next of noDoc function is not documented.
