@@ -14,7 +14,9 @@ if [ -e constraint ]; then
     cnst=("--constraint=$line" "$cnst")
   done < constraint
 
+  echo cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "${cnst[@]}" "$@"
   cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "${cnst[@]}" "$@"
 else
+  echo cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "$@"
   cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "$@"
 fi
