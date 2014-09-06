@@ -14,7 +14,7 @@ import Data.Apiary.Extension
 import Data.Apiary.Proxy
 
 initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
-initPureScript conf = initializer $ I.withPureScript conf $ return 
+initPureScript = initializer . I.makePureScript
 
 pureScript :: (Has I.PureScript exts, MonadIO m) => FilePath -> ActionT exts m ()
 pureScript m = getExt (Proxy :: Proxy I.PureScript) >>= flip I.pureScript m

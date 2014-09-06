@@ -33,20 +33,17 @@ import qualified Data.ByteString as S
 
 import Data.Apiary.Proxy
 import Data.Apiary.Extension
-import Data.Apiary.Extension.Internal
 
 initAuthWithManager :: (Has Session exts, MonadBaseControl IO m)
                     => Client.Manager -> I.AuthConfig
                     -> Initializer m exts (I.Auth ': exts)
-initAuthWithManager mgr conf = Initializer $ \e -> do
-    I.authWith mgr conf $ \a -> return $ addExtension a e
+initAuthWithManager mgr conf = initializer $ return (I.Auth mgr conf)
 
 initAuthWith :: (Has Session exts, MonadBaseControl IO m)
              => Client.ManagerSettings -> I.AuthConfig
              -> Initializer m exts (I.Auth ': exts)
-initAuthWith ms conf = Initializer $ \e -> do
-    control $ \run -> Client.withManager ms $ \mgr ->
-        I.authWith mgr conf $ \a -> run . return $ addExtension a e
+initAuthWith ms conf = initializerBracket $ \m ->
+    control $ \run -> Client.withManager ms (\mgr -> run . m $ I.Auth mgr conf)
 
 initAuth :: (Has Session exts, MonadBaseControl IO m)
          => I.AuthConfig -> Initializer m exts (I.Auth ': exts)

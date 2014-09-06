@@ -70,11 +70,6 @@ data Auth = Auth
     , config            :: AuthConfig
     }
 
-authWith :: MonadBaseControl IO m
-         => Client.Manager
-         -> AuthConfig -> (Auth -> m a) -> m a
-authWith mgr conf m = m (Auth mgr conf)
-
 authHandler :: (Monad m, MonadIO actM, Has Session exts)
             => Auth -> ApiaryT exts prms actM m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)

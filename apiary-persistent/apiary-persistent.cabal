@@ -22,7 +22,7 @@ library
                      , persistent         >=2.0  && <2.1
 
                      , apiary             >=0.17 && <0.18
-                     , apiary-logger      >=0.16 && <0.18
+                     , apiary-logger      >=0.17 && <0.18
 
                      , resourcet          >=1.1  && <1.2
                      , resource-pool      >=0.2  && <0.3
@@ -31,6 +31,7 @@ library
                      , transformers       >=0.2  && <0.5
                      , transformers-base  >=0.4  && <0.5
                      , monad-control      >=0.3  && <0.4
+                     , persistent-sqlite
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
   default-language:    Haskell2010

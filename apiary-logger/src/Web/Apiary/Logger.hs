@@ -21,7 +21,7 @@ module Web.Apiary.Logger
     -- * action
     , logging
     -- * wrapper
-    , LogWrapper, runLogWrapper
+    , LogWrapper, logWrapper, runLogWrapper
     ) where
 
 import System.Log.FastLogger
@@ -73,9 +73,9 @@ newLogger _ NoLog = return $ Logger (\_ -> return ()) (return ())
 
 -- | logger initializer.
 initLogger :: (MonadBaseControl IO m, MonadIO m) => LogConfig -> Initializer' m Logger
-initLogger LogConfig{..} = initializer $ bracket
+initLogger LogConfig{..} = initializerBracket $ bracket
     (liftIO $ newLogger bufferSize logDest)
-    (liftIO . closeLog) $ return
+    (liftIO . closeLog)
 
 -- | push log.
 logging :: (Has Logger exts, MonadIO m)
@@ -99,6 +99,9 @@ newtype LogWrapper exts m a =
     LogWrapper { unLogWrapper :: ReaderT (Extensions exts) m a }
     deriving ( Functor, Applicative
              , Monad, MonadIO, MonadTrans, MonadBase b)
+
+logWrapper :: Monad m => m a -> LogWrapper exts m a
+logWrapper = LogWrapper . lift
 
 runLogWrapper :: Extensions exts -> LogWrapper exts m a -> m a
 runLogWrapper e = flip runReaderT e . unLogWrapper

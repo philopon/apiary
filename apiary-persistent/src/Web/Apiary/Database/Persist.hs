@@ -10,6 +10,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Web.Apiary.Database.Persist
     ( Persist
@@ -54,15 +55,13 @@ data Persist
 
 type With c m = forall a. (c -> m a) -> m a
 
-initPersist' :: (MonadIO n, MonadBaseControl IO n)
-             => (forall a. Extensions exts -> n a -> m a)
-             -> With Connection n
-             -> Migrator
-             -> Initializer m exts (Persist ': exts)
-initPersist' run with migr = Initializer $ \e ->
-    run e $ with $ \conn -> do
+initPersist' :: (MonadIO n, MonadBaseControl IO n) 
+             => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
+             -> With Connection n -> Migrator -> Initializer m exts (Persist ': exts)
+initPersist' wrap run with migr = Initializer $ \es m -> run es $
+    with $ \conn -> do
         doMigration migr conn
-        return $ addExtension (PersistConn conn) e
+        wrap $ m (addExtension (PersistConn conn) es)
 
 -- | construct persist extension initializer with no connection pool.
 --
@@ -71,35 +70,33 @@ initPersist' run with migr = Initializer $ \e ->
 -- @
 -- initPersist (withSqliteConn "db.sqlite") migrateAll
 -- @
-initPersist :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
+initPersist :: (MonadIO m, MonadBaseControl IO m) 
             => With Connection (LogWrapper exts m) -> Migration
             -> Initializer m exts (Persist ': exts)
-initPersist w = initPersist' runLogWrapper w . Logging
+initPersist with = initPersist' logWrapper runLogWrapper with . Logging
 
-initPersistNoLog :: (MonadIO m, MonadBaseControl IO m)
+initPersistNoLog :: (MonadIO m, MonadBaseControl IO m) 
                  => With Connection (NoLoggingT m)
                  -> Migration -> Initializer m es (Persist ': es)
-initPersistNoLog w = initPersist' (const runNoLoggingT) w . Silent
+initPersistNoLog with = initPersist' NoLoggingT (const runNoLoggingT) with . Silent
 
 initPersistPool' :: (MonadIO n, MonadBaseControl IO n)
-                 => (forall a. Extensions exts -> n a -> m a)
-                 -> With ConnectionPool n
-                 -> Migrator
-                 -> Initializer m exts (Persist ': exts)
-initPersistPool' run with migr = Initializer $ \e ->
-    run e $ with $ \pool -> do
+                 => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
+                 -> With ConnectionPool n -> Migrator -> Initializer m exts (Persist ': exts)
+initPersistPool' wrap run with migr = Initializer $ \es m -> run es $
+    with $ \pool -> do
         withResource pool $ doMigration migr
-        return $ addExtension (PersistPool pool) e
+        wrap $ m (addExtension (PersistPool pool) es)
 
-initPersistPool :: (MonadIO m, MonadBaseControl IO m, Has Logger exts)
+initPersistPool :: (MonadIO m, MonadBaseControl IO m)
                 => With ConnectionPool (LogWrapper exts m) -> Migration
                 -> Initializer m exts (Persist ': exts)
-initPersistPool w = initPersistPool' runLogWrapper w . Logging
+initPersistPool with = initPersistPool' logWrapper runLogWrapper with . Logging
 
 initPersistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
-                     => With ConnectionPool (NoLoggingT m) -> Migration
-                     -> Initializer m exts (Persist ': exts)
-initPersistPoolNoLog w = initPersistPool' (const runNoLoggingT) w . Silent
+                     => With ConnectionPool (NoLoggingT m)
+                     -> Migration -> Initializer m es (Persist ': es)
+initPersistPoolNoLog with = initPersistPool' NoLoggingT (const runNoLoggingT) with . Silent
 
 doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> Connection -> m ()
 doMigration migr conn = case migr of

@@ -29,6 +29,7 @@ import Web.Apiary.Cookie
 import Web.ClientSession 
 import qualified Network.HTTP.Types as HTTP
 
+import Data.Proxy
 import Data.String
 import Data.Maybe
 import Data.Monoid
@@ -37,6 +38,7 @@ import Data.Default.Class
 import Data.Binary
 import Data.IORef
 import Data.Apiary.Document
+import Data.Apiary.Extension
 
 import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64
@@ -118,14 +120,14 @@ instance Default SessionConfig where
         (KeyFile defaultKeyFile) (24 * 60 * 60) Nothing Nothing True True
         defaultCheckTokenFailAction Nothing "_token" (Right "_token") 40
 
-withSession :: MonadIO m => SessionConfig -> (Session -> m b) -> m b
-withSession cfg@SessionConfig{..} m = do
+makeSession :: MonadIO m => SessionConfig -> m Session
+makeSession cfg@SessionConfig{..} = do
     k <- liftIO $ case sessionKey of
         KeyFile       f -> getKey f
         KeyByteString s -> either fail return $ initKey s
     p <- liftIO $ makeSystem >>= newIORef
     let sess = Session k p cfg
-    m sess
+    return sess
 
 newtype BinUTCTime = BinUTCTime { getUTCTime :: UTCTime }
 
@@ -184,20 +186,21 @@ csrfToken Session{..} = do
                            , setCookieHttpOnly = False
                            }
 
-session :: (MonadIO actM, Strategy w, Query a) => Session
-        -> S.ByteString -> w a -> ApiaryT exts (SNext w prms a) actM m () -> ApiaryT exts prms actM m ()
-session sess k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
-    r   <- getRequest
-    t   <- liftIO getCurrentTime
+session :: (MonadIO actM, Strategy w, Query a, Has Session exts)
+        => S.ByteString -> w a -> ApiaryT exts (SNext w prms a) actM m () -> ApiaryT exts prms actM m ()
+session k p = focus (DocPrecondition $ toHtml (show k) <> " session cookie required") $ \l -> do
+    sess <- getExt (Proxy :: Proxy Session)
+    r    <- getRequest
+    t    <- liftIO getCurrentTime
     let mbr = readStrategy readQuery ((k ==) . fst) p
             (map (second $ getSessionValue sess t) $ cookie' r) l
     maybe mzero return mbr
 
-checkToken :: MonadIO actM
-           => Session
+checkToken :: (MonadIO actM, Has Session exts)
+           => ApiaryT exts prms actM m ()
            -> ApiaryT exts prms actM m ()
-           -> ApiaryT exts prms actM m ()
-checkToken sess@Session{..} = focus (DocPrecondition "CSRF token required") $ \l -> do
+checkToken = focus (DocPrecondition "CSRF token required") $ \l -> do
+    sess@Session{..} <- getExt (Proxy :: Proxy Session)
     r <- getRequest
     p <- getReqParams
 

@@ -21,7 +21,7 @@ library
   other-modules:       Web.Apiary.Authenticate.Internal
   build-depends:       base                 >=4.6      && <4.8
                      , apiary               >=0.17     && <0.18
-                     , apiary-clientsession >=0.16     && <0.18
+                     , apiary-clientsession >=0.17     && <0.18
                      , authenticate         >=1.3.2.10 && <1.4
 
                      , monad-control        >=0.3      && <0.4

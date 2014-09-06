@@ -38,7 +38,7 @@ import qualified Data.ByteString as S
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
 initSession :: MonadIO m => I.SessionConfig -> Initializer' m I.Session
-initSession c = initializer $ I.withSession c return
+initSession c = initializer $ I.makeSession c
 
 setSession :: (Has I.Session exts, MonadIO m)
            => S.ByteString -> S.ByteString
@@ -65,9 +65,7 @@ session :: (Has I.Session exts, Query a, Strategy w, MonadIO actM)
         => S.ByteString -> w a
         -> ApiaryT exts (SNext w prms a) actM m ()
         -> ApiaryT exts prms actM m ()
-session k w m = do
-    sess <- apiaryExt (Proxy :: Proxy I.Session)
-    I.session sess k w m
+session k w m = I.session k w m
 
 -- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64),
 --
@@ -80,7 +78,4 @@ csrfToken = getExt (Proxy :: Proxy I.Session) >>= I.csrfToken
 -- | check csrf token. since 0.9.0.0.
 checkToken :: (Has I.Session exts, MonadIO actM)
            => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-checkToken m = do
-    sess <- apiaryExt (Proxy :: Proxy I.Session)
-    I.checkToken sess m
-
+checkToken m = I.checkToken m
