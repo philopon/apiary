@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
+{-# LANGUAGE DataKinds #-}
 
 module Application where
 
@@ -50,9 +51,12 @@ assert404 :: Application -> Request -> IO ()
 assert404 = assertRequest 404 (Just "text/plain") "404 Page Notfound.\n"
 
 --------------------------------------------------------------------------------
+runApp :: ApiaryT '[] '[] IO Identity () -> Application
+runApp = runIdentity . runApiary def return
+--------------------------------------------------------------------------------
 
 helloWorldApp :: Application
-helloWorldApp = runIdentity . runApiary def $ action $ do
+helloWorldApp = runApp $ action $ do
     contentType "text/plain"
     bytes "hello"
 
@@ -66,7 +70,7 @@ helloWorldAllTest = testGroup "helloWorld" $ map ($ helloWorldApp)
 --------------------------------------------------------------------------------
 
 methodFilterApp :: Application
-methodFilterApp = runIdentity . runApiary def $ do
+methodFilterApp = runApp $ do
     method "GET" . action $ contentType "text/plain" >> bytes "GET"
     method POST  . action $ contentType "text/plain" >> bytes "POST"
 
@@ -81,7 +85,7 @@ methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
 --------------------------------------------------------------------------------
 
 httpVersionApp :: Application
-httpVersionApp = runIdentity . runApiary def $ do
+httpVersionApp = runApp $ do
     http09 . action $ contentType "text/plain" >> bytes "09"
     http10 . action $ contentType "text/plain" >> bytes "10"
     http11 . action $ contentType "text/plain" >> bytes "11"
@@ -96,7 +100,7 @@ httpVersionTest = testGroup "httpVersionFilter" $ map ($ httpVersionApp)
 --------------------------------------------------------------------------------
 
 rootFilterApp :: Application
-rootFilterApp = runIdentity . runApiary def .  root . action $ do
+rootFilterApp = runApp . root . action $ do
     contentType "text/html"
     bytes "root"
 
@@ -110,7 +114,7 @@ rootFilterTest = testGroup "rootFilter" $ map ($ rootFilterApp)
 
 --------------------------------------------------------------------------------
 anyFilterApp :: Application
-anyFilterApp = runIdentity . runApiary def $ [capture|/test|] . anyPath . action $ do
+anyFilterApp = runApp $ [capture|/test|] . anyPath . action $ do
     contentType "text/plain"
     bytes "hello"
 
@@ -124,7 +128,7 @@ anyFilterTest = testGroup "anyPath" $ map ($ anyFilterApp)
 --------------------------------------------------------------------------------
 
 captureApp :: Application
-captureApp = runIdentity . runApiary def $ do
+captureApp = runApp $ do
     [capture|/foo|]  . action $ contentType "text/plain" >> bytes "foo"
     [capture|/:Int|] . method GET . action $ \i -> contentType "text/plain" >> bytes "Int " >> showing i
     [capture|/:Double|] . action $ \i -> contentType "text/plain" >> bytes "Double " >> showing i
@@ -145,19 +149,19 @@ captureTest = testGroup "capture" $ map ($ captureApp)
 
 --------------------------------------------------------------------------------
 
-queryApp f g h = runIdentity . runApiary def $ do
+queryApp f g h = runApp $ do
     _ <- (f "foo" pInt)        . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
     _ <- (g "foo" pString)     . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
     (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
 
 queryOptionalApp :: Application
-queryOptionalApp = runIdentity . runApiary def $ do
+queryOptionalApp = runApp $ do
     ("foo" =?!: (5 :: Int))                   . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
     ("foo" =?!: ("bar" :: String))            . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
     ("foo" =?!: (Just "baz" :: Maybe String)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
 
 queryCheckApp :: Application
-queryCheckApp = runIdentity . runApiary def $ do
+queryCheckApp = runApp $ do
     ("foo" ?: pInt)           . action $ contentType "text/plain" >> bytes "foo Int"
     ("foo" ?: pString)        . action $ contentType "text/plain" >> bytes "foo String"
     ("foo" ?: pMaybe pString) . action $ contentType "text/plain" >> bytes "foo Maybe String"
@@ -253,7 +257,7 @@ queryTest = testGroup "query"
 
 --------------------------------------------------------------------------------
 stopApp :: Application
-stopApp = runIdentity . runApiary def $ do
+stopApp = runApp $ do
     [capture|/a/:Int|] . action $ \i -> do
         contentType "text/plain"
         when (i == 1) $ bytes "one\n"
@@ -272,7 +276,7 @@ stopTest = testGroup "stop" $ map ($ stopApp)
 --------------------------------------------------------------------------------
 
 acceptApp :: Application
-acceptApp = runIdentity . runApiary def $ [capture|/|] $ do
+acceptApp = runApp $ [capture|/|] $ do
     accept "application/json" . action $ bytes "json"
     accept "text/html"        . action $ bytes "html"
     action                             $ bytes "other"
@@ -291,7 +295,7 @@ acceptTest = testGroup "accept" $ map ($ acceptApp)
 --------------------------------------------------------------------------------
 
 multipleFilter1App :: Application
-multipleFilter1App = runIdentity . runApiary def $ do
+multipleFilter1App = runApp $ do
     root $ do
         method GET  . action $ contentType "text/plain" >> bytes "GET /"
         method POST . action $ contentType "text/html"  >> bytes "POST /"
