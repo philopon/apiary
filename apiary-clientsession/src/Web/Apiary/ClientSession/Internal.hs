@@ -29,7 +29,7 @@ import Web.Apiary.Cookie
 import Web.ClientSession 
 import qualified Network.HTTP.Types as HTTP
 
-import Data.Proxy
+import Data.Apiary.Proxy
 import Data.String
 import Data.Maybe
 import Data.Monoid
