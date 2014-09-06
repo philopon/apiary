@@ -91,9 +91,10 @@ data ApiaryEnv exts prms actM = ApiaryEnv
     , envPath   :: [PathElem] -> [PathElem]
     , envConfig :: ApiaryConfig
     , envDoc    :: Doc -> Doc
+    , envExts   :: Extensions exts
     }
 
-initialEnv :: Monad actM => ApiaryConfig -> ApiaryEnv exts '[] actM
+initialEnv :: Monad actM => ApiaryConfig -> Extensions exts -> ApiaryEnv exts '[] actM
 initialEnv conf = ApiaryEnv (return SNil) Nothing id conf id
 
 data ApiaryWriter exts actM = ApiaryWriter
@@ -143,46 +144,29 @@ routerToAction router = getRequest >>= go
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
-runApiaryT :: (Monad actM, Monad m) => ApiaryConfig -> (forall b. actM b -> IO b)
-           -> ApiaryT exts '[] actM m () -> m (Extensions exts -> Application)
-runApiaryT conf run m = do
-    wtr <- unApiaryT m (initialEnv conf) (\_ w -> return w)
+runApiaryTWith :: (Monad actM, Monad m)
+               => Initializer m '[] exts -> ApiaryConfig
+               -> (forall b. actM b -> IO b) -> (Application -> m a)
+               -> ApiaryT exts '[] actM m () -> m a
+runApiaryTWith (Initializer ir) conf runAct runApp m = ir NoExtension $ \exts -> do
+    wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
         mw  = writerMw wtr
-    return $! \exts -> mw $ execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
+    runApp $! mw $ execActionT conf exts doc (hoistActionT runAct $ routerToAction rtr)
 
-runApiary :: Monad m => ApiaryConfig -> ApiaryT exts '[] IO m () -> m (Extensions exts -> Application)
-runApiary conf m = runApiaryT conf id m
+runApiaryWith :: (Monad m)
+              => Initializer m '[] exts -> ApiaryConfig
+              -> (Application -> m a)
+              -> ApiaryT exts '[] IO m () -> m a
+runApiaryWith i c run m = runApiaryTWith i c id run m
 
-server :: Monad m => (Application -> m a) -> m (Extensions '[] -> Application) -> m a
-server run mapp = run . ($ NoExtension) =<< mapp
-
-serverWith :: Monad m => Initializer m '[] exts -> (Application -> m a)
-           -> m (Extensions exts -> Application) -> m a
-serverWith (Initializer ilr) run mapp = ilr NoExtension $
-    \exts -> mapp >>= \app -> run (app exts)
-
-{-
-runApiaryTWith :: (Monad actM, Monad m) => Initializer m '[] exts
-               -> ApiaryConfig -> (forall b. actM b -> IO b) -> ApiaryT exts '[] actM m () -> m Application
-runApiaryTWith (Initializer ir) conf run m = ir NoExtension $ \exts -> do
-    wtr  <- unApiaryT m (initialEnv exts conf) (\_ w -> return w)
-    let doc = docsToDocuments $ writerDoc wtr []
-        rtr = writerRouter wtr emptyRouter
-        mw  = writerMw wtr
-    return $! mw $ execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
-
-runApiaryWith :: Monad m => Initializer m '[] exts
-              -> ApiaryConfig -> ApiaryT exts '[] IO m () -> m Application
-runApiaryWith ef conf m = runApiaryTWith ef conf id m
-
-runApiary :: Monad m => ApiaryConfig -> ApiaryT '[] '[] IO m () -> m Application
+runApiary :: (Monad m)
+          => ApiaryConfig
+          -> (Application -> m a)
+          -> ApiaryT '[] '[] IO m () -> m a
 runApiary = runApiaryWith noExtension
 
-server :: Monad m => (Application -> m a) -> m Application -> m a
-server = (=<<)
--}
 --------------------------------------------------------------------------------
 
 instance Functor (ApiaryT exts prms actM m) where
@@ -230,6 +214,9 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
 
 getApiaryEnv :: Monad actM => ApiaryT exts prms actM m (ApiaryEnv exts prms actM)
 getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
+
+apiaryExt :: (Has e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
+apiaryExt p = getExtension p . envExts <$> getApiaryEnv
 
 apiaryConfig :: Monad actM => ApiaryT exts prms actM m ApiaryConfig
 apiaryConfig = liftM envConfig getApiaryEnv

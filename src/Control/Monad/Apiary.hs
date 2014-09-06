@@ -1,9 +1,11 @@
 module Control.Monad.Apiary
-    ( ApiaryT, server, serverWith
-    , runApiaryT
+    ( ApiaryT
+    , runApiaryTWith
+    , runApiaryWith
     , runApiary
     -- * getter
     , apiaryConfig
+    , apiaryExt
     -- * execute action
     , action, action'
     -- * middleware
