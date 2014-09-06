@@ -21,9 +21,9 @@ Number
 |]
 
 main :: IO ()
---                    logger extension    persist extension
-main = runApiaryWith (initLogger def  >>> initPersistPool (withSqlitePool "db.sqlite" 10) migrateAll) def (run 3000) $ do
---                                    ~~~
+--                    logger extension   persist extension
+main = runApiaryWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite" 10) migrateAll) def (run 3000) $ do
+--                                    ~~
 --                                    compose 2 extension intializer.
 
     -- root : list up all database entities.
