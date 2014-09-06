@@ -14,8 +14,6 @@ module Data.Apiary.Extension
     ) where
 
 import Data.Apiary.Extension.Internal
-import Control.Category
-
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 
@@ -35,9 +33,8 @@ initializerBracket b = Initializer $ \es n ->
 preAction :: Monad m => m a -> Initializer m i i
 preAction f = Initializer $ \es n -> f >> n es
 
-{-# DEPRECATED (+>) "use (>>>)" #-}
 (+>) :: Monad m => Initializer m i x -> Initializer m x o -> Initializer m i o
-(+>) = (>>>)
+Initializer a +> Initializer b = Initializer $ \e m -> a e (\e' -> b e' m)
 
 noExtension :: Monad m => Initializer m '[] '[]
 noExtension = Initializer $ \_ n -> n NoExtension

@@ -5,7 +5,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Apiary.Extension.Internal where
 
@@ -27,6 +28,8 @@ instance Has a as => Has a (a' ': as) where
 newtype Initializer m i o = Initializer 
     {unInitializer :: forall a. Extensions i -> (Extensions o -> m a) -> m a}
 
+#if __GLASGOW_HASKELL__ >= 708
 instance Monad m => Category (Initializer m) where
     id = Initializer $ \es m -> m es
     Initializer a . Initializer b = Initializer $ \e m -> b e (\e' -> a e' m)
+#endif
