@@ -6,4 +6,5 @@ apiary-clientsession
 apiary-authenticate
 apiary-eventsource
 apiary-purescript
-apiary-mongodb
+apiary-mongoDB
+apiary-memcached
