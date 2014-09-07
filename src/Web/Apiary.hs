@@ -7,7 +7,7 @@ module Web.Apiary
     , module Control.Monad.Apiary.Filter.Internal.Strategy
     -- | Method(..)
     , module Data.Apiary.Method
-    -- | (+>)
+    -- | Has, Extensions, Initializer, Initializer', (+>)
     , module Data.Apiary.Extension
     , act
 
@@ -19,14 +19,14 @@ module Web.Apiary
     , module Control.Monad.IO.Class
     -- | MonadPlus(..), msum, mfilter, guard, (>=>)
     , module Control.Monad
-    -- | FilePart(..)
+    -- | FilePart(..), Application
     , module Network.Wai
     -- | Html
     , module Text.Blaze.Html
     ) where
  
 import Web.Apiary.TH
-import Network.Wai(FilePart(..))
+import Network.Wai(FilePart(..), Application)
 import Network.HTTP.Types.Status hiding (mkStatus)
 
 import Control.Monad.Apiary
@@ -38,6 +38,6 @@ import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 
 import Data.Default.Class(def)
 import Data.Apiary.Param
-import Data.Apiary.Extension((+>))
+import Data.Apiary.Extension(Has, Extensions, Initializer, Initializer', (+>))
 import Data.Apiary.Method(Method(..))
 import Text.Blaze.Html(Html)
