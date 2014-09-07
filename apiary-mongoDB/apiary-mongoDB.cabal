@@ -1,4 +1,4 @@
-name:                apiary-mongodb
+name:                apiary-mongoDB
 version:             0.17.0.0
 synopsis:            mongoDB support for apiary web framework.
 -- description:
