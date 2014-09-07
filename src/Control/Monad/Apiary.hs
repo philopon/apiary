@@ -1,7 +1,6 @@
 module Control.Monad.Apiary
-    ( ApiaryT
-    , runApiaryTWith
-    , runApiaryWith
+    ( ApiaryT, server, serverWith
+    , runApiaryT
     , runApiary
     -- * getter
     , apiaryConfig

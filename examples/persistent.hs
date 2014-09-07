@@ -21,10 +21,10 @@ Number
 |]
 
 main :: IO ()
---                    logger extension   persist extension
-main = runApiaryWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite" 10) migrateAll) def (run 3000) $ do
---                                    ~~
---                                    compose 2 extension intializer.
+--                 logger extension   persist extension
+main = serverWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite" 10) migrateAll) (run 3000) . runApiary def $ do
+--                                 ~~
+--                                 compose 2 extension intializer.
 
     -- root : list up all database entities.
     root . sql Nothing   (selectList ([] :: [Filter Number]) [])   Just . action $ \q -> do

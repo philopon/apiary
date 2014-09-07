@@ -13,7 +13,7 @@ description:
   import qualified Data.ByteString.Lazy.Char8 as L
   .
   main :: IO ()
-  main = runApiary def (run 3000) $ do
+  main = server (run 3000) . runApiary def $ do
   &#32;&#32;[capture|/:Int|] . (&#34;name&#34; =: pLazyByteString) . method GET . action $ \\age name -> do
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;

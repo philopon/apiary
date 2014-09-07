@@ -15,7 +15,7 @@ page tok = do
     bytes "</form>"
 
 main :: IO ()
-main = runApiaryWith (initSession def {sessionSecure = False}) def (run 3000) $ do
+main = serverWith (initSession def {sessionSecure = False}) (run 3000) . runApiary def $ do
     root $ do  
         -- set valid session key.
         method GET . action $ csrfToken >>= page
