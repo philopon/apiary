@@ -284,6 +284,6 @@ accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT ex
 accept ect = focus (DocPrecondition $ "Accept: " <> toHtml (T.decodeUtf8 ect)) $ \c ->
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
-        Just ct -> if ect == fst (parseContentType ct)
+        Just ac -> if parseContentType ect `elem` map (parseContentType . SC.dropWhile (== ' ')) (SC.split ',' ac)
                    then contentType ect >> return c
                    else mzero
