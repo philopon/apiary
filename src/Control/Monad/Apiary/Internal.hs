@@ -40,7 +40,7 @@ import qualified Data.HashMap.Strict as H
 data Router exts actM = Router
     { children   :: H.HashMap T.Text (Router exts actM)
     , capturing  :: Maybe (Router exts actM)
-    , anyMatch   :: Maybe (PathMethod exts actM)
+    , restMatch  :: Maybe (PathMethod exts actM)
     , pathMethod :: PathMethod exts actM
     }
 
@@ -69,7 +69,7 @@ insertRouter rootPat mbMethod paths act = loop paths
         FetchPath -> Router cln (Just $ loop ps (maybe emptyRouter id cap)) anp pm
         Exact p   -> Router (adjust' (loop ps) p cln) cap anp pm
         EndPath   -> loop ps rtr
-        AnyPath   -> Router cln cap (Just . insPathMethod $ maybe emptyPathMethod id anp) pm
+        RestPath  -> Router cln cap (Just . insPathMethod $ maybe emptyPathMethod id anp) pm
         RootPath  -> let cln' = foldl' (flip $ adjust' (loop [EndPath])) cln rootPat
                      in loop [EndPath] $ Router cln' cap anp pm
 
@@ -83,7 +83,7 @@ data PathElem = Exact {-# UNPACK #-} !T.Text
               | FetchPath
               | RootPath
               | EndPath
-              | AnyPath
+              | RestPath
 
 data ApiaryEnv exts prms actM = ApiaryEnv
     { envFilter :: ActionT exts actM (SList prms)
@@ -139,7 +139,9 @@ routerToAction router = getRequest >>= go
             Nothing -> cld ana
             Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
-            ana = maybe mzero (pmAction mzero) anp
+            ana = do
+                modifyState (\s -> s {actionFetches = fch $ p:ps} ) 
+                maybe mzero (pmAction mzero) anp
             cld nxt = case H.lookup p c of
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt

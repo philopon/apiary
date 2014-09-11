@@ -50,8 +50,8 @@ mkCap ((':':tyStr):as) = do
             S h  -> [|Just $(stringE h)|]
             N n  -> [|Just $(varE n)|]
     [|Capture.fetch (Proxy :: Proxy $(conT ty)) $d . $(mkCap as)|]
-mkCap (eq:as) = do
-    [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
+mkCap ("**":as) = [|Capture.restPath . $(mkCap as) |]
+mkCap (eq:as)   = [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
 
 -- | capture QuasiQuoter. since 0.1.0.0.
 --

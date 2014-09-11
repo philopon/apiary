@@ -127,6 +127,22 @@ anyFilterTest = testGroup "anyPath" $ map ($ anyFilterApp)
 
 --------------------------------------------------------------------------------
 
+restFilterApp :: Application
+restFilterApp = runApp $ do
+    [capture|/test/**|]   . action $ \l -> contentType "text/plain" >> showing l
+    [capture|/test/neko|] . action $ contentType "text/plain" >> bytes "nyan"
+
+restFilterTest :: Test
+restFilterTest = testGroup "rest capture" $ map ($ restFilterApp)
+    [ testReq "GET /" . assert404
+    , testReq "GET /test" . assertPlain200 "[]"
+    , testReq "GET /test/foo" . assertPlain200 "[\"foo\"]"
+    , testReq "GET /test/foo/bar" . assertPlain200 "[\"foo\",\"bar\"]"
+    , testReq "GET /test/neko" . assertPlain200 "nyan"
+    ]
+
+--------------------------------------------------------------------------------
+
 captureApp :: Application
 captureApp = runApp $ do
     [capture|/foo|]  . action $ contentType "text/plain" >> bytes "foo"
@@ -319,6 +335,7 @@ applicationTests = testGroup "Application"
     , httpVersionTest
     , rootFilterTest
     , anyFilterTest
+    , restFilterTest
     , captureTest
     , queryTest
     , stopTest

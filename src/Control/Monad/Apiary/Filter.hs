@@ -112,9 +112,10 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 root = focus' DocRoot Nothing (RootPath:) return
 
+{-# DEPRECATED anyPath "use greedy filter [capture|/**|] or use restPath." #-}
 -- | match all subsequent path. since 0.15.0.
 anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-anyPath = focus' id Nothing (AnyPath:) return
+anyPath = focus' id Nothing (RestPath:) return
 
 --------------------------------------------------------------------------------
 
