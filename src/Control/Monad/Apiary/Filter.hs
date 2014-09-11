@@ -30,6 +30,7 @@ module Control.Monad.Apiary.Filter (
     -- *** specified operators
     , (=:), (=!:), (=?:), (=?!:), (?:), (=*:), (=+:)
     , hasQuery
+    , switchQuery
 
     -- ** header matcher
     , hasHeader
@@ -68,7 +69,9 @@ import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text.Encoding as T
 import Data.Monoid
 import Data.Proxy
+import Data.Apiary.SList
 import Data.String
+import Data.Maybe
 
 import Data.Apiary.Param
 import Data.Apiary.Document
@@ -239,6 +242,14 @@ k =+: t = query k (Strategy.pSome t)
 --
 hasQuery :: MonadIO actM => QueryKey -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 hasQuery q = query q (Strategy.Check :: Strategy.Check ())
+
+-- | get existance of key only query parameter. since v0.17.0.
+switchQuery :: Monad actM => QueryKey -> ApiaryT exts (Bool ': prms) actM m () -> ApiaryT exts prms actM m ()
+switchQuery QueryKey{..} = focus doc $ \l -> do
+    r <- getRequest
+    return $ (not . null $ filter (\(k,v) -> isNothing v && queryKey == k) (queryString r)) ::: l
+  where
+    doc = DocQuery queryKey (StrategyRep "Switch") NoValue queryDesc
 
 --------------------------------------------------------------------------------
 
