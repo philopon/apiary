@@ -31,7 +31,7 @@ library
 
                      , data-default-class   >=0.0      && <0.1
                      , bytestring           >=0.10     && <0.11
-                     , text                 >=1.1      && <1.2
+                     , text                 >=1.1      && <1.3
                      , http-types           >=0.8      && <0.9
                      , binary               >=0.7      && <0.8
 

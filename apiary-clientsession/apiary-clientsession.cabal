@@ -38,7 +38,7 @@ library
                      , binary             >=0.7   && <0.8
                      , bytestring         >=0.10  && <0.11
                      , base64-bytestring  >=1.0   && <1.1
-                     , time               >=1.4   && <1.5
+                     , time               >=1.4   && <1.6
                      , data-default-class >=0.0   && <0.1
                      , http-types         >=0.8   && <0.9
                      , blaze-html         >=0.7   && <0.8

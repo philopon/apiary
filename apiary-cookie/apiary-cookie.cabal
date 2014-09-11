@@ -23,7 +23,7 @@ library
 
                      , bytestring         >=0.10 && <0.11
                      , cookie             >=0.4  && <0.5
-                     , time               >=1.4  && <1.5
+                     , time               >=1.4  && <1.6
                      , blaze-builder      >=0.3  && <0.4
                      , blaze-html         >=0.7  && <0.8
 
