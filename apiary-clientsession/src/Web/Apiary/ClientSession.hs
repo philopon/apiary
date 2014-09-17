@@ -38,7 +38,7 @@ import qualified Data.ByteString as S
 import Control.Monad.Apiary.Filter.Internal.Strategy
 
 initSession :: MonadIO m => I.SessionConfig -> Initializer' m I.Session
-initSession c = initializer $ I.makeSession c
+initSession c = initializer' $ I.makeSession c
 
 setSession :: (Has I.Session exts, MonadIO m)
            => S.ByteString -> S.ByteString

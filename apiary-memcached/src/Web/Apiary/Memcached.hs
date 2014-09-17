@@ -1,19 +1,31 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Web.Apiary.Memcached
     ( Memcached, CacheConfig(..), MemcachedConfig(..)
-    , initMemcached, memcached
+    , initMemcached, initHerokuMemcached, memcached
     , cache, cacheMaybe
     ) where
 
 import Web.Apiary
+import Web.Apiary.Heroku
+
+import Control.Applicative
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Control
+
 import Data.Default.Class
 import Data.Apiary.Extension
 import Data.Apiary.Proxy
 import qualified Data.Binary as B
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import qualified Data.Text.Read as T
 
 import Database.Memcached.Binary.IO
 import qualified Database.Memcached.Binary.Maybe as Maybe
@@ -37,9 +49,36 @@ data MemcachedConfig = MemcachedConfig
 instance Default MemcachedConfig where
     def = MemcachedConfig def Nothing
 
-initMemcached :: MemcachedConfig -> Initializer' IO Memcached
-initMemcached cfg = initializerBracket $ \m ->
-    withConnection (connectInfo cfg) (\c -> m (Memcached c cfg))
+initMemcached :: MonadBaseControl IO m => MemcachedConfig -> Initializer' m Memcached
+initMemcached cfg = initializerBracket' $ \m -> control $ \run -> 
+    withConnection (connectInfo cfg) (\c -> run $ m (Memcached c cfg))
+
+getHerokuConfig :: T.Text -> MemcachedConfig -> Heroku -> MaybeT IO MemcachedConfig
+getHerokuConfig pfx ci exts = do
+    svr <- MaybeT $ getHerokuEnv' (pfx `T.append` "_SERVERS")  exts
+    usr <- liftIO $ getHerokuEnv' (pfx `T.append` "_USERNAME") exts
+    pwd <- liftIO $ getHerokuEnv' (pfx `T.append` "_PASSWORD") exts
+
+    let (hst, prtTxt) = T.breakOnEnd ":" svr
+    prt <- either fail (return . fst) $ T.decimal prtTxt
+
+    let auth = Plain <$> (T.encodeUtf8 <$> usr) <*> (T.encodeUtf8 <$> pwd)
+
+    return ci {connectInfo = (connectInfo ci)
+        { connectHost = T.unpack $ T.init hst
+        , connectPort = PortNumber prt
+        , connectAuth =
+            maybe id (\a -> (a:)) auth $ connectAuth (connectInfo ci)
+        }}
+
+initHerokuMemcached :: (Has Heroku exts, MonadBaseControl IO m)
+                    => MemcachedConfig -> Initializer m exts (Memcached ': exts)
+initHerokuMemcached cfg = initializerBracket $ \exts m -> control $ \run -> do
+    let hc = getExtension Proxy exts
+    cfg'  <- fmap (maybe cfg id) . runMaybeT $
+        getHerokuConfig "MEMCACHIER"     cfg hc <|>
+        getHerokuConfig "MEMCACHEDCLOUD" cfg hc
+    withConnection (connectInfo cfg') (\c -> run $ m (Memcached c cfg'))
 
 memcached :: (Has Memcached exts, MonadIO m)
           => (Connection -> IO a) -> ActionT exts m a

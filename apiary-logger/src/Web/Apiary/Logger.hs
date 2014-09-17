@@ -73,7 +73,7 @@ newLogger _ NoLog = return $ Logger (\_ -> return ()) (return ())
 
 -- | logger initializer.
 initLogger :: (MonadBaseControl IO m, MonadIO m) => LogConfig -> Initializer' m Logger
-initLogger LogConfig{..} = initializerBracket $ bracket
+initLogger LogConfig{..} = initializerBracket' $ bracket
     (liftIO $ newLogger bufferSize logDest)
     (liftIO . closeLog)
 

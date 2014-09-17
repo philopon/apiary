@@ -37,12 +37,12 @@ import Data.Apiary.Extension
 initAuthWithManager :: (Has Session exts, MonadBaseControl IO m)
                     => Client.Manager -> I.AuthConfig
                     -> Initializer m exts (I.Auth ': exts)
-initAuthWithManager mgr conf = initializer $ return (I.Auth mgr conf)
+initAuthWithManager mgr conf = initializer' $ return (I.Auth mgr conf)
 
 initAuthWith :: (Has Session exts, MonadBaseControl IO m)
              => Client.ManagerSettings -> I.AuthConfig
              -> Initializer m exts (I.Auth ': exts)
-initAuthWith ms conf = initializerBracket $ \m ->
+initAuthWith ms conf = initializerBracket' $ \m ->
     control $ \run -> Client.withManager ms (\mgr -> run . m $ I.Auth mgr conf)
 
 initAuth :: (Has Session exts, MonadBaseControl IO m)

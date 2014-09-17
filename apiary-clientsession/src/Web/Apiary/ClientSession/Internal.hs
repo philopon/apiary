@@ -38,7 +38,6 @@ import Data.Default.Class
 import Data.Binary
 import Data.IORef
 import Data.Apiary.Document
-import Data.Apiary.Extension
 
 import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64

@@ -30,7 +30,6 @@ import Data.Maybe
 import Data.List
 import Data.Apiary.SList
 import Data.Apiary.Proxy
-import Data.Apiary.Extension
 import Data.Default.Class
 
 import Blaze.ByteString.Builder
