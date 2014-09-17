@@ -44,13 +44,25 @@ routeToHtml = loop (1::Int) "" mempty []
         )
 
 data DefaultDocumentConfig = DefaultDocumentConfig
-    { documentTitle       :: T.Text
-    , documentDescription :: Maybe Html
-    , documentUseCDN      :: Bool
+    { documentTitle           :: T.Text
+    , documentDescription     :: Maybe Html
+    , documentUseCDN          :: Bool
+    , documentGoogleAnalytics :: Maybe T.Text
     }
 
+analytics :: T.Text -> Html
+analytics code = H.script . H.preEscapedToHtml . T.concat $
+    [ "(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){"
+    , "(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),"
+    , "m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)"
+    , "})(window,document,'script','//www.google-analytics.com/analytics.js','ga');"
+    , "ga('create', '", code, "', 'auto');"
+    , "ga('send', 'pageview');"
+    ]
+
+
 instance Default DefaultDocumentConfig where
-    def = DefaultDocumentConfig "API documentation" Nothing True
+    def = DefaultDocumentConfig "API documentation" Nothing True Nothing
 
 defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
 defaultDocumentToHtml DefaultDocumentConfig{..} docs =
@@ -84,6 +96,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
         , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
         , $(runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
+        , maybe mempty analytics documentGoogleAnalytics
         ]
 
     htmlQR (Strict   r) = toHtml (show r)
