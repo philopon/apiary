@@ -66,6 +66,7 @@ flag wai3
 
 library
   exposed-modules:     Web.Apiary
+                       Web.Apiary.Heroku
                        Web.Apiary.Wai
 
                        Control.Monad.Apiary
@@ -112,6 +113,7 @@ library
                      , unordered-containers >=0.2   && <0.3
                      , hashable             >=1.1   && <1.3
                      , time                 >=1.4   && <1.6
+                     , process              >=1.2   && <1.3
 
   if impl(ghc < 7.8)
     build-depends:     tagged               >=0.7   && <0.8
