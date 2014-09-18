@@ -1,3 +1,20 @@
+# 0.17.0
+* fix not accept in multi Accept header.
+* add greedy path capture('\*\*').
+* add switchQuery filter.
+* add Heroku module.
+* add google analytics support to API documentation.
+
+## Extension API
+* change interface.
+* fix bug which immediately finalize.
+* deprecate preAction.
+* Category initializer only ghc-7.8+.
+
+## new extensions
+* apiary-mongoDB
+* apiary-memcached
+
 # 0.16.0
 * new Extension API.
 * add middleware function.
