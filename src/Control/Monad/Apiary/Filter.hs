@@ -18,7 +18,6 @@ module Control.Monad.Apiary.Filter (
     , http09, http10, http11
     -- ** path matcher
     , root
-    , anyPath
     , capture
     , Capture.path
     , Capture.endPath
@@ -30,6 +29,7 @@ module Control.Monad.Apiary.Filter (
     -- *** specified operators
     , (=:), (=!:), (=?:), (=?!:), (?:), (=*:), (=+:)
     , hasQuery
+    , switchQuery
 
     -- ** header matcher
     , hasHeader
@@ -44,7 +44,7 @@ module Control.Monad.Apiary.Filter (
     
     -- * deprecated
     , stdMethod
-
+    , anyPath
     ) where
 
 import Network.Wai as Wai
@@ -68,7 +68,9 @@ import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text.Encoding as T
 import Data.Monoid
 import Data.Proxy
+import Data.Apiary.SList
 import Data.String
+import Data.Maybe
 
 import Data.Apiary.Param
 import Data.Apiary.Document
@@ -112,9 +114,10 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HT.http11 "HTTP/1.1 only"
 root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 root = focus' DocRoot Nothing (RootPath:) return
 
+{-# DEPRECATED anyPath "use greedy filter [capture|/**|] or use restPath." #-}
 -- | match all subsequent path. since 0.15.0.
 anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-anyPath = focus' id Nothing (AnyPath:) return
+anyPath = focus' id Nothing (RestPath:) return
 
 --------------------------------------------------------------------------------
 
@@ -239,6 +242,14 @@ k =+: t = query k (Strategy.pSome t)
 hasQuery :: MonadIO actM => QueryKey -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 hasQuery q = query q (Strategy.Check :: Strategy.Check ())
 
+-- | get existance of key only query parameter. since v0.17.0.
+switchQuery :: Monad actM => QueryKey -> ApiaryT exts (Bool ': prms) actM m () -> ApiaryT exts prms actM m ()
+switchQuery QueryKey{..} = focus doc $ \l -> do
+    r <- getRequest
+    return $ (not . null $ filter (\(k,v) -> isNothing v && queryKey == k) (queryString r)) ::: l
+  where
+    doc = DocQuery queryKey (StrategyRep "Switch") NoValue queryDesc
+
 --------------------------------------------------------------------------------
 
 -- | check whether to exists specified header or not. since 0.6.0.0.
@@ -284,6 +295,6 @@ accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT ex
 accept ect = focus (DocPrecondition $ "Accept: " <> toHtml (T.decodeUtf8 ect)) $ \c ->
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
-        Just ct -> if ect == fst (parseContentType ct)
+        Just ac -> if parseContentType ect `elem` map (parseContentType . SC.dropWhile (== ' ')) (SC.split ',' ac)
                    then contentType ect >> return c
                    else mzero

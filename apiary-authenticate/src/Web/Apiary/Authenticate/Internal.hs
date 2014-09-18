@@ -30,7 +30,6 @@ import Data.Maybe
 import Data.List
 import Data.Apiary.SList
 import Data.Apiary.Proxy
-import Data.Apiary.Extension
 import Data.Default.Class
 
 import Blaze.ByteString.Builder
@@ -69,11 +68,6 @@ data Auth = Auth
     { manager           :: Client.Manager
     , config            :: AuthConfig
     }
-
-authWith :: MonadBaseControl IO m
-         => Client.Manager
-         -> AuthConfig -> (Auth -> m a) -> m a
-authWith mgr conf m = m (Auth mgr conf)
 
 authHandler :: (Monad m, MonadIO actM, Has Session exts)
             => Auth -> ApiaryT exts prms actM m ()

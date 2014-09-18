@@ -41,3 +41,8 @@ fetch p h = focus' (DocFetch (pathRep p) h) Nothing (FetchPath:) $ \l -> liftM a
     f:fs -> case readPathAs p f of
         Just r  -> (r ::: l) <$ modifyState (\s -> s {actionFetches = fs})
         Nothing -> mzero
+
+restPath :: (Monad m, Monad actM) => ApiaryT exts ([T.Text] ': prms) actM m () -> ApiaryT exts prms actM m ()
+restPath = focus' id Nothing (RestPath:) $ \l -> liftM actionFetches getState >>= \case
+    [] -> return $ [] ::: l
+    fs -> fs ::: l <$ modifyState (\s -> s {actionFetches = []})

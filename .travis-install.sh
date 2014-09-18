@@ -8,10 +8,15 @@ done
 cabal --version
 cabal sandbox init
 
-if [ -e restriction ]; then
-  cabal install --force-reinstalls --only-dependencies --enable-tests "${path[@]}" `cat restriction`
-  cabal install --force-reinstalls `cat restriction`
+if [ -e constraint ]; then
+  cnst=()
+  while read line; do
+    cnst=("--constraint=$line" "$cnst")
+  done < constraint
+
+  echo cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "${cnst[@]}" "$@"
+  cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "${cnst[@]}" "$@"
 else
-  cabal install --force-reinstalls --only-dependencies --enable-tests "${path[@]}"
-  cabal install --force-reinstalls 
+  echo cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "$@"
+  cabal install --force-reinstalls --reorder-goals --only-dependencies --enable-tests "${path[@]}" "$@"
 fi

@@ -64,6 +64,7 @@ data QueryRep
     = Strict   TypeRep
     | Nullable TypeRep
     | Check
+    | NoValue
     deriving (Show, Eq)
 
 class Path a where

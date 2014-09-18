@@ -70,11 +70,11 @@ data PureScript = PureScript
     , compiled  :: IORef (H.HashMap FilePath String)
     }
 
-withPureScript :: MonadIO m => PureScriptConfig -> (PureScript -> m b) -> m b
-withPureScript conf m = do
+makePureScript :: MonadIO m => PureScriptConfig -> m PureScript
+makePureScript conf = do
     ir <- liftIO $ mapM (\p -> (p,) <$> compile conf p) (initialCompiles conf)
     p  <- liftIO $ PureScript conf <$> newIORef (H.fromList ir)
-    m p
+    return p
 
 defaultPreludePath :: FilePath
 defaultPreludePath = purescriptDatadir </> "prelude/prelude.purs"
@@ -97,7 +97,7 @@ compile :: PureScriptConfig -> FilePath -> IO String
 compile opt p = do
     mods <- pscModules opt
     mn   <- readPscInput p
-    case P.compile (pureScriptOptions opt) $ mn ++ mods of
+    case P.compile (pureScriptOptions opt) (mn ++ mods) [] of
         Left l           -> throwIO (CompileError l)
         Right (js, _, _) -> return js
 

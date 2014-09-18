@@ -50,8 +50,8 @@ mkCap ((':':tyStr):as) = do
             S h  -> [|Just $(stringE h)|]
             N n  -> [|Just $(varE n)|]
     [|Capture.fetch (Proxy :: Proxy $(conT ty)) $d . $(mkCap as)|]
-mkCap (eq:as) = do
-    [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
+mkCap ("**":as) = [|Capture.restPath . $(mkCap as) |]
+mkCap (eq:as)   = [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
 
 -- | capture QuasiQuoter. since 0.1.0.0.
 --
@@ -61,6 +61,7 @@ mkCap (eq:as) = do
 -- [capture|\/path|] -- first path == "path"
 -- [capture|\/int\/:Int|] -- first path == "int" && get 2nd path as Int.
 -- [capture|\/:Int\/:Double|] -- get first path as Int and get 2nd path as Double.
+-- [capture|/**|] -- feed greedy and get all path as [Text] (since 0.17.0). 
 -- @
 --
 capture :: QuasiQuoter

@@ -40,7 +40,7 @@ import qualified Data.HashMap.Strict as H
 data Router exts actM = Router
     { children   :: H.HashMap T.Text (Router exts actM)
     , capturing  :: Maybe (Router exts actM)
-    , anyMatch   :: Maybe (PathMethod exts actM)
+    , restMatch  :: Maybe (PathMethod exts actM)
     , pathMethod :: PathMethod exts actM
     }
 
@@ -69,7 +69,7 @@ insertRouter rootPat mbMethod paths act = loop paths
         FetchPath -> Router cln (Just $ loop ps (maybe emptyRouter id cap)) anp pm
         Exact p   -> Router (adjust' (loop ps) p cln) cap anp pm
         EndPath   -> loop ps rtr
-        AnyPath   -> Router cln cap (Just . insPathMethod $ maybe emptyPathMethod id anp) pm
+        RestPath  -> Router cln cap (Just . insPathMethod $ maybe emptyPathMethod id anp) pm
         RootPath  -> let cln' = foldl' (flip $ adjust' (loop [EndPath])) cln rootPat
                      in loop [EndPath] $ Router cln' cap anp pm
 
@@ -83,7 +83,7 @@ data PathElem = Exact {-# UNPACK #-} !T.Text
               | FetchPath
               | RootPath
               | EndPath
-              | AnyPath
+              | RestPath
 
 data ApiaryEnv exts prms actM = ApiaryEnv
     { envFilter :: ActionT exts actM (SList prms)
@@ -94,8 +94,8 @@ data ApiaryEnv exts prms actM = ApiaryEnv
     , envExts   :: Extensions exts
     }
 
-initialEnv :: Monad actM => Extensions exts -> ApiaryConfig -> ApiaryEnv exts '[] actM
-initialEnv exts conf = ApiaryEnv (return SNil) Nothing id conf id exts
+initialEnv :: Monad actM => ApiaryConfig -> Extensions exts -> ApiaryEnv exts '[] actM
+initialEnv conf = ApiaryEnv (return SNil) Nothing id conf id
 
 data ApiaryWriter exts actM = ApiaryWriter
     { writerRouter :: Router exts actM -> Router exts actM
@@ -114,10 +114,11 @@ newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
     -> (a -> ApiaryWriter exts actM -> m b)
     -> m b 
     }
+
 apiaryT :: Monad m
         => (ApiaryEnv exts prms actM -> m (a, ApiaryWriter exts actM))
         -> ApiaryT exts prms actM m a
-apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a,w) -> cont a w
+apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a, w) -> cont a w
 
 routerToAction :: Monad actM => Router exts actM -> ActionT exts actM ()
 routerToAction router = getRequest >>= go
@@ -138,30 +139,40 @@ routerToAction router = getRequest >>= go
             Nothing -> cld ana
             Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
-            ana = maybe mzero (pmAction mzero) anp
+            ana = do
+                modifyState (\s -> s {actionFetches = fch $ p:ps} ) 
+                maybe mzero (pmAction mzero) anp
             cld nxt = case H.lookup p c of
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
-runApiaryTWith :: (Monad actM, Monad m) => Initializer '[] m exts
-               -> ApiaryConfig -> (forall b. actM b -> IO b) -> ApiaryT exts '[] actM m () -> m Application
-runApiaryTWith (Initializer ir) conf run m = do
-    exts <- ir NoExtension
-    wtr  <- unApiaryT m (initialEnv exts conf) (\_ w -> return w)
+type EApplication e m = Extensions e -> m Application
+
+runApiaryT :: (Monad actM, Monad m)
+           => (forall b. actM b -> IO b)
+           -> ApiaryConfig
+           -> ApiaryT exts '[] actM m ()
+           -> EApplication exts m
+runApiaryT runAct conf m exts = do
+    wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
         mw  = writerMw wtr
-    return $! mw $ execActionT conf exts doc (hoistActionT run $ routerToAction rtr)
+    return $! mw $ execActionT conf exts doc (hoistActionT runAct $ routerToAction rtr)
 
-runApiaryWith :: Monad m => Initializer '[] m exts
-              -> ApiaryConfig -> ApiaryT exts '[] IO m () -> m Application
-runApiaryWith ef conf m = runApiaryTWith ef conf id m
+runApiary :: Monad m
+          => ApiaryConfig
+          -> ApiaryT exts '[] IO m ()
+          -> EApplication exts m
+runApiary = runApiaryT id
 
-runApiary :: Monad m => ApiaryConfig -> ApiaryT '[] '[] IO m () -> m Application
-runApiary = runApiaryWith noExtension
+server :: Monad m => (Application -> m a) -> EApplication '[] m -> m a
+server = serverWith noExtension
 
-server :: Monad m => (Application -> m a) -> m Application -> m a
-server = (=<<)
+serverWith :: Monad m => Initializer m '[] exts 
+           -> (Application -> m a) -> (EApplication exts m) -> m a
+serverWith (Initializer ir) run em = ir NoExtension $ \exts ->
+    em exts >>= run
 
 --------------------------------------------------------------------------------
 
@@ -211,11 +222,11 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
 getApiaryEnv :: Monad actM => ApiaryT exts prms actM m (ApiaryEnv exts prms actM)
 getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
+apiaryExt :: (Has e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
+apiaryExt p = getExtension p . envExts <$> getApiaryEnv
+
 apiaryConfig :: Monad actM => ApiaryT exts prms actM m ApiaryConfig
 apiaryConfig = liftM envConfig getApiaryEnv
-
-apiaryExt :: (Has e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
-apiaryExt p = liftM (getExtension p . envExts) getApiaryEnv
 
 addRoute :: Monad actM => ApiaryWriter exts actM -> ApiaryT exts prms actM m ()
 addRoute r = ApiaryT $ \_ cont -> cont () r

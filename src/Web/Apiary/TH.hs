@@ -65,6 +65,7 @@ numToCode = \case
 
     n   -> fail $ "unknown HTTP status code:" ++ show n
 
+{-# DEPRECATED act "no longer maintained" #-}
 -- | shortcut action. since 0.6.0.0.
 --
 -- @

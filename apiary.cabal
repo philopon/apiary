@@ -1,5 +1,5 @@
 name:                apiary
-version:             0.16.0
+version:             0.17.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -31,15 +31,17 @@ description:
   404 Page Notfound.
   @
   .
-    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v0.16.0>).
+    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v0.17.0>).
   .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.16.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.16.0/examples/api.html>).
+    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.17.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.17.0/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v0.16.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v0.17.0/examples/>
+  .
+  live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
 license:             MIT
 license-file:        LICENSE
@@ -66,6 +68,7 @@ flag wai3
 
 library
   exposed-modules:     Web.Apiary
+                       Web.Apiary.Heroku
                        Web.Apiary.Wai
 
                        Control.Monad.Apiary
@@ -100,7 +103,7 @@ library
                      , http-types           >=0.8   && <0.9
                      , mime-types           >=0.1   && <0.2
 
-                     , text                 >=1.1   && <1.2
+                     , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
                      , bytestring-lexing    >=0.4   && <0.5
                      , blaze-builder        >=0.3   && <0.4
@@ -111,7 +114,8 @@ library
                      , data-default-class   >=0.0   && <0.1
                      , unordered-containers >=0.2   && <0.3
                      , hashable             >=1.1   && <1.3
-                     , time                 >=1.4   && <1.5
+                     , time                 >=1.4   && <1.6
+                     , process              >=1.2   && <1.3
 
   if impl(ghc < 7.8)
     build-depends:     tagged               >=0.7   && <0.8

@@ -145,6 +145,52 @@ you can use some getter(raw request, query string, request header),
 setter(status, response header, response body)  
 and interupt and return current response(stop function).
 
+extensions
+---
+you can use simple extension api of apiary.
+
+* initialize in ApiaryT base monad.
+* add grobal environment.
+* access grobal environment from ApiaryT and ActionT.
+
+type of extension initializer is:
+
+```haskell
+newtype Initializer m i o = Initializer { unInitializer :: Extensions i -> m (Extensions o) }
+
+data Extensions exts where
+  NoExtension  :: Extensions `[]
+  AddExtension :: e -> Extensions exts -> Extensions (e ': exts)
+```
+
+you can construct initializer using
+
+```haskell
+initializer :: Monad m => m e -> Initializer m i (e ': i)
+```
+
+examples:
+
+```haskell
+-- add global environment only
+
+newtype Limit = Limit Int
+
+initLimit = initializer (return $ Limit 18)
+
+-- add global environment and print massage on initialize.
+
+initLimitMsg lim = initializer (putStrLn "initialize limit" >> return (Limit lim)
+```
+
+you can use extensions using
+
+```
+runApiaryWith :: Monad m => Initializer m `[] exts -> ApiaryConfig -> ApiaryT exts `[] IO m () -> m Application
+```
+
+and you can combine two initializer using `(>>>)`.
+
 Example
 ----
 ```haskell

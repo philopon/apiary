@@ -7,28 +7,48 @@ module Data.Apiary.Extension
     ( Has(getExtension)
     , Extensions
     , addExtension
-    , Initializer, Initializer'
-    , initializer, preAction, (+>)
     , noExtension
+    -- * create initializer
+    , Initializer,  initializer
+    , Initializer', initializer'
+    , initializerBracket
+    , initializerBracket'
+
+    -- * combine initializer
+    , (+>)
+    -- * deprecated
+    , preAction
     ) where
 
 import Data.Apiary.Extension.Internal
 
-type Initializer' m a = forall i. Initializer i m (a ': i)
+type Initializer' m a = forall i. Initializer m i (a ': i)
 
 addExtension :: e -> Extensions es -> Extensions (e ': es)
 addExtension = AddExtension
 
-initializer :: Monad m => m e -> Initializer' m e
-initializer m = Initializer $ \e -> do
-    a <- m
-    return (addExtension a e)
+initializer :: Monad m => (Extensions es -> m e) -> Initializer m es (e ': es)
+initializer m = Initializer $ \es n -> do
+    e <- m es
+    n (addExtension e es)
 
-preAction :: Monad m => m a -> Initializer i m i
-preAction f = Initializer $ \e -> f >> return e
+initializer' :: Monad m => m e -> Initializer' m e
+initializer' m = initializer (const m)
 
-(+>) :: Monad m => Initializer i m x -> Initializer x m o -> Initializer i m o
-Initializer a +> Initializer b = Initializer $ \e -> a e >>= b
+initializerBracket :: (forall a. Extensions es -> (e -> m a) -> m a) -> Initializer m es (e ': es)
+initializerBracket b = Initializer $ \es n ->
+    b es $ \e -> n (addExtension e es)
 
-noExtension :: Monad m => Initializer '[] m '[]
-noExtension = Initializer $ return
+initializerBracket' :: (forall a. (e -> m a) -> m a) -> Initializer m es (e ': es)
+initializerBracket' m = initializerBracket (const m)
+
+{-# DEPRECATED preAction "DEPRECATED" #-}
+preAction :: Monad m => m a -> Initializer m i i
+preAction f = Initializer $ \es n -> f >> n es
+
+-- | combine two Initializer. since 0.16.0.
+(+>) :: Monad m => Initializer m i x -> Initializer m x o -> Initializer m i o
+Initializer a +> Initializer b = Initializer $ \e m -> a e (\e' -> b e' m)
+
+noExtension :: Monad m => Initializer m i i
+noExtension = Initializer $ \es n -> n es
