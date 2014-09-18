@@ -7,7 +7,11 @@
 
 module Web.Apiary.MongoDB
     ( MongoDB, MongoDBConfig(..), MongoQuery
-    , initMongoDB, initHerokuMongoDB, access
+    -- * initializer
+    , initMongoDB, initHerokuMongoDB
+    -- * query
+    , access
+    -- * reexports
     , module Data.Bson
     , module Database.MongoDB.Connection
     , module Database.MongoDB.Query
@@ -82,6 +86,13 @@ getMongoDBConfig s0 cfg =
            , mongoDBDatabase = db
            }
 
+-- | initialize MongoDB extension using heroku service.
+-- 
+-- compatible:
+--
+-- * MongoHQ
+-- * MongoLab
+-- * MongoSoup
 initHerokuMongoDB :: (MonadIO m, MonadBaseControl IO m, Has Heroku exts)
                   => MongoDBConfig -> Initializer m exts (MongoDB ': exts)
 initHerokuMongoDB conf = initializerBracket $ \exts m -> do
@@ -93,6 +104,9 @@ initHerokuMongoDB conf = initializerBracket $ \exts m -> do
     let conf' = maybe conf (flip getMongoDBConfig conf) mbConn
     initMongoDB' conf' m
 
+-- | query using 'MongoDBConfig' settings.
+--
+-- if you want to access other db, other accessmode, please use 'useDb' or 'accessMode'.
 access :: (Has MongoDB exts, MonadBaseControl IO m, MonadIO m)
        => Action (ActionT exts m) a -> ActionT exts m a
 access m = do
@@ -101,4 +115,4 @@ access m = do
         MongoDB.access p (mongoDBAccessMode conf) (mongoDBDatabase conf) $
         maybe (return True) (uncurry auth) (mongoDBAuth conf)
         >>= flip unless (throwIO $ ConnectionFailure $ userError "auth failed.")
-        >>  m
+        >> m

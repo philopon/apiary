@@ -47,7 +47,7 @@ data DefaultDocumentConfig = DefaultDocumentConfig
     { documentTitle           :: T.Text
     , documentDescription     :: Maybe Html
     , documentUseCDN          :: Bool
-    , documentGoogleAnalytics :: Maybe T.Text
+    , documentGoogleAnalytics :: Maybe T.Text -- ^ google analytics. since 0.17.0.
     }
 
 analytics :: T.Text -> Html

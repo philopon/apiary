@@ -61,6 +61,7 @@ mkCap (eq:as)   = [|(Capture.path (fromString $(stringE eq))) . $(mkCap as) |]
 -- [capture|\/path|] -- first path == "path"
 -- [capture|\/int\/:Int|] -- first path == "int" && get 2nd path as Int.
 -- [capture|\/:Int\/:Double|] -- get first path as Int and get 2nd path as Double.
+-- [capture|/**|] -- feed greedy and get all path as [Text] (since 0.17.0). 
 -- @
 --
 capture :: QuasiQuoter

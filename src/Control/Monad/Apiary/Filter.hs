@@ -18,7 +18,6 @@ module Control.Monad.Apiary.Filter (
     , http09, http10, http11
     -- ** path matcher
     , root
-    , anyPath
     , capture
     , Capture.path
     , Capture.endPath
@@ -45,7 +44,7 @@ module Control.Monad.Apiary.Filter (
     
     -- * deprecated
     , stdMethod
-
+    , anyPath
     ) where
 
 import Network.Wai as Wai

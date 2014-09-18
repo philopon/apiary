@@ -8,7 +8,13 @@
 
 module Web.Apiary.Memcached
     ( Memcached, CacheConfig(..), MemcachedConfig(..)
-    , initMemcached, initHerokuMemcached, memcached
+    -- * initializer
+    , initMemcached, initHerokuMemcached
+
+    -- * raw query
+    , memcached
+
+    -- * cache
     , cache, cacheMaybe
     ) where
 
@@ -71,6 +77,13 @@ getHerokuConfig pfx ci exts = do
             maybe id (\a -> (a:)) auth $ connectAuth (connectInfo ci)
         }}
 
+-- | initialize memcached extension using heroku service.
+--
+-- compatile:
+--
+-- * Memcachier
+-- * Memcache cloud
+--
 initHerokuMemcached :: (Has Heroku exts, MonadBaseControl IO m)
                     => MemcachedConfig -> Initializer m exts (Memcached ': exts)
 initHerokuMemcached cfg = initializerBracket $ \exts m -> control $ \run -> do

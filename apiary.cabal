@@ -40,6 +40,8 @@ description:
     * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v0.17.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v0.17.0/examples/api.html>).
   .
   more examples: <https://github.com/philopon/apiary/blob/v0.17.0/examples/>
+  .
+  live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
 license:             MIT
 license-file:        LICENSE

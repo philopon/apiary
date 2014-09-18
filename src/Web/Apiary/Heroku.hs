@@ -51,6 +51,14 @@ initHeroku :: MonadIO m => HerokuConfig -> Initializer' m Heroku
 initHeroku conf = initializer' . liftIO $
     Heroku <$> newIORef Nothing <*> pure conf
 
+-- | use this function instead of serverWith in heroku app. since 0.17.0.
+--
+-- @ serverWith exts (run 3000) . runApiary def $ foo @
+--
+-- to
+--
+-- @ herokuWith exts run def . runApiary def $ foo @
+--
 herokuWith :: MonadIO m => Initializer m '[Heroku] exts
            -> (Int -> Application -> m a)
            -> HerokuConfig -> EApplication exts m -> m a
@@ -62,6 +70,18 @@ herokuWith ir run conf eapp = ir' NoExtension $ \exts -> do
   where
     Initializer ir' = initHeroku conf +> ir
 
+-- | use this function instead of server in heroku app. since 0.17.0.
+--
+-- @ server (run 3000) . runApiary def $ foo @
+--
+-- to
+--
+-- @ heroku run def . runApiary def $ foo @
+--
+-- this function provide:
+--
+-- * set port by PORT environment variable.
+-- * getHerokuEnv function(get config from environment variable or @ heroku config @ command).
 heroku :: MonadIO m => (Int -> Application -> m a)
        -> HerokuConfig -> EApplication '[Heroku] m -> m a
 heroku = herokuWith noExtension
