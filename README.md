@@ -189,7 +189,7 @@ you can use extensions using
 runApiaryWith :: Monad m => Initializer m `[] exts -> ApiaryConfig -> ApiaryT exts `[] IO m () -> m Application
 ```
 
-and you can combine two initializer using `(>>>)`.
+and you can combine two initializer using `(+>)`.
 
 Example
 ----

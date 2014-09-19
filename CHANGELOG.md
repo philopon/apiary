@@ -1,3 +1,11 @@
+# 0.17.1
+* relax switchQuery.
+
+              old   new
+    key       True  True
+    key=true  False True
+    key=false False False
+
 # 0.17.0
 * fix not accept in multi Accept header.
 * add greedy path capture('\*\*').

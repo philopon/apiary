@@ -113,19 +113,6 @@ rootFilterTest = testGroup "rootFilter" $ map ($ rootFilterApp)
     ]
 
 --------------------------------------------------------------------------------
-anyFilterApp :: Application
-anyFilterApp = runApp $ [capture|/test|] . anyPath . action $ do
-    contentType "text/plain"
-    bytes "hello"
-
-anyFilterTest :: Test
-anyFilterTest = testGroup "anyPath" $ map ($ anyFilterApp)
-    [ testReq "GET /"          . assert404
-    , testReq "GET /test"      . assertPlain200 "hello"
-    , testReq "POST /test/foo" . assertPlain200 "hello"
-    ]
-
---------------------------------------------------------------------------------
 
 restFilterApp :: Application
 restFilterApp = runApp $ do
@@ -259,6 +246,22 @@ querySomeTest = testGroup "Some" $ map ($ queryApp (=+:) (=+:) (=+:))
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String [\"12\",\"b\"]"
     ]
 
+switchQueryApp :: Application
+switchQueryApp = runApp $ do
+    switchQuery "foo" . switchQuery "bar" . action $ \f b ->
+        contentType "text/plain" >> showing f >> showing b
+
+switchQueryTest :: Test
+switchQueryTest = testGroup "switch" $ map ($ switchQueryApp)
+    [ testReq "GET /"                    . assertPlain200 "FalseFalse"
+    , testReq "GET /?foo"                . assertPlain200 "TrueFalse"
+    , testReq "GET /?foo&bar"            . assertPlain200 "TrueTrue"
+    , testReq "GET /?foo=true"           . assertPlain200 "TrueFalse"
+    , testReq "GET /?foo=false"          . assertPlain200 "FalseFalse"
+    , testReq "GET /?foo=false&bar=true" . assertPlain200 "FalseTrue"
+    , testReq "GET /?foo&bar=true"       . assertPlain200 "TrueTrue"
+    , testReq "GET /?foo=1&bar=0"        . assertPlain200 "TrueFalse"
+    ]
 
 queryTest :: Test
 queryTest = testGroup "query"
@@ -269,6 +272,7 @@ queryTest = testGroup "query"
     , queryCheckTest
     , queryManyTest
     , querySomeTest
+    , switchQueryTest
     ]
 
 --------------------------------------------------------------------------------
@@ -334,7 +338,6 @@ applicationTests = testGroup "Application"
     , methodFilterTest
     , httpVersionTest
     , rootFilterTest
-    , anyFilterTest
     , restFilterTest
     , captureTest
     , queryTest
