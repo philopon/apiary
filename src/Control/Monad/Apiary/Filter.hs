@@ -70,7 +70,6 @@ import Data.Monoid
 import Data.Proxy
 import Data.Apiary.SList
 import Data.String
-import Data.Maybe
 
 import Data.Apiary.Param
 import Data.Apiary.Document
@@ -246,9 +245,13 @@ hasQuery q = query q (Strategy.Check :: Strategy.Check ())
 switchQuery :: Monad actM => QueryKey -> ApiaryT exts (Bool ': prms) actM m () -> ApiaryT exts prms actM m ()
 switchQuery QueryKey{..} = focus doc $ \l -> do
     r <- getRequest
-    return $ (not . null $ filter (\(k,v) -> isNothing v && queryKey == k) (queryString r)) ::: l
+    return $ (not . null $ filter (\(k,v) -> queryKey == k && checkValue v) (queryString r)) ::: l
   where
     doc = DocQuery queryKey (StrategyRep "Switch") NoValue queryDesc
+    checkValue Nothing = True
+    checkValue v       = case readQuery v :: Maybe Bool of
+        Just True -> True
+        _         -> False
 
 --------------------------------------------------------------------------------
 
