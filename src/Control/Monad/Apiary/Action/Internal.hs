@@ -16,6 +16,8 @@
 
 module Control.Monad.Apiary.Action.Internal where
 
+import System.PosixCompat.Files
+
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Trans
@@ -25,6 +27,7 @@ import Control.Monad.Catch
 import Control.Monad.Trans.Control
 
 import Network.Mime hiding (Extension)
+import Network.HTTP.Date
 import Network.HTTP.Types
 import Network.Wai
 import qualified Network.Wai.Parse as P
@@ -426,15 +429,23 @@ reset :: Monad m => ActionT exts m ()
 reset = modifyState (\s -> s { actionResponse = mempty } )
 
 -- | set response body file content, without set Content-Type. since 0.1.0.0.
-file' :: Monad m => FilePath -> Maybe FilePart -> ActionT exts m ()
+file' :: MonadIO m => FilePath -> Maybe FilePart -> ActionT exts m ()
 file' f p = modifyState (\s -> s { actionResponse = ResponseFile f p } )
 
 -- | set response body file content and detect Content-Type by extension. since 0.1.0.0.
-file :: Monad m => FilePath -> Maybe FilePart -> ActionT exts m ()
+--
+-- file modification check since 0.17.2.
+file :: MonadIO m => FilePath -> Maybe FilePart -> ActionT exts m ()
 file f p = do
-    mime <- mimeType <$> getConfig
-    contentType (mime f)
-    file' f p
+    mbims <- (>>= parseHTTPDate) . lookup "If-Modified-Since" <$> getHeaders
+    t <- liftIO $ epochTimeToHTTPDate . modificationTime <$> getFileStatus f
+    case mbims of
+        Just ims | ims >= t -> reset >> status status304 >> stop
+        _ -> do
+            mime <- mimeType <$> getConfig
+            contentType (mime f)
+            addHeader "Last-Modified" (formatHTTPDate t)
+            file' f p
 
 -- | append response body from builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT exts m ()
