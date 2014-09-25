@@ -1,3 +1,6 @@
+# 0.17.2
+* send 302 if file not midified.
+
 # 0.17.1
 * relax switchQuery.
 
