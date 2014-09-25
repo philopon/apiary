@@ -50,7 +50,7 @@ data PureScriptConfig = PureScriptConfig
     , preludePath       :: FilePath
     , development       :: Bool
     , initialCompiles   :: [FilePath]
-    , pureScriptOptions :: P.Options
+    , pureScriptOptions :: P.Options P.Compile
     }
 
 instance Default PureScriptConfig where
@@ -60,10 +60,8 @@ instance Default PureScriptConfig where
         defaultPreludePath
         False
         []
-        P.defaultOptions
-        { P.optionsMain             = Just "Main"
-        , P.optionsBrowserNamespace = Just "PS"
-        }
+        P.defaultCompileOptions
+        { P.optionsMain             = Just "Main" }
 
 data PureScript = PureScript
     { pscConfig :: PureScriptConfig
