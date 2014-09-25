@@ -438,13 +438,16 @@ file' f p = modifyState (\s -> s { actionResponse = ResponseFile f p } )
 file :: MonadIO m => FilePath -> Maybe FilePart -> ActionT exts m ()
 file f p = do
     mbims <- (>>= parseHTTPDate) . lookup "If-Modified-Since" <$> getHeaders
-    t <- liftIO $ epochTimeToHTTPDate . modificationTime <$> getFileStatus f
+    e <- liftIO $ fileExist f
+    t <- if e
+         then liftIO $ Just . epochTimeToHTTPDate . modificationTime <$> getFileStatus f
+         else return Nothing
     case mbims of
-        Just ims | ims >= t -> reset >> status status304 >> stop
+        Just ims | maybe False (ims >=) t -> reset >> status status304 >> stop
         _ -> do
             mime <- mimeType <$> getConfig
             contentType (mime f)
-            addHeader "Last-Modified" (formatHTTPDate t)
+            maybe (return ()) (addHeader "Last-Modified" . formatHTTPDate) t
             file' f p
 
 -- | append response body from builder. since 0.1.0.0.
