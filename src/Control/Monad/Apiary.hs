@@ -6,7 +6,7 @@ module Control.Monad.Apiary
     , apiaryConfig
     , apiaryExt
     -- * execute action
-    , action, action'
+    , action
     -- * middleware
     , middleware
     -- * API documentation
@@ -15,8 +15,6 @@ module Control.Monad.Apiary
     , precondition
     , noDoc
     , rpHtml
-    -- * deprecated
-    , actionWithPreAction
     ) where
 
 import Control.Monad.Apiary.Internal

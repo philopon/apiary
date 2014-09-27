@@ -34,9 +34,9 @@ main = do
         -- condition which is next of noDoc function is not documented.
         [capture|/precondition|] .
             http11 .
-            hasHeader "Accept" .
+            accept "text/plain" .
             precondition ("user " <> H.strong "defined" <> " precondition.") .
-            noDoc . hasHeader "User-Agent" . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
+            noDoc . header [key|User-Agent|] . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
             document "precondition test" .  action $
                 bytes "precondition"
 
@@ -52,9 +52,11 @@ main = do
 
                 method POST .
                     -- you can add query description using (??) function.
-                    ("name"         =:  pMaybe pString) .
-                    ("age" ?? dAge  =?: pInt) .
-                    document "set name and age from query parameter." . action $ \n a -> do
+                    ([key|name|]         =:  pMaybe pString) .
+                    ([key|age|] ?? dAge  =?: pInt) .
+                    document "set name and age from query parameter." . action $ do
+                        n <- param [key|name|]
+                        a <- param [key|age|]
                         liftIO . void $ swapMVar nm n
                         liftIO $ maybe (return ()) (void . swapMVar ag) a
 
@@ -65,8 +67,10 @@ main = do
 
             -- you can add route capture description using [].
             -- you can reference value using '$'.
-            [capture|/api/cat/:String[$dName]/:Int[age]|] .
-                method POST . document "set name and age from route." . action $ \n a -> do
+            [capture|/api/cat/name::String[$dName]/age::Int[age]|] .
+                method POST . document "set name and age from route." . action $ do
+                    n <- param [key|name|]
+                    a <- param [key|age|]
                     void . liftIO $ swapMVar nm (Just n)
                     void . liftIO $ swapMVar ag a
 
@@ -77,12 +81,14 @@ main = do
         -- you can generate API document with multiple action.
         -- rpHtml function format as captured route parameter.
         group "dog group" $ do
-            [capture|/api/dog/:Int|] $ do
-                precondition (rpHtml "Int" 1 <> " is even.") . document "twice" . action $ \i -> do
+            [capture|/api/dog/i::Int/**rest|] $ do
+                precondition (rpHtml "i" Nothing <> " is even.") . document "twice" . action $ do
+                    i <- param [key|i|]
                     guard $ even i
                     contentType "text/plain"
                     showing (i * 2)
-                precondition (rpHtml "Int" 1 <> " is odd.") . document "succ" . action $ \i -> do
+                precondition (rpHtml "i" Nothing <> " is odd.") . document "succ" . action $ do
+                    i <- param [key|i|]
                     contentType "text/plain"
                     showing (succ i)
 

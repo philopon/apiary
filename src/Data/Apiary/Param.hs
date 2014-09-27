@@ -16,9 +16,10 @@
 
 module Data.Apiary.Param where
 
-import Network.Wai
-
 import Control.Monad
+import Control.Arrow
+
+import qualified Network.HTTP.Types as Http
 
 import Data.Int
 import Data.Word
@@ -288,7 +289,7 @@ pFile :: Proxy File
 pFile = Proxy
 
 class ReqParam a where
-    reqParams   :: proxy a -> Request -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
+    reqParams   :: proxy a -> Http.Query -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
     reqParamRep :: proxy a -> QueryRep
 
 instance ReqParam File where
@@ -296,6 +297,6 @@ instance ReqParam File where
     reqParamRep   _ = Strict $ typeRep pFile
 
 instance Query a => ReqParam a where
-    reqParams _ r p _ = map (\(k,v) -> (k, readQuery v)) (queryString r) ++
-        map (\(k,v) -> (k, readQuery $ Just v)) p
+    reqParams _ q p _ = map (second readQuery) q ++
+        map (second $ readQuery . Just) p
     reqParamRep = queryRep

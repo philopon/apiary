@@ -19,20 +19,21 @@ import Data.Apiary.Method
 
 import Text.Blaze.Html
 import qualified Data.Text as T
-import qualified Data.ByteString as S
 
-data StrategyRep = StrategyRep
+newtype StrategyRep = StrategyRep
     { strategyInfo :: T.Text }
     deriving (Show, Eq)
 
 data Doc
     = DocPath   T.Text       Doc
     | DocRoot                Doc
-    | DocFetch  TypeRep (Maybe Html) Doc
+    | DocFetch  T.Text TypeRep (Maybe Html) Doc
+    | DocRest   T.Text  (Maybe Html) Doc
+    | DocAny    Doc
     | DocDropNext            Doc
 
     | DocMethod Method       Doc
-    | DocQuery  S.ByteString StrategyRep QueryRep (Maybe Html) Doc
+    | DocQuery  T.Text StrategyRep QueryRep (Maybe Html) Doc
     | DocPrecondition Html   Doc
     | DocGroup  T.Text       Doc
     | Document  T.Text       Doc
@@ -41,15 +42,19 @@ data Doc
 --------------------------------------------------------------------------------
 
 data Route
-    = Path  T.Text               Route
-    | Fetch TypeRep (Maybe Html) Route
+    = Path  T.Text                      Route
+    | Fetch T.Text TypeRep (Maybe Html) Route
+    | Rest  T.Text (Maybe Html)
+    | Any
     | End
 
 instance Eq Route where
-    Path  a   d == Path  b   d' = a == b && d == d'
-    Fetch a _ d == Fetch b _ d' = a == b && d == d'
-    End         == End          = True
-    _           == _            = False
+    Path    a   d == Path  b   d'   = a == b && d == d'
+    Fetch k a _ d == Fetch l b _ d' = k == l && a == b && d == d'
+    Rest  k _     == Rest  l _      = k == l
+    Any           == Any            = True
+    End           == End            = True
+    _             == _              = False
 
 data Documents = Documents
     { noGroup :: [PathDoc]
@@ -62,7 +67,7 @@ data PathDoc = PathDoc
     }
 
 data QueryDoc = QueryDoc
-    { queryName     :: S.ByteString
+    { queryName     :: T.Text
     , queryStrategy :: StrategyRep
     , queryRep      :: QueryRep
     , queryDocument :: (Maybe Html)
@@ -85,7 +90,9 @@ docToDocument = \case
     loop ph mh qs ps doc     (DocDropNext       d) = loop ph mh qs ps doc (dropNext d)
     loop ph mh qs pc doc     (DocPath         t d) = loop (ph . Path t) mh qs pc doc d
     loop _  mh qs pc doc     (DocRoot           d) = loop (const $ Path "" End) mh qs pc doc d
-    loop ph mh qs pc doc     (DocFetch      t h d) = loop (ph . Fetch t h) mh qs pc doc d
+    loop ph mh qs pc doc     (DocFetch    k t h d) = loop (ph . Fetch k t h) mh qs pc doc d
+    loop ph mh qs pc doc     (DocRest     k   h d) = loop (ph . const (Rest k h)) mh qs pc doc d
+    loop ph mh qs pc doc     (DocAny            d) = loop (ph . const Any) mh qs pc doc d
     loop ph _  qs pc doc     (DocMethod       m d) = loop ph (\md -> [(m, md)]) qs pc doc d
     loop ph mh qs pc doc     (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc doc d
     loop ph mh qs pc doc     (DocPrecondition h d) = loop ph mh qs (pc . (h:)) doc d
@@ -96,7 +103,9 @@ docToDocument = \case
 
     dropNext (DocPath         _ d) = d
     dropNext (DocRoot           d) = d
-    dropNext (DocFetch      _ _ d) = d
+    dropNext (DocFetch    _ _ _ d) = d
+    dropNext (DocRest       _ _ d) = d
+    dropNext (DocAny            d) = d
     dropNext (DocDropNext       d) = dropNext d
     dropNext (DocMethod       _ d) = d
     dropNext (DocQuery  _ _ _ _ d) = d
@@ -132,5 +141,3 @@ docsToDocuments doc =
 
     trav (Nothing, _) = Nothing
     trav (Just a,  b) = Just (a, b)
-
-

@@ -74,13 +74,13 @@ library
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
                        Control.Monad.Apiary.Filter.Internal
-                       Control.Monad.Apiary.Filter.Internal.Strategy
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.Extension
                        Data.Apiary.Extension.Internal
-                       Data.Apiary.SList
                        Data.Apiary.Param
+                       Data.Apiary.Dict
+                       Data.Apiary.TypeLits
                        Data.Apiary.Method
                        Data.Apiary.Proxy
                        Data.Apiary.Document
@@ -90,7 +90,6 @@ library
                        Control.Monad.Apiary.Action.Internal
                        Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Capture.TH
-                       Web.Apiary.TH
   build-depends:       base                 >=4.6   && <4.8
                      , template-haskell     >=2.8   && <2.10
 

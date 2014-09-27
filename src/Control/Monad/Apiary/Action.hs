@@ -9,12 +9,16 @@ module Control.Monad.Apiary.Action
     , stop, stopWith
 
     -- ** getter
+    , param
+    , File(..)
+    , getExt
+
+    -- *** low level getter
     , getRequest
     , getHeaders
-    , getReqParams
-    , File(..)
-    , getReqFiles
-    , getExt
+    , getParams
+    , getReqBodyParams
+    , getReqBodyFiles
 
     -- ** setter
     , status
@@ -42,6 +46,7 @@ module Control.Monad.Apiary.Action
     , redirectWith
    
     -- * deprecated
+    , getReqParams, getReqFiles
     , redirectFound, redirectSeeOther, source, lbs
     ) where
 
