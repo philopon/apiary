@@ -7,6 +7,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -152,41 +153,46 @@ data Action a
     | Pass
     | Stop Response
 
-newtype ActionT exts prms m a = ActionT { unActionT :: ReaderT (Dict prms) (ActionT' exts m) a }
-    deriving ( Functor, Applicative, Monad, MonadIO
-             , MonadThrow, MonadCatch, MonadMask, Alternative, MonadPlus
-             , MonadBase b)
+newtype ActionT exts prms m a = ActionT { unActionT :: forall b. 
+    Dict prms
+    -> ActionEnv exts
+    -> ActionState
+    -> (a -> ActionState -> m (Action b))
+    -> m (Action b)
+    } deriving (Functor)
 
-instance MonadTrans (ActionT exts prms) where
-    lift m = ActionT $ ReaderT $ \_ -> lift m
+runActionT :: Monad m => ActionT exts prms m a
+           -> Dict prms -> ActionEnv exts -> ActionState
+           -> m (Action a)
+runActionT m dict env st = unActionT m dict env st $ \a !st' ->
+    return (Continue st' a)
+{-# INLINE runActionT #-}
 
-instance MonadTransControl (ActionT exts prms) where
-    newtype StT (ActionT exts prms) a = StActionT { unStActionT :: StT (ActionT' exts) (StT (ReaderT (Dict prms)) a) }
-    liftWith f = ActionT $ liftWith $ \run -> liftWith $ \run' ->
-        f $ liftM StActionT . run' . run . unActionT
-    restoreT = ActionT . restoreT . restoreT . liftM unStActionT
+actionT :: Monad m 
+        => (Dict prms -> ActionEnv exts -> ActionState -> m (Action a))
+        -> ActionT exts prms m a
+actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
+    Pass            -> return Pass
+    Stop s          -> return $ Stop s
+    Continue !st' a -> cont a st'
+{-# INLINE actionT #-}
 
-instance MonadBaseControl b m => MonadBaseControl b (ActionT exts prms m) where
-    newtype StM (ActionT exts prms m) a = StMActionT { unStMActionT :: ComposeSt (ActionT exts prms) m a }
-    liftBaseWith = defaultLiftBaseWith StMActionT
-    restoreM     = defaultRestoreM unStMActionT
-
-runActionT :: Dict prms -> ActionT exts prms m a -> ActionT' exts m a
-runActionT e = flip runReaderT e . unActionT
+-- | n must be Monad, so cant be MFunctor.
+hoistActionT :: (Monad m, Monad n)
+             => (forall b. m b -> n b) -> ActionT exts prms m a -> ActionT exts prms n a
+hoistActionT run m = actionT $ \d e s -> run (runActionT m d e s)
+{-# INLINE hoistActionT #-}
 
 newtype ActionT' exts m a = ActionT' { unActionT' :: forall b. 
     ActionEnv exts
     -> ActionState
     -> (a -> ActionState -> m (Action b))
     -> m (Action b)
-    }
+    } deriving (Functor)
 
-runActionT' :: Monad m => ActionT' exts m a
-           -> ActionEnv exts -> ActionState
-           -> m (Action a)
-runActionT' m env st = unActionT' m env st $ \a !st' ->
-    return (Continue st' a)
-{-# INLINE runActionT' #-}
+applyDict :: Dict prms -> ActionT exts prms m a -> ActionT' exts m a
+applyDict d (ActionT m) = ActionT' (m d)
+{-# INLINE applyDict #-}
 
 actionT' :: Monad m 
          => (ActionEnv exts -> ActionState -> m (Action a))
@@ -197,9 +203,14 @@ actionT' f = ActionT' $ \env !st cont -> f env st >>= \case
     Continue !st' a -> cont a st'
 {-# INLINE actionT' #-}
 
--- | n must be Monad, so cant be MFunctor.
+runActionT' :: Monad m => ActionT' exts m a
+            -> ActionEnv exts -> ActionState
+            -> m (Action a)
+runActionT' m env st = unActionT' m env st $ \a !st' -> return (Continue st' a)
+{-# INLINE runActionT' #-}
+
 hoistActionT' :: (Monad m, Monad n)
-             => (forall b. m b -> n b) -> ActionT' exts m a -> ActionT' exts n a
+              => (forall b. m b -> n b) -> ActionT' exts m a -> ActionT' exts n a
 hoistActionT' run m = actionT' $ \e s -> run (runActionT' m e s)
 {-# INLINE hoistActionT' #-}
 
@@ -218,12 +229,6 @@ execActionT' config exts doc m request = let send = return in
         Stop s       -> send s
         Continue r _ -> send $ toResponse r
 
---------------------------------------------------------------------------------
-
-instance Functor (ActionT' exts m) where
-    fmap f m = ActionT' $ \env st cont ->
-        unActionT' m env st (\a !s' -> cont (f a) s')
-
 instance Applicative (ActionT' exts m) where
     pure x = ActionT' $ \_ !st cont -> cont x st
     mf <*> ma = ActionT' $ \env st cont ->
@@ -239,35 +244,6 @@ instance Monad m => Monad (ActionT' exts m) where
     fail s = ActionT' $ \(ActionEnv{actionConfig = c}) _ _ -> return $
         Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
 
-instance MonadIO m => MonadIO (ActionT' exts m) where
-    liftIO m = ActionT' $ \_ !st cont ->
-        liftIO m >>= \a -> cont a st
-
-instance MonadTrans (ActionT' exts) where
-    lift m = ActionT' $ \_ !st cont ->
-        m >>= \a -> cont a st
-
-instance MonadThrow m => MonadThrow (ActionT' exts m) where
-    throwM e = ActionT' $ \_ !st cont ->
-        throwM e >>= \a -> cont a st
-
-instance MonadCatch m => MonadCatch (ActionT' exts m) where
-    catch m h = ActionT' $ \env !st cont ->
-        catch (unActionT' m env st cont) (\e -> unActionT' (h e) env st cont)
-    {-# INLINE catch #-}
-
-instance MonadMask m => MonadMask (ActionT' exts m) where
-    mask a = ActionT' $ \env !st cont ->
-        mask $ \u -> unActionT' (a $ q u) env st cont
-      where
-        q u m = actionT' $ \env !st -> u (runActionT' m env st)
-    uninterruptibleMask a = ActionT' $ \env !st cont ->
-        uninterruptibleMask $ \u -> unActionT' (a $ q u) env st cont
-      where
-        q u m = actionT' $ \env !st -> u (runActionT' m env st)
-    {-# INLINE mask #-}
-    {-# INLINE uninterruptibleMask #-}
-
 instance (Monad m, Functor m) => Alternative (ActionT' exts m) where
     empty = mzero
     (<|>) = mplus
@@ -282,29 +258,89 @@ instance Monad m => MonadPlus (ActionT' exts m) where
         Pass           -> unActionT' n e s cont
     {-# INLINE mzero #-}
     {-# INLINE mplus #-}
+--------------------------------------------------------------------------------
 
-instance MonadBase b m => MonadBase b (ActionT' exts m) where
+instance Applicative (ActionT exts prms m) where
+    pure x = ActionT $ \_ _ !st cont -> cont x st
+    mf <*> ma = ActionT $ \dict env st cont ->
+        unActionT mf dict env st  $ \f !st'  ->
+        unActionT ma dict env st' $ \a !st'' ->
+        cont (f a) st''
+
+instance Monad m => Monad (ActionT exts prms m) where
+    return x = ActionT $ \_ _ !st cont -> cont x st
+    m >>= k  = ActionT $ \dict env !st cont ->
+        unActionT m dict env st $ \a !st' ->
+        unActionT (k a) dict env st' cont
+    fail s = ActionT $ \_ (ActionEnv{actionConfig = c}) _ _ -> return $
+        Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
+
+instance MonadIO m => MonadIO (ActionT exts prms m) where
+    liftIO m = ActionT $ \_ _ !st cont ->
+        liftIO m >>= \a -> cont a st
+
+instance MonadTrans (ActionT exts prms) where
+    lift m = ActionT $ \_ _ !st cont ->
+        m >>= \a -> cont a st
+
+instance MonadThrow m => MonadThrow (ActionT exts prms m) where
+    throwM e = ActionT $ \_ _ !st cont ->
+        throwM e >>= \a -> cont a st
+
+instance MonadCatch m => MonadCatch (ActionT exts prms m) where
+    catch m h = ActionT $ \dict env !st cont ->
+        catch (unActionT m dict env st cont) (\e -> unActionT (h e) dict env st cont)
+    {-# INLINE catch #-}
+
+instance MonadMask m => MonadMask (ActionT exts prms m) where
+    mask a = ActionT $ \dict env !st cont ->
+        mask $ \u -> unActionT (a $ q u) dict env st cont
+      where
+        q u m = actionT $ \dict env !st -> u (runActionT m dict env st)
+    uninterruptibleMask a = ActionT $ \dict env !st cont ->
+        uninterruptibleMask $ \u -> unActionT (a $ q u) dict env st cont
+      where
+        q u m = actionT $ \dict env !st -> u (runActionT m dict env st)
+    {-# INLINE mask #-}
+    {-# INLINE uninterruptibleMask #-}
+
+instance (Monad m, Functor m) => Alternative (ActionT exts prms m) where
+    empty = mzero
+    (<|>) = mplus
+    {-# INLINE empty #-}
+    {-# INLINE (<|>) #-}
+
+instance Monad m => MonadPlus (ActionT exts prms m) where
+    mzero = ActionT $ \_ _ _ _ -> return Pass
+    mplus m n = ActionT $ \dict e !s cont -> unActionT m dict e s cont >>= \case
+        Continue !st a -> return $ Continue st a
+        Stop stp       -> return $ Stop stp
+        Pass           -> unActionT n dict e s cont
+    {-# INLINE mzero #-}
+    {-# INLINE mplus #-}
+
+instance MonadBase b m => MonadBase b (ActionT exts prms m) where
     liftBase = liftBaseDefault
 
-instance MonadTransControl (ActionT' exts) where
-    newtype StT (ActionT' exts) a = StActionT' { unStActionT' :: Action a }
-    liftWith f = actionT' $ \e !s -> 
-        liftM (\a -> Continue s a) (f $ \t -> liftM StActionT' $ runActionT' t e s)
-    restoreT m = actionT' $ \_ _ -> liftM unStActionT' m
+instance MonadTransControl (ActionT exts prms) where
+    newtype StT (ActionT exts prms) a = StActionT { unStActionT :: Action a }
+    liftWith f = actionT $ \prms e !s -> 
+        liftM (\a -> Continue s a) (f $ \t -> liftM StActionT $ runActionT t prms e s)
+    restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
 
-instance MonadBaseControl b m => MonadBaseControl b (ActionT' exts m) where
-    newtype StM (ActionT' exts m) a = StMActionT' { unStMActionT' :: ComposeSt (ActionT' exts) m a }
-    liftBaseWith = defaultLiftBaseWith StMActionT'
-    restoreM     = defaultRestoreM unStMActionT'
+instance MonadBaseControl b m => MonadBaseControl b (ActionT exts prms m) where
+    newtype StM (ActionT exts prms m) a = StMActionT { unStMActionT :: ComposeSt (ActionT exts prms) m a }
+    liftBaseWith = defaultLiftBaseWith StMActionT
+    restoreM     = defaultRestoreM unStMActionT
 
-instance MonadReader r m => MonadReader r (ActionT' exts m) where
+instance MonadReader r m => MonadReader r (ActionT exts prms m) where
     ask     = lift ask
-    local f = hoistActionT' $ local f
+    local f = hoistActionT $ local f
 
 --------------------------------------------------------------------------------
 
 getEnv :: Monad m => ActionT exts prms m (ActionEnv exts)
-getEnv = ActionT $ ReaderT $ \_ -> ActionT' $ \e s c -> c e s
+getEnv = ActionT $ \_ e s c -> c e s
 
 getRequest' :: Monad m => ActionT' exts m Request
 getRequest' = ActionT' $ \e s c -> c (actionRequest e) s
@@ -320,16 +356,16 @@ getExt :: (Has e exts, Monad m) => proxy e -> ActionT exts prms m e
 getExt p = liftM (getExtension p . actionExts) getEnv
 
 getParams :: Monad m => ActionT exts prms m (Dict prms)
-getParams = ActionT $ ReaderT return
+getParams = ActionT $ \d _ s c -> c d s
 
-param :: (Member k prms v, Monad m) => proxy k -> ActionT exts prms m v
+param :: (Member k v prms, Monad m) => proxy k -> ActionT exts prms m v
 param p = liftM (get p) getParams
 
 getDocuments :: Monad m => ActionT exts prms m Documents
 getDocuments = liftM actionDocuments getEnv
 
 getRequestBody :: MonadIO m => ActionT exts prms m ([Param], [File])
-getRequestBody = ActionT $ ReaderT $ \_ -> ActionT' $ \e s c -> case actionReqBody s of
+getRequestBody = ActionT $ \_ e s c -> case actionReqBody s of
     Just b  -> c b s
     Nothing -> do
         (p,f) <- liftIO $ P.parseRequestBody P.lbsBackEnd (actionRequest e)
@@ -364,10 +400,10 @@ modifyState' :: Monad m => (ActionState -> ActionState) -> ActionT' exts m ()
 modifyState' f = ActionT' $ \_ s c -> c () (f s)
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT exts prms m ()
-modifyState f = ActionT $ ReaderT $ \_ -> modifyState' f
+modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
 getState :: ActionT exts prms m ActionState
-getState = ActionT $ ReaderT $ \_ -> ActionT' $ \_ s c -> c s s
+getState = ActionT $ \_ _ s c -> c s s
 
 -- | set status code. since 0.1.0.0.
 status :: Monad m => Status -> ActionT exts prms m ()
@@ -401,11 +437,11 @@ contentType c = modifyHeader
 
 -- | stop handler and send current state. since 0.3.3.0.
 stop :: Monad m => ActionT exts prms m a
-stop = ActionT $ ReaderT $ \_ -> ActionT' $ \_ s _ -> return $ Stop (toResponse s)
+stop = ActionT $ \_ _ s _ -> return $ Stop (toResponse s)
 
 -- | stop with response. since 0.4.2.0.
 stopWith :: Monad m => Response -> ActionT exts prms m a
-stopWith a = ActionT $ ReaderT $ \_ -> ActionT' $ \_ _ _ -> return $ Stop a
+stopWith a = ActionT $ \_ _ _ _ -> return $ Stop a
 
 -- | redirect handler
 --

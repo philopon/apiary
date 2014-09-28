@@ -23,13 +23,13 @@ data Dict (ks :: [(Symbol, *)]) where
     Empty :: Dict '[]
     Insert :: proxy (k :: Symbol) -> v -> Dict ks -> Dict ('(k,v) ': ks)
 
-class Member (k :: Symbol) (ks :: [(Symbol, *)]) v | k ks -> v where
+class Member (k :: Symbol) (v :: *) (ks :: [(Symbol, *)]) | k ks -> v where
     get :: proxy k -> Dict ks -> v
 
-instance Member k ('(k, v) ': ks) v where
+instance Member k v ('(k, v) ': ks) where
     get _ (Insert _ v _) = v
 
-instance Member k ks v => Member k ('(k', v') ': ks) v where
+instance Member k v ks => Member k v ('(k', v') ': ks) where
     get p (Insert _ _ d) = get p d
 
 #if __GLASGOW_HASKELL__ >= 708

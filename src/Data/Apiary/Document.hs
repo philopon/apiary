@@ -20,10 +20,6 @@ import Data.Apiary.Method
 import Text.Blaze.Html
 import qualified Data.Text as T
 
-newtype StrategyRep = StrategyRep
-    { strategyInfo :: T.Text }
-    deriving (Show, Eq)
-
 data Doc
     = DocPath   T.Text       Doc
     | DocRoot                Doc

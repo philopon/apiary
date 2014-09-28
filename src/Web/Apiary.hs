@@ -35,7 +35,7 @@ import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 
 import Data.Default.Class(def)
 import Data.Apiary.Param
-import Data.Apiary.Dict(key)
+import Data.Apiary.Dict(key, Member, NotMember)
 import Data.Apiary.Extension(Has, Extensions, Initializer, Initializer', (+>))
 import Data.Apiary.Method(Method(..))
 import Text.Blaze.Html(Html)

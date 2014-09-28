@@ -13,6 +13,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Data.Apiary.Param where
 
@@ -22,9 +24,12 @@ import Control.Arrow
 import qualified Network.HTTP.Types as Http
 
 import Data.Int
+import Data.Maybe
 import Data.Word
 import Data.Proxy
 import Data.Apiary.Proxy
+import Data.Apiary.TypeLits
+import Data.Apiary.Dict
 
 import Data.String(IsString)
 import Data.Time.Calendar
@@ -300,3 +305,74 @@ instance Query a => ReqParam a where
     reqParams _ q p _ = map (second readQuery) q ++
         map (second $ readQuery . Just) p
     reqParamRep = queryRep
+
+newtype StrategyRep = StrategyRep
+    { strategyInfo :: T.Text }
+    deriving (Show, Eq)
+
+
+class Strategy (w :: * -> *) where
+    type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]
+    strategy :: NotMember k prms => w a -> proxy' k -> [Maybe a] -> Dict prms -> Maybe (Dict (SNext w k a prms))
+    strategyRep :: w a -> StrategyRep
+
+data First a = First
+instance Strategy First where
+    type SNext First k a ps = '(k, a) ': ps
+    strategy _ k (Just a:_) d = Just $ insert k a d
+    strategy _ _ _          _ = Nothing
+    strategyRep _ = StrategyRep "first"
+
+data One a = One
+instance Strategy One where
+    type SNext One k a ps = '(k, a) ': ps
+    strategy _ k [Just a] d = Just $ insert k a d
+    strategy _ _ _        _ = Nothing
+    strategyRep _ = StrategyRep "one"
+
+data Many a = Many
+instance Strategy Many where
+    type SNext Many k a ps = '(k, [a]) ': ps
+    strategy _ k as d = if all isJust as then Just $ insert k (catMaybes as) d else Nothing
+    strategyRep _ = StrategyRep "many"
+
+data Some a = Some
+instance Strategy Some where
+    type SNext Some k a ps = '(k, [a]) ': ps
+    strategy _ _ [] _ = Nothing
+    strategy _ k as d = if all isJust as then Just $ insert k (catMaybes as) d else Nothing
+    strategyRep _ = StrategyRep "some"
+
+data Option a = Option
+instance Strategy Option where
+    type SNext Option k a ps = '(k, Maybe a) ': ps
+    strategy _ k (Just a:_)  d = Just $ insert k (Just a) d
+    strategy _ _ (Nothing:_) _ = Nothing
+    strategy _ k []          d = Just $ insert k Nothing d
+    strategyRep _ = StrategyRep "option"
+
+data Optional a = Optional T.Text a
+instance Strategy Optional where
+    type SNext Optional k a ps = '(k, a) ': ps
+    strategy _              k (Just a:_)  d = Just $ insert k a d
+    strategy _              _ (Nothing:_) _ = Nothing
+    strategy (Optional _ a) k []          d = Just $ insert k a d
+    strategyRep (Optional a _) = StrategyRep $ "default:" `T.append` a
+
+pFirst :: proxy a -> First a
+pFirst _ = First
+
+pOne :: proxy a -> One a
+pOne _ = One
+
+pMany :: proxy a -> Many a
+pMany _ = Many
+
+pSome :: proxy a -> Some a
+pSome _ = Some
+
+pOption :: proxy a -> Option a
+pOption _ = Option
+
+pOptional :: Show a => a -> Optional a
+pOptional a = Optional (T.pack $ show a) a

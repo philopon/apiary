@@ -63,7 +63,6 @@ import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text          as T
 import qualified Data.Text.Encoding as T
 import qualified Data.CaseInsensitive as CI
-import Data.Maybe
 import Data.Monoid
 import Data.Proxy
 import Data.Apiary.TypeLits
@@ -132,15 +131,14 @@ instance HasDesc QueryKey where
 instance HasDesc Proxy where
     queryDesc = const Nothing
 
-queryCommon :: (HasDesc query, MonadIO actM, KnownSymbol key)
-            => StrategyRep -> QueryRep
-            -> query key
-            -> (Http.Query -> [Param] -> [File] -> ActionT exts prms actM (Dict prms'))
-            -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
-queryCommon str typ k m = focus (DocQuery (T.pack $ symbolVal k) str typ (queryDesc k)) $ do
-    q     <- getQueryParams
-    (r,f) <- getRequestBody
-    m q r f
+--     type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]
+query :: forall query strategy k v exts prms actM m. (NotMember k prms, MonadIO actM, KnownSymbol k, ReqParam v, HasDesc query, Strategy strategy)
+      => query k -> strategy v -> ApiaryT exts (SNext strategy k v prms) actM m () -> ApiaryT exts prms actM m ()
+query k w = focus (DocQuery (T.pack $ symbolVal k) (strategyRep w) (reqParamRep (Proxy :: Proxy v)) (queryDesc k)) $ do
+    qs      <- getQueryParams
+    (ps,fs) <- getRequestBody
+    let as = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams (Proxy :: Proxy v) qs ps fs
+    maybe mzero return . strategy w k as =<< getParams
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
@@ -149,9 +147,7 @@ queryCommon str typ k m = focus (DocQuery (T.pack $ symbolVal k) str typ (queryD
 -- @
 (=:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
      => query k -> proxy v -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =: t = queryCommon (StrategyRep "first") (reqParamRep t) k $ \qs ps fs -> do
-    n <- maybe mzero return . join . lookup (SC.pack $ symbolVal k) $ reqParams t qs ps fs
-    insert k n <$> getParams
+k =: v = query k (pFirst v)
 
 -- | get one matched paramerer. since 0.5.0.0.
 --
@@ -162,10 +158,7 @@ k =: t = queryCommon (StrategyRep "first") (reqParamRep t) k $ \qs ps fs -> do
 -- @
 (=!:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =!: t = queryCommon (StrategyRep "one") (reqParamRep t) k $ \qs ps fs ->
-    case filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams t qs ps fs of
-        [(_, Just v)] -> insert k v <$> getParams
-        _             -> mzero
+k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
 --
@@ -177,11 +170,7 @@ k =!: t = queryCommon (StrategyRep "one") (reqParamRep t) k $ \qs ps fs ->
 (=?:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
       -> ApiaryT exts ('(k, Maybe v) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =?: t = queryCommon (StrategyRep "option") (reqParamRep t) k $ \qs ps fs -> do
-    case lookup (SC.pack $ symbolVal k) $ reqParams t qs ps fs of
-        Just Nothing  -> mzero
-        Just v  -> insert k v       <$> getParams
-        Nothing -> insert k Nothing <$> getParams
+k =?: t = query k (pOption t)
 
 -- | get optional first paramerer with default. since 0.16.0.
 --
@@ -193,11 +182,7 @@ k =?: t = queryCommon (StrategyRep "option") (reqParamRep t) k $ \qs ps fs -> do
 (=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, ReqParam v, KnownSymbol k, NotMember k prms)
        => query k -> v
        -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =?!: v = queryCommon (StrategyRep $ "default:" `T.append` T.pack (show v)) (reqParamRep (Proxy :: Proxy v)) k $ \qs ps fs -> do
-    case lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy v) qs ps fs of
-        Just (Just n) -> insert k n <$> getParams
-        Nothing       -> insert k v <$> getParams
-        Just Nothing  -> mzero
+k =?!: v = query k (pOptional v)
 
 -- | get many paramerer. since 0.5.0.0.
 --
@@ -207,9 +192,7 @@ k =?!: v = queryCommon (StrategyRep $ "default:" `T.append` T.pack (show v)) (re
 (=*:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
       -> ApiaryT exts ('(k, [v]) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =*: t = queryCommon (StrategyRep "many") (reqParamRep t) k $ \qs ps fs -> do
-    let n = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams t qs ps fs
-    if all isJust n then insert k (catMaybes n) <$> getParams else mzero
+k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
 --
@@ -219,14 +202,14 @@ k =*: t = queryCommon (StrategyRep "many") (reqParamRep t) k $ \qs ps fs -> do
 (=+:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
       -> ApiaryT exts ('(k, [v]) ': prms) actM m () -> ApiaryT exts prms actM m ()
-k =+: t = queryCommon (StrategyRep "some") (reqParamRep t) k $ \qs ps fs -> do
-    let n = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams t qs ps fs
-    if not (null n) && all isJust n then insert k (catMaybes n) <$> getParams else mzero
+k =+: t = query k (pSome t)
 
 -- | get existance of key only query parameter. since v0.17.0.
 switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, NotMember k prms)
             => proxy k -> ApiaryT exts ('(k, Bool) ': prms) actM m () -> ApiaryT exts prms actM m ()
-switchQuery k = queryCommon (StrategyRep "switch") NoValue k $ \qs ps fs -> do
+switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") NoValue (queryDesc k)) $ do
+    qs      <- getQueryParams
+    (ps,fs) <- getRequestBody
     let n = maybe False id . fmap (maybe True id) . lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy Bool) qs ps fs
     insert k n <$> getParams
 

@@ -245,7 +245,7 @@ focus' :: Monad actM
        -> ActionT exts prms actM (Dict prms')
        -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
 focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env 
-    { envFilter = envFilter env >>= flip runActionT g
+    { envFilter = envFilter env >>= flip applyDict g
     , envMethod = maybe (envMethod env) Just meth
     , envPath   = envPath env . pth
     , envDoc    = envDoc env  . d
@@ -262,7 +262,7 @@ action a = do
             (rootPattern $ envConfig env)
             (renderMethod <$> envMethod env)
             (envPath env [])
-            (envFilter env >>= flip runActionT a))
+            (envFilter env >>= flip applyDict a))
         (envDoc env Action:)
         id
 
