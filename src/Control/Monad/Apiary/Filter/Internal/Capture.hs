@@ -18,7 +18,7 @@ import Control.Monad
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Internal
 
-import Data.Apiary.TypeLits
+import Data.Apiary.Compat
 import Data.Apiary.Param
 import Data.Apiary.Dict
 import Data.Apiary.Document
@@ -36,7 +36,7 @@ endPath = focus' id Nothing (EndPath:) getParams
 
 -- | get first path and drill down. since 0.11.0.
 fetch :: (NotMember k prms, KnownSymbol k, Path p, Monad actM) => proxy k -> proxy' p -> Maybe Html
-      -> ApiaryT exts ('(k, p) ': prms) actM m () -> ApiaryT exts prms actM m ()
+      -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
 fetch k p h = focus' (DocFetch (T.pack $ symbolVal k) (pathRep p) h) Nothing (FetchPath:) $ liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
@@ -49,7 +49,7 @@ anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts 
 anyPath = focus' DocAny Nothing (RestPath:) getParams
 
 restPath :: (NotMember k prms, KnownSymbol k, Monad m, Monad actM)
-         => proxy k -> Maybe Html -> ApiaryT exts ('(k, [T.Text]) ': prms) actM m () -> ApiaryT exts prms actM m ()
+         => proxy k -> Maybe Html -> ApiaryT exts (k := [T.Text] ': prms) actM m () -> ApiaryT exts prms actM m ()
 restPath k h = focus' (DocRest (T.pack $ symbolVal k) h) Nothing (RestPath:) $ getParams >>= \l -> liftM actionFetches getState >>= \case
     [] -> return $ insert k [] l
     fs -> insert k fs l <$ modifyState (\s -> s {actionFetches = []})

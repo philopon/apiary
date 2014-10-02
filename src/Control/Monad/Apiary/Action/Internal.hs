@@ -5,6 +5,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
@@ -16,6 +17,9 @@
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
+
+import Language.Haskell.TH
+import Language.Haskell.TH.Quote
 
 import System.PosixCompat.Files
 
@@ -37,6 +41,7 @@ import Data.Monoid hiding (All)
 import Data.Apiary.Extension
 import Data.Apiary.Dict
 import Data.Apiary.Param
+import Data.Apiary.Compat
 import Data.Apiary.Document
 import Data.Apiary.Document.Html
 import Data.Default.Class
@@ -360,6 +365,23 @@ getParams = ActionT $ \d _ s c -> c d s
 
 param :: (Member k v prms, Monad m) => proxy k -> ActionT exts prms m v
 param p = liftM (get p) getParams
+
+paramsE :: [String] -> ExpQ
+paramsE ps = do
+    ns <- mapM (\p -> (,) <$> newName "x" <*> pure p) ps
+    let bs  = map (\(v, k) -> bindS (varP v) (prm k)) ns
+        tpl = noBindS [| return $(tupE $ map (varE . fst) ns) |]
+    doE $ bs ++ [tpl]
+  where
+    prm  n = [| param (Proxy :: Proxy $(litT $ strTyLit n)) |]
+
+params :: QuasiQuoter
+params = QuasiQuoter
+    { quoteExp  = paramsE . map (T.unpack . T.strip) . T.splitOn "," . T.pack
+    , quotePat  = error "params QQ is defined only exp."
+    , quoteType = error "params QQ is defined only exp."
+    , quoteDec  = error "params QQ is defined only exp."
+    }
 
 getDocuments :: Monad m => ActionT exts prms m Documents
 getDocuments = liftM actionDocuments getEnv

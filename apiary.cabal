@@ -80,9 +80,8 @@ library
                        Data.Apiary.Extension.Internal
                        Data.Apiary.Param
                        Data.Apiary.Dict
-                       Data.Apiary.TypeLits
                        Data.Apiary.Method
-                       Data.Apiary.Proxy
+                       Data.Apiary.Compat
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
 

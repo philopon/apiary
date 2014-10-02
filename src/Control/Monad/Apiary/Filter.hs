@@ -65,7 +65,7 @@ import qualified Data.Text.Encoding as T
 import qualified Data.CaseInsensitive as CI
 import Data.Monoid
 import Data.Proxy
-import Data.Apiary.TypeLits
+import Data.Apiary.Compat
 import Data.Apiary.Dict
 
 import Data.Apiary.Param
@@ -146,7 +146,7 @@ query k w = focus (DocQuery (T.pack $ symbolVal k) (strategyRep w) (reqParamRep 
 -- [key|key|] =: pInt
 -- @
 (=:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
-     => query k -> proxy v -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
+     => query k -> proxy v -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =: v = query k (pFirst v)
 
 -- | get one matched paramerer. since 0.5.0.0.
@@ -157,7 +157,7 @@ k =: v = query k (pFirst v)
 -- [key|key|] =!: pInt
 -- @
 (=!:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
-      => query k -> proxy v -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> proxy v -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
@@ -169,7 +169,7 @@ k =!: t = query k (pOne t)
 -- @
 (=?:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
-      -> ApiaryT exts ('(k, Maybe v) ': prms) actM m () -> ApiaryT exts prms actM m ()
+      -> ApiaryT exts (k := Maybe v ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =?: t = query k (pOption t)
 
 -- | get optional first paramerer with default. since 0.16.0.
@@ -181,7 +181,7 @@ k =?: t = query k (pOption t)
 -- @
 (=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, ReqParam v, KnownSymbol k, NotMember k prms)
        => query k -> v
-       -> ApiaryT exts ('(k, v) ': prms) actM m () -> ApiaryT exts prms actM m ()
+       -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =?!: v = query k (pOptional v)
 
 -- | get many paramerer. since 0.5.0.0.
@@ -191,7 +191,7 @@ k =?!: v = query k (pOptional v)
 -- @
 (=*:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
-      -> ApiaryT exts ('(k, [v]) ': prms) actM m () -> ApiaryT exts prms actM m ()
+      -> ApiaryT exts (k := [v] ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
@@ -201,12 +201,12 @@ k =*: t = query k (pMany t)
 -- @
 (=+:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, NotMember k prms)
       => query k -> proxy v
-      -> ApiaryT exts ('(k, [v]) ': prms) actM m () -> ApiaryT exts prms actM m ()
+      -> ApiaryT exts (k := [v] ': prms) actM m () -> ApiaryT exts prms actM m ()
 k =+: t = query k (pSome t)
 
 -- | get existance of key only query parameter. since v0.17.0.
 switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, NotMember k prms)
-            => proxy k -> ApiaryT exts ('(k, Bool) ': prms) actM m () -> ApiaryT exts prms actM m ()
+            => proxy k -> ApiaryT exts (k := Bool ': prms) actM m () -> ApiaryT exts prms actM m ()
 switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") NoValue (queryDesc k)) $ do
     qs      <- getQueryParams
     (ps,fs) <- getRequestBody
@@ -217,7 +217,7 @@ switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") No
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: (KnownSymbol k, Monad actM, NotMember k prms)
-       => proxy k -> ApiaryT exts ('(k, SC.ByteString) ': prms) actM m () -> ApiaryT exts prms actM m ()
+       => proxy k -> ApiaryT exts (k := SC.ByteString ': prms) actM m () -> ApiaryT exts prms actM m ()
 header k = focus' (DocPrecondition $ "has header: " <> toHtml (symbolVal k)) Nothing id $ do
     n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . requestHeaders =<< getRequest
     insert k n <$> getParams

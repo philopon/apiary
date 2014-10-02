@@ -27,8 +27,7 @@ import Data.Int
 import Data.Maybe
 import Data.Word
 import Data.Proxy
-import Data.Apiary.Proxy
-import Data.Apiary.TypeLits
+import Data.Apiary.Compat
 import Data.Apiary.Dict
 
 import Data.String(IsString)
@@ -312,51 +311,51 @@ newtype StrategyRep = StrategyRep
 
 
 class Strategy (w :: * -> *) where
-    type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]
-    strategy :: NotMember k prms => w a -> proxy' k -> [Maybe a] -> Dict prms -> Maybe (Dict (SNext w k a prms))
+    type SNext w (k::Symbol) a (prms :: [Elem]) :: [Elem]
+    strategy :: (NotMember k prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
     strategyRep :: w a -> StrategyRep
 
 data First a = First
 instance Strategy First where
-    type SNext First k a ps = '(k, a) ': ps
-    strategy _ k (Just a:_) d = Just $ insert k a d
-    strategy _ _ _          _ = Nothing
+    type SNext First k a ps = k := a ': ps
+    strategy _ k (Just a:_) d = return $ insert k a d
+    strategy _ _ _          _ = mzero
     strategyRep _ = StrategyRep "first"
 
 data One a = One
 instance Strategy One where
-    type SNext One k a ps = '(k, a) ': ps
-    strategy _ k [Just a] d = Just $ insert k a d
-    strategy _ _ _        _ = Nothing
+    type SNext One k a ps = k := a ': ps
+    strategy _ k [Just a] d = return $ insert k a d
+    strategy _ _ _        _ = mzero
     strategyRep _ = StrategyRep "one"
 
 data Many a = Many
 instance Strategy Many where
-    type SNext Many k a ps = '(k, [a]) ': ps
-    strategy _ k as d = if all isJust as then Just $ insert k (catMaybes as) d else Nothing
+    type SNext Many k a ps = k := [a] ': ps
+    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "many"
 
 data Some a = Some
 instance Strategy Some where
-    type SNext Some k a ps = '(k, [a]) ': ps
-    strategy _ _ [] _ = Nothing
-    strategy _ k as d = if all isJust as then Just $ insert k (catMaybes as) d else Nothing
+    type SNext Some k a ps = k := [a] ': ps
+    strategy _ _ [] _ = mzero
+    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "some"
 
 data Option a = Option
 instance Strategy Option where
-    type SNext Option k a ps = '(k, Maybe a) ': ps
-    strategy _ k (Just a:_)  d = Just $ insert k (Just a) d
-    strategy _ _ (Nothing:_) _ = Nothing
-    strategy _ k []          d = Just $ insert k Nothing d
+    type SNext Option k a ps = k := Maybe a ': ps
+    strategy _ k (Just a:_)  d = return $ insert k (Just a) d
+    strategy _ _ (Nothing:_) _ = mzero
+    strategy _ k []          d = return $ insert k Nothing d
     strategyRep _ = StrategyRep "option"
 
 data Optional a = Optional T.Text a
 instance Strategy Optional where
-    type SNext Optional k a ps = '(k, a) ': ps
-    strategy _              k (Just a:_)  d = Just $ insert k a d
-    strategy _              _ (Nothing:_) _ = Nothing
-    strategy (Optional _ a) k []          d = Just $ insert k a d
+    type SNext Optional k a ps = k := a ': ps
+    strategy _              k (Just a:_)  d = return $ insert k a d
+    strategy _              _ (Nothing:_) _ = mzero
+    strategy (Optional _ a) k []          d = return $ insert k a d
     strategyRep (Optional a _) = StrategyRep $ "default:" `T.append` a
 
 pFirst :: proxy a -> First a

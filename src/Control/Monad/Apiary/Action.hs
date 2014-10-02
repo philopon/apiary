@@ -10,6 +10,7 @@ module Control.Monad.Apiary.Action
 
     -- ** getter
     , param
+    , params
     , File(..)
     , getExt
 
