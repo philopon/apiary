@@ -3,6 +3,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Web.Apiary.Authenticate
     ( I.Auth
@@ -31,7 +32,7 @@ import Control.Monad.Trans.Control
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 
-import Data.Apiary.Proxy
+import Data.Apiary.Compat
 import Data.Apiary.Extension
 
 initAuthWithManager :: (Has Session exts, MonadBaseControl IO m)
@@ -55,22 +56,21 @@ authHandler :: (Monad m, MonadIO actM, Has I.Auth exts, Has Session exts)
 authHandler = apiaryExt (Proxy :: Proxy I.Auth) >>= I.authHandler 
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
-authorized :: (Has I.Auth exts, MonadIO actM, Has Session exts)
-           => ApiaryT exts (I.OpenId ': prms) actM m () -> ApiaryT exts prms actM m ()
-authorized m = do
-    a <- apiaryExt (Proxy :: Proxy I.Auth)
-    I.authorized a m
+authorized :: (Has Session exts, MonadIO actM, KnownSymbol k, NotMember k prms)
+           => proxy k -> ApiaryT exts (k := I.OpenId ': prms) actM m ()
+           -> ApiaryT exts prms actM m ()
+authorized ky = session ky (pOne (Proxy :: Proxy I.OpenId))
 
 -- | delete session. since 0.7.0.0.
-authLogout :: (Monad m, Has I.Auth exts) => ActionT exts m ()
+authLogout :: (Monad m, Has I.Auth exts) => ActionT exts prms m ()
 authLogout = getExt (Proxy :: Proxy I.Auth) >>= I.authLogout
 
-authConfig :: (Has I.Auth exts, Monad m) => ActionT exts m I.AuthConfig
+authConfig :: (Has I.Auth exts, Monad m) => ActionT exts prms m I.AuthConfig
 authConfig = I.config `liftM` getExt (Proxy :: Proxy I.Auth)
 
-authProviders :: (Has I.Auth exts, Monad m) => ActionT exts m [(T.Text, I.Provider)]
+authProviders :: (Has I.Auth exts, Monad m) => ActionT exts prms m [(T.Text, I.Provider)]
 authProviders = I.authProviders `liftM` getExt (Proxy :: Proxy I.Auth)
 
 -- | get authenticate routes: (title, route). since 0.7.0.0.
-authRoutes :: (Has I.Auth exts, Monad m) => ActionT exts m [(T.Text, S.ByteString)]
+authRoutes :: (Has I.Auth exts, Monad m) => ActionT exts prms m [(T.Text, S.ByteString)]
 authRoutes = I.authRoutes `liftM` getExt (Proxy :: Proxy I.Auth)

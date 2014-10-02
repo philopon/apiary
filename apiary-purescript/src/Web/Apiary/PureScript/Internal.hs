@@ -99,7 +99,7 @@ compile opt p = do
         Left l           -> throwIO (CompileError l)
         Right (js, _, _) -> return js
 
-pureScript :: MonadIO m => PureScript -> FilePath -> ActionT exts m ()
+pureScript :: MonadIO m => PureScript -> FilePath -> ActionT exts prms m ()
 pureScript env p = do
     contentType "text/javascript"
     s <- liftIO . try $ 

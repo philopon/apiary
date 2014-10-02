@@ -36,8 +36,8 @@ import Database.Persist.Sql
 
 import Web.Apiary
 import Web.Apiary.Logger
-import Data.Apiary.SList
-import Data.Apiary.Proxy
+import qualified Data.Apiary.Dict as Dict
+import Data.Apiary.Compat
 import Data.Apiary.Document
 import Data.Apiary.Extension
 import Data.Apiary.Extension.Internal
@@ -107,18 +107,19 @@ doMigration migr conn = case migr of
 
 -- | execute sql in action.
 runSql :: (Has Persist exts, MonadBaseControl IO m)
-       => SqlPersistT (ActionT exts m) a -> ActionT exts m a
+       => SqlPersistT (ActionT exts prms m) a -> ActionT exts prms m a
 runSql a = getExt (Proxy :: Proxy Persist) >>= \case
     PersistPool p -> runSqlPool a p
     PersistConn c -> runSqlConn a c
 
 -- | filter by sql query. since 0.9.0.0.
-sql :: (Has Persist exts, MonadBaseControl IO actM)
+sql :: (Has Persist exts, MonadBaseControl IO actM, NotMember k prms)
     => Maybe Html -- ^ documentation.
-    -> SqlPersistT (ActionT exts actM) a
+    -> proxy k
+    -> SqlPersistT (ActionT exts prms actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
-    -> ApiaryT exts (b ': prms) actM m () -> ApiaryT exts prms actM m ()
-sql doc q p = focus (maybe id DocPrecondition doc) $ \l ->
+    -> ApiaryT exts (k := b ': prms) actM m () -> ApiaryT exts prms actM m ()
+sql doc k q p = focus (maybe id DocPrecondition doc) $ do
     fmap p (runSql q) >>= \case
         Nothing -> mzero
-        Just a  -> return (a ::: l)
+        Just a  -> Dict.insert k a `fmap` getParams

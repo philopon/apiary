@@ -3,6 +3,7 @@ module Web.Apiary.WebSockets (
     webSockets, webSockets'
     , actionWithWebSockets 
     , actionWithWebSockets'
+    , websocketsToAction
     -- * Reexport
     -- | PendingConnection,
     -- pandingRequest, acceptRequest, rejectrequest
@@ -14,7 +15,7 @@ module Web.Apiary.WebSockets (
     ) where
 
 import Web.Apiary
-import Data.Apiary.SList
+import Data.Apiary.Dict
 import qualified Network.Wai.Handler.WebSockets as WS
 import qualified Network.WebSockets as WS
 
@@ -25,33 +26,35 @@ import Network.WebSockets
     , sendTextData, sendBinaryData, sendClose, sendPing
     )
 
-wsToApp :: Monad m => WS.ConnectionOptions 
-        -> Fn xs WS.ServerApp -> SList xs -> ActionT exts m ()
-wsToApp conn srv args = getRequest >>= \req ->
-    case WS.websocketsApp conn (apply srv args) req of
-        Nothing -> return ()
+websocketsToAction :: Monad m => WS.ConnectionOptions 
+                   -> (Dict prms -> WS.ServerApp) -> ActionT exts prms m ()
+websocketsToAction conn srv = do
+    req <- getRequest
+    d   <- getParams
+    case WS.websocketsApp conn (srv d) req of
+        Nothing -> mzero
         Just r  -> stopWith r
 
 -- | websocket only action. since 0.8.0.0.
 webSockets' :: (Monad m, Monad actM) => WS.ConnectionOptions
-            -> Fn prms WS.ServerApp -> ApiaryT exts prms actM m ()
-webSockets' conn srv = action' $ wsToApp conn srv
+            -> (Dict prms -> WS.ServerApp) -> ApiaryT exts prms actM m ()
+webSockets' conn srv = action $ websocketsToAction conn srv
 
 -- | websocket only action. since 0.8.0.0.
 webSockets :: (Monad m, Monad n)
-           => Fn xs WS.ServerApp -> ApiaryT exts xs n m ()
+           => (Dict prms -> WS.ServerApp) -> ApiaryT exts prms n m ()
 webSockets = webSockets' WS.defaultConnectionOptions
 
 actionWithWebSockets' :: (Monad m, Monad actM)
                       => WS.ConnectionOptions 
-                      -> Fn prms WS.ServerApp
-                      -> Fn prms (ActionT exts actM ())
+                      -> (Dict prms -> WS.ServerApp)
+                      -> ActionT exts prms actM ()
                       -> ApiaryT exts prms actM m ()
 actionWithWebSockets' conn srv m =
-    action' $ \a -> wsToApp conn srv a >> apply m a
+    action $ websocketsToAction conn srv >> m
 
-actionWithWebSockets :: (Monad m, Monad n)
-                     => Fn c WS.ServerApp
-                     -> Fn c (ActionT exts n ())
-                     -> ApiaryT exts c n m ()
+actionWithWebSockets :: (Monad m, Monad actM)
+                     => (Dict prms -> WS.ServerApp)
+                     -> ActionT exts prms actM ()
+                     -> ApiaryT exts prms actM m ()
 actionWithWebSockets = actionWithWebSockets' WS.defaultConnectionOptions

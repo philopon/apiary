@@ -27,7 +27,7 @@ import Control.Monad.Trans.Control
 
 import Data.Default.Class
 import Data.Apiary.Extension
-import Data.Apiary.Proxy
+import Data.Apiary.Compat
 import qualified Data.Binary as B
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -94,40 +94,40 @@ initHerokuMemcached cfg = initializerBracket $ \exts m -> control $ \run -> do
     withConnection (connectInfo cfg') (\c -> run $ m (Memcached c cfg'))
 
 memcached :: (Has Memcached exts, MonadIO m)
-          => (Connection -> IO a) -> ActionT exts m a
+          => (Connection -> IO a) -> ActionT exts prms m a
 memcached q = do
     Memcached conn _ <- getExt Proxy
     liftIO $ q conn
 
 cache :: (MonadIO m, Has Memcached exts)
-      => Key -> ActionT exts m Value -> ActionT exts m Value
-cache key actn = do
+      => Key -> ActionT exts prms m Value -> ActionT exts prms m Value
+cache ky actn = do
     Memcached conn cfg <- getExt Proxy
     case cacheConfig cfg of
         Nothing -> actn
-        Just cc -> liftIO (Maybe.get_ key conn) >>= \case
+        Just cc -> liftIO (Maybe.get_ ky conn) >>= \case
             Just cr -> return cr
             Nothing -> do
                 ar <- actn
-                liftIO $ set (cacheFlags cc key)
-                    (cacheExpiry cc) key ar conn
+                liftIO $ set (cacheFlags cc ky)
+                    (cacheExpiry cc) ky ar conn
                 return ar
 
 cacheMaybe :: (MonadIO m, Has Memcached exts)
-           => Key -> ActionT exts m (Maybe Value)
-           -> ActionT exts m (Maybe Value)
-cacheMaybe key actn = do
+           => Key -> ActionT exts prms m (Maybe Value)
+           -> ActionT exts prms m (Maybe Value)
+cacheMaybe ky actn = do
     Memcached conn cfg <- getExt Proxy
     case cacheConfig cfg of
         Nothing -> actn
-        Just cc -> liftIO (Maybe.get_ key conn) >>= \case
+        Just cc -> liftIO (Maybe.get_ ky conn) >>= \case
             Just cr -> return $ B.decode cr
             Nothing -> actn >>= \case
                 Nothing -> do
-                    liftIO $ set (cacheFlags cc key)
-                        (cacheNotHitExpiry cc) key (B.encode (Nothing :: Maybe Value)) conn
+                    liftIO $ set (cacheFlags cc ky)
+                        (cacheNotHitExpiry cc) ky (B.encode (Nothing :: Maybe Value)) conn
                     return Nothing
                 Just ar -> do
-                    liftIO $ set (cacheFlags cc key)
-                        (cacheExpiry cc) key (B.encode $ Just ar) conn
+                    liftIO $ set (cacheFlags cc ky)
+                        (cacheExpiry cc) ky (B.encode $ Just ar) conn
                     return (Just ar)
