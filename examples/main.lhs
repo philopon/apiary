@@ -35,21 +35,24 @@ Set response body.
 
 Capture filter filtering 'path' and read ':Type'.
 
->     [capture|/number/:Int|] $ do
+>     [capture|/number/int::Int|] $ do
 
 You can get captured elements by action (without underscore) function.
 
->         method GET . action $ \i -> do
+>         method GET . action $ do
+>             i <- param [key|int|]
 >             contentType "text/plain"
 >             bytes "GET " >> showing i
 
->         method POST . action $ \i -> do
+>         method POST . action $ do
+>             i <- param [key|int|]
 >             contentType "text/plain"
 >             bytes "POST " >> showing (i * 2)
 
 Multiple type capturing. can get by tuple.
 
->     [capture|/div/:Double/:Double|] . action $ \a b -> do
+>     [capture|/div/numerator::Double/denominator::Double|] . action $ do
+>         (a, b) <- [params|numerator,denominator|]
 >         when (b == 0) $ liftIO $ putStrLn "zero div."
 
 You can use MonadPlus instance. when b == 0, 404 page not found.
@@ -58,28 +61,31 @@ You can use MonadPlus instance. when b == 0, 404 page not found.
 >         contentType "text/plain"
 >         showing (a / b)
 
->     [capture|/static/:String|] $ do
->         method GET . action $ \p -> do
+>     [capture|/static/file::String|] $ do
+>         method GET . action $ do
 
 Static file provider. content-type auto detected by extension.
 
->             file p Nothing
+>             param [key|file|] >>= flip file Nothing
 
 when execute 'stop' action, send current status and drop after actions.
 
->     [capture|/stop/:Int|] . action $ \i -> do
+>     [capture|/stop/num::Int|] . action $ do
+>         i <- param [key|num|]
 >         contentType "text/plain"
 >         bytes "stop the handler!\n"
 >         when (odd i) $ stop
->         bytes "don't stop handler...\n"
+>         bytes "didn't stop handler...\n"
 >
 
 filters can freely nesting.
 
->     [capture|/greeting/:L.ByteString|] . 
->         ("first" =: pLazyByteString) . 
->         ("last"  =: pLazyByteString) . [act|200 .txt|] $ \greed first last_ -> do
->             lazyBytes greed >> bytes "!! "
+>     [capture|/greeting/greet::L.ByteString|] . 
+>         ([key|first|] =: pLazyByteString) . 
+>         ([key|last|]  =: pLazyByteString) . action $ do
+>             (greet, first, last_) <- [params|greet, first, last|]
+>             contentType "text/plain"
+>             lazyBytes greet >> bytes "!! "
 >             lazyBytes first >> char ' ' >> lazyBytes last_
 
 $ curl localhost:3000

@@ -6,6 +6,7 @@ import Web.Apiary
 import Web.Apiary.WebSockets
 import Network.Wai.Handler.Warp
 import qualified Data.Text as T
+import Data.Apiary.Dict
 import Control.Concurrent
 import Language.Haskell.TH
 import System.FilePath
@@ -15,8 +16,8 @@ main :: IO ()
 main = do 
     setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
     server (run 3000) . runApiary def $ do
-        [capture|/:Int|] . webSockets $ servApp
-        root $ actionWithWebSockets (servApp 0) (file "websockets.html" Nothing)
+        [capture|/i::Int|] . webSockets $ servApp . get [key|i|]
+        root $ actionWithWebSockets (const $ servApp 0) (file "websockets.html" Nothing)
 
 servApp :: Int -> PendingConnection -> IO ()
 servApp st pc = do

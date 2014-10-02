@@ -27,19 +27,20 @@ main = serverWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite
 --                                 compose 2 extension intializer.
 
     -- root : list up all database entities.
-    root . sql Nothing   (selectList ([] :: [Filter Number]) [])   Just . action $ \q -> do
-    --         ~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   ~~~~
-    --         docuemnt  persist selector                          check filter success or not.
+    root . sql Nothing  [key|query|]  (selectList ([] :: [Filter Number]) [])   Just . action $ do
+    --         ~~~~~~~  ~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   ~~~~
+    --         docuemnt param key     persist selector                          check filter success or not.
 
         -- logging.
         logging "root accessed.\n"
-        mapM_ (\a -> showing a >> char '\n' ) q
+        mapM_ (\a -> showing a >> char '\n' ) =<< param [key|query|]
 
     -- /:Int : numberd counter
-    [capture|/:Int|] $ do
+    [capture|/i::Int|] $ do
 
         -- GET: get counter.
-        method GET . action $ \i -> do
+        method GET . action $ do
+            i <- param [key|i|]
 
             -- execute persistent
             c <- runSql $ count [NumberNumber ==. i]
@@ -47,11 +48,13 @@ main = serverWith (initLogger def  +> initPersistPool (withSqlitePool "db.sqlite
             char '\n'
 
         -- POST: increment counter.
-        method POST . action $ \i -> do
+        method POST . action $ do
+            i <- param [key|i|]
             runSql $ insert_ (Number i)
 
         -- DELETE: reset counter.
-        method DELETE . action $ \i -> do
+        method DELETE . action $ do
+            i <- param [key|i|]
             runSql $ deleteWhere [NumberNumber ==. i]
 
 {-
@@ -68,5 +71,6 @@ Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 1}
 Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 2}}, entityVal = Number {numberNumber = 2}}
 Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 3}}, entityVal = Number {numberNumber = 2}}
 $ curl -XDELETE localhost:3000/2
+$ curl -XGET  localhost:3000
 Entity {entityKey = NumberKey {unNumberKey = SqlBackendKey {unSqlBackendKey = 1}}, entityVal = Number {numberNumber = 1}}
 -}

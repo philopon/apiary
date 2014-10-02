@@ -26,9 +26,10 @@ main = do
             [capture|/test.js|] . action $
                 pureScript "pureScript.purs"
 
-        [capture|/api/:Int|] .
-            ("test" ?? "b(default: 0)" =?: pInt) . 
-            document "a + b" . action $ \i mbj -> do
+        [capture|/api/i::Int|] .
+            ([key|test|] ?? "b(default: 0)" =?: pInt) . 
+            document "a + b" . action $ do
+                (i, mbj) <- [params|i, test|]
                 let j = maybe 0 id mbj
                 contentType "application/json"
                 bytes "{ \"test\": "
