@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
@@ -373,7 +374,7 @@ paramsE ps = do
         tpl = noBindS [| return $(tupE $ map (varE . fst) ns) |]
     doE $ bs ++ [tpl]
   where
-    prm  n = [| param (Proxy :: Proxy $(litT $ strTyLit n)) |]
+    prm  n = [| param (SProxy :: SProxy $(litT $ strTyLit n)) |]
 
 params :: QuasiQuoter
 params = QuasiQuoter

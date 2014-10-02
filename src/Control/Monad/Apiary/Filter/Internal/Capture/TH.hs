@@ -15,7 +15,7 @@ import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import qualified Data.Text as T
 import Data.String
 import Data.List
-import Data.Proxy
+import Data.Apiary.Compat
 
 preCap :: String -> [String]
 preCap ""  = []
@@ -49,14 +49,14 @@ mkCap [] = [|Capture.endPath|]
 mkCap (('*':'*':[]):as) = [|Capture.anyPath . $(mkCap as) |]
 mkCap (('*':'*':tS):as) = do
     (k, d) <- description tS
-    [|Capture.restPath (Proxy :: Proxy $(litT $ strTyLit k)) $d . $(mkCap as) |]
+    [|Capture.restPath (SProxy :: SProxy $(litT $ strTyLit k)) $d . $(mkCap as) |]
 mkCap (str:as)
     | "::" `isInfixOf` fst (break (`elem` "([") str) = do
         (key, d) <- first T.pack <$> description str
         let v = T.unpack . T.strip . fst $ T.breakOn    "::" key
             t = T.unpack . T.strip . snd $ T.breakOnEnd "::" key
         ty <- lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
-        [|(Capture.fetch (Proxy :: Proxy $(litT $ strTyLit v)) (Proxy :: Proxy $(conT ty)) $d) . $(mkCap as)|]
+        [|(Capture.fetch (SProxy :: SProxy $(litT $ strTyLit v)) (Proxy :: Proxy $(conT ty)) $d) . $(mkCap as)|]
 
     | otherwise = [|(Capture.path (fromString $(stringE str))) . $(mkCap as) |]
 

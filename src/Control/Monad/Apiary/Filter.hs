@@ -9,6 +9,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Control.Monad.Apiary.Filter (
