@@ -1,26 +1,3 @@
-Apiary [![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary) [![Hackage](http://img.shields.io/hackage/v/apiary.svg)](https://hackage.haskell.org/package/apiary) [![MIT license](http://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-===
-
-Simple and type safe web framework that can be automatically generate API documentation. 
-
-Feature
-----
-* small core library and dependencies.
-* simple extension system.
-* high performance(benchmark: https://github.com/philopon/apiary-benchmark).
-* nestable router.
-* auto generate API documents.
-
-Install
-----
-```bash
-cabal sandbox init
-cabal install apiary warp
-```
-
-[Demo](examples/readme.lhs)
----
-```lhs
 > {-# LANGUAGE OverloadedStrings #-}
 > {-# LANGUAGE ConstraintKinds #-}
 > {-# LANGUAGE TypeOperators #-}
@@ -136,10 +113,3 @@ cabal install apiary warp
 >     bytes "Hello, "
 >     bytes f
 >     maybe (return ()) (\a -> bytes " " >> bytes a) l
-```
-
-learn more
----
-* [Hackage](https://hackage.haskell.org/package/apiary)
-* [examples](examples/)
-* [best-haskell](https://github.com/philopon/best-haskell)
