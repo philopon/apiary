@@ -366,7 +366,7 @@ getExt p = liftM (getExtension p . actionExts) getEnv
 getParams :: Monad m => ActionT exts prms m (Dict prms)
 getParams = ActionT $ \d _ s c -> c d s
 
--- | get parameter. since 0.18.0.
+-- | get parameter. since 1.0.0.
 --
 -- example:
 --
@@ -384,7 +384,7 @@ paramsE ps = do
   where
     prm  n = [| param (SProxy :: SProxy $(litT $ strTyLit n)) |]
 
--- | get parameters. since 0.18.0.
+-- | get parameters. since 1.0.0.
 --
 -- > [params|foo,bar|] == do { a <- param [key|foo|]; b <- param [key|bar|]; return (a, b) }
 --
@@ -412,7 +412,7 @@ getRequestBody = ActionT $ \_ e s c -> case actionReqBody s of
 getQueryParams :: Monad m => ActionT exts prms m Http.Query
 getQueryParams = queryString <$> getRequest
 
--- | parse request body and return params. since 0.18.0.0.
+-- | parse request body and return params. since 1.0.0.
 getReqBodyParams :: MonadIO m => ActionT exts prms m [Param]
 getReqBodyParams = fst <$> getRequestBody
 

@@ -1,5 +1,5 @@
 name:                examples
-version:             0.18.0
+version:             1.0.0
 synopsis:            
 description:
 license:             MIT
@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 executable main
   main-is:             main.lhs
   build-depends:       base
-                     , apiary >=0.18
+                     , apiary >=1.0
                      , warp
                      , mtl
                      , bytestring
@@ -28,7 +28,7 @@ executable main
 executable qiita
   main-is:             qiita.hs
   build-depends:       base
-                     , apiary >=0.18
+                     , apiary >=1.0
                      , warp
                      , bytestring
   ghc-options:         -O2 -Wall
@@ -37,8 +37,8 @@ executable qiita
 executable persistent
   main-is:             persistent.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-persistent >=0.18
+                     , apiary >=1.0
+                     , apiary-persistent >=1.0
                      , warp
                      , persistent-sqlite
                      , persistent-template
@@ -51,10 +51,10 @@ executable persistent
 executable auth
   main-is:             auth.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-authenticate >=0.18
-                     , apiary-cookie >=0.18
-                     , apiary-clientsession >=0.18
+                     , apiary >=1.0
+                     , apiary-authenticate >=1.0
+                     , apiary-cookie >=1.0
+                     , apiary-clientsession >=1.0
                      , warp
                      , bytestring
                      , text
@@ -64,8 +64,8 @@ executable auth
 executable websockets
   main-is:             websockets.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-websockets >=0.18
+                     , apiary >=1.0
+                     , apiary-websockets >=1.0
                      , warp
                      , text
                      , template-haskell
@@ -77,8 +77,8 @@ executable websockets
 executable eventsource
   main-is:             eventsource.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-eventsource >=0.18
+                     , apiary >=1.0
+                     , apiary-eventsource >=1.0
                      , warp
                      , blaze-builder
                      , text
@@ -92,8 +92,8 @@ executable eventsource
 executable csrf
   main-is:             csrf.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-clientsession >=0.18
+                     , apiary >=1.0
+                     , apiary-clientsession >=1.0
                      , warp
                      , bytestring
   ghc-options:         -O2 -Wall
@@ -102,8 +102,8 @@ executable csrf
 executable embed_key
   main-is:             embed_key.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-clientsession >=0.18
+                     , apiary >=1.0
+                     , apiary-clientsession >=1.0
                      , warp
                      , bytestring
   ghc-options:         -O2 -Wall
@@ -112,7 +112,7 @@ executable embed_key
 executable api
   main-is:             api.hs
   build-depends:       base
-                     , apiary >=0.18
+                     , apiary >=1.0
                      , warp
                      , aeson
                      , blaze-html
@@ -123,8 +123,8 @@ executable api
 executable pureScript
   main-is:             pureScript.hs
   build-depends:       base
-                     , apiary >=0.18
-                     , apiary-purescript >=0.18
+                     , apiary >=1.0
+                     , apiary-purescript >=1.0
                      , warp
                      , directory
                      , filepath

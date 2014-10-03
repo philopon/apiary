@@ -1,5 +1,5 @@
 name:                apiary-mongoDB
-version:             0.18.0
+version:             1.0.0
 synopsis:            mongoDB support for apiary web framework.
 -- description:
 license:             MIT
@@ -19,7 +19,7 @@ library
   exposed-modules:     Web.Apiary.MongoDB
   other-modules:       
   build-depends:       base               >=4.6   && <4.8
-                     , apiary             >=0.18  && <0.19
+                     , apiary             >=1.0   && <1.1
                      , mongoDB            >=2.0   && <2.1
                      , resource-pool      >=0.2   && <0.3
                      , data-default-class >=0.0   && <0.1
