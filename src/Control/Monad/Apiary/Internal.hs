@@ -26,10 +26,10 @@ import Control.Monad.Base
 import Control.Monad.Apiary.Action.Internal
 
 import Data.List
-import Data.Apiary.Dict
+import qualified Data.Apiary.Dict as D
 import Data.Apiary.Extension
 import Data.Apiary.Extension.Internal
-import Data.Apiary.Document
+import Data.Apiary.Document.Internal
 import Data.Monoid hiding (All)
 import Text.Blaze.Html
 import qualified Data.Text as T
@@ -86,7 +86,7 @@ data PathElem = Exact {-# UNPACK #-} !T.Text
               | RestPath
 
 data ApiaryEnv exts prms actM = ApiaryEnv
-    { envFilter :: ActionT' exts actM (Dict prms)
+    { envFilter :: ActionT' exts actM (D.Dict prms)
     , envMethod :: Maybe Method
     , envPath   :: [PathElem] -> [PathElem]
     , envConfig :: ApiaryConfig
@@ -95,7 +95,7 @@ data ApiaryEnv exts prms actM = ApiaryEnv
     }
 
 initialEnv :: Monad actM => ApiaryConfig -> Extensions exts -> ApiaryEnv exts '[] actM
-initialEnv conf = ApiaryEnv (return Empty) Nothing id conf id
+initialEnv conf = ApiaryEnv (return D.empty) Nothing id conf id
 
 data ApiaryWriter exts actM = ApiaryWriter
     { writerRouter :: Router exts actM -> Router exts actM
@@ -108,7 +108,7 @@ instance Monoid (ApiaryWriter exts actM) where
     ApiaryWriter ra da am `mappend` ApiaryWriter rb db bm
         = ApiaryWriter (ra . rb) (da . db) (am . bm)
 
--- | most generic Apiary monad. since 0.8.0.0.
+-- | Apiary monad. since 0.8.0.0.
 newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
     ApiaryEnv exts prms actM
     -> (a -> ApiaryWriter exts actM -> m b)
@@ -146,8 +146,10 @@ routerToAction router = getRequest' >>= go
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
+-- | Application with Extensions.
 type EApplication e m = Extensions e -> m Application
 
+-- | run Apiary monad to get EApplication.
 runApiaryT :: (Monad actM, Monad m)
            => (forall b. actM b -> IO b)
            -> ApiaryConfig
@@ -160,15 +162,18 @@ runApiaryT runAct conf m exts = do
         mw  = writerMw wtr
     return $! mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
 
+-- | specialized version of runApiaryT.
 runApiary :: Monad m
           => ApiaryConfig
           -> ApiaryT exts '[] IO m ()
           -> EApplication exts m
 runApiary = runApiaryT id
 
+-- | run server.
 server :: Monad m => (Application -> m a) -> EApplication '[] m -> m a
 server = serverWith noExtension
 
+-- | run server with extension.
 serverWith :: Monad m => Initializer m '[] exts 
            -> (Application -> m a) -> (EApplication exts m) -> m a
 serverWith (Initializer ir) run em = ir NoExtension $ \exts ->
@@ -222,9 +227,11 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
 getApiaryEnv :: Monad actM => ApiaryT exts prms actM m (ApiaryEnv exts prms actM)
 getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
+-- | get Apiary extension.
 apiaryExt :: (Has e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
 apiaryExt p = getExtension p . envExts <$> getApiaryEnv
 
+-- | get Apiary configuration.
 apiaryConfig :: Monad actM => ApiaryT exts prms actM m ApiaryConfig
 apiaryConfig = liftM envConfig getApiaryEnv
 
@@ -234,7 +241,7 @@ addRoute r = ApiaryT $ \_ cont -> cont () r
 -- | filter by action. since 0.6.1.0.
 focus :: Monad actM
       => (Doc -> Doc)
-      -> ActionT exts prms actM (Dict prms')
+      -> ActionT exts prms actM (D.Dict prms')
       -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
 focus d g m = focus' d Nothing id g m
 
@@ -242,7 +249,7 @@ focus' :: Monad actM
        => (Doc -> Doc)
        -> Maybe Method
        -> ([PathElem] -> [PathElem])
-       -> ActionT exts prms actM (Dict prms')
+       -> ActionT exts prms actM (D.Dict prms')
        -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
 focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env 
     { envFilter = envFilter env >>= flip applyDict g
@@ -251,9 +258,7 @@ focus' d meth pth g m = ApiaryT $ \env cont -> unApiaryT m env
     , envDoc    = envDoc env  . d
     } cont
 
--- | splice ActionT ApiaryT.
-
--- | like action. but not apply arguments. since 0.8.0.0.
+-- | splice ActionT to ApiaryT.
 action :: Monad actM => ActionT exts prms actM () -> ApiaryT exts prms actM m ()
 action a = do
     env <- getApiaryEnv
@@ -266,6 +271,7 @@ action a = do
         (envDoc env Action:)
         id
 
+-- | add middleware.
 middleware :: Monad actM => Middleware -> ApiaryT exts prms actM m ()
 middleware mw = addRoute (ApiaryWriter id id mw)
 
@@ -292,5 +298,6 @@ document = insDoc . Document
 precondition :: Html -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 precondition = insDoc . DocPrecondition
 
+-- | ignore next document.
 noDoc :: ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 noDoc = insDoc DocDropNext

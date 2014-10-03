@@ -19,7 +19,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Apiary.Database.Persist
   build-depends:       base               >=4.6  && <4.8
-                     , persistent         >=2.0  && <2.2
+                     , persistent         >=2.1  && <2.2
 
                      , apiary             >=0.18 && <0.19
                      , apiary-logger      >=0.18 && <0.19

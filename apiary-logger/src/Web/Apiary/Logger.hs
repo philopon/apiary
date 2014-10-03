@@ -38,8 +38,9 @@ import Control.Exception.Lifted
 
 import Data.Default.Class
 
+import Control.Monad.Apiary
+import Control.Monad.Apiary.Action
 import Data.Apiary.Compat
-import Web.Apiary
 import Data.Apiary.Extension
 
 data LogDest

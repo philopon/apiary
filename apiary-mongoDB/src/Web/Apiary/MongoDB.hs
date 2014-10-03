@@ -25,6 +25,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
 import Control.Exception.Lifted
+import Control.Monad.Apiary.Action
 
 import Web.Apiary
 import Web.Apiary.Heroku

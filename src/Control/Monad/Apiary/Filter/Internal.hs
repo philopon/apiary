@@ -4,6 +4,7 @@
 
 module Control.Monad.Apiary.Filter.Internal
     ( function, function', function_, focus
+    , Doc(..)
     ) where
 
 import Network.Wai
@@ -13,7 +14,7 @@ import Control.Monad.Apiary.Internal
 import Control.Monad.Apiary.Action
 
 import Data.Apiary.Dict
-import Data.Apiary.Document
+import Data.Apiary.Document.Internal
 
 -- | low level filter function.
 function :: Monad actM => (Doc -> Doc)

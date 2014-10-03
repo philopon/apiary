@@ -76,6 +76,7 @@ data ApiaryConfig = ApiaryConfig
     , mimeType            :: FilePath -> S.ByteString
     }
 
+-- | auto generated document.
 defaultDocumentationAction :: Monad m => DefaultDocumentConfig -> ActionT exts prms m ()
 defaultDocumentationAction conf = do
     d <- getDocuments
@@ -358,12 +359,19 @@ getRequest = liftM actionRequest getEnv
 getConfig :: Monad m => ActionT exts prms m ApiaryConfig
 getConfig = liftM actionConfig getEnv
 
+-- | get extension.
 getExt :: (Has e exts, Monad m) => proxy e -> ActionT exts prms m e
 getExt p = liftM (getExtension p . actionExts) getEnv
 
 getParams :: Monad m => ActionT exts prms m (Dict prms)
 getParams = ActionT $ \d _ s c -> c d s
 
+-- | get parameter. since 0.18.0.
+--
+-- example:
+--
+-- > param [key|foo|]
+--
 param :: (Member k v prms, Monad m) => proxy k -> ActionT exts prms m v
 param p = liftM (get p) getParams
 
@@ -376,6 +384,10 @@ paramsE ps = do
   where
     prm  n = [| param (SProxy :: SProxy $(litT $ strTyLit n)) |]
 
+-- | get parameters. since 0.18.0.
+--
+-- > [params|foo,bar|] == do { a <- param [key|foo|]; b <- param [key|bar|]; return (a, b) }
+--
 params :: QuasiQuoter
 params = QuasiQuoter
     { quoteExp  = paramsE . map (T.unpack . T.strip) . T.splitOn "," . T.pack
@@ -404,18 +416,9 @@ getQueryParams = queryString <$> getRequest
 getReqBodyParams :: MonadIO m => ActionT exts prms m [Param]
 getReqBodyParams = fst <$> getRequestBody
 
-{-# DEPRECATED getReqParams "rename to getReqBodyParams" #-}
--- | parse request body and return params. since 0.9.0.0.
-getReqParams :: MonadIO m => ActionT exts prms m [Param]
-getReqParams = getReqBodyParams
-
 -- | parse request body and return files. since 0.9.0.0.
 getReqBodyFiles :: MonadIO m => ActionT exts prms m [File]
 getReqBodyFiles = snd <$> getRequestBody
-
-{-# DEPRECATED getReqFiles "rename to getReqBodyFiles" #-}
-getReqFiles :: MonadIO m => ActionT exts prms m [File]
-getReqFiles = getReqBodyFiles
 
 --------------------------------------------------------------------------------
 
@@ -591,21 +594,3 @@ char = builder . B.fromChar
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT exts prms m ()
 stream str = modifyState (\s -> s { actionResponse = ResponseStream str })
-
-{-# DEPRECATED source "use stream" #-}
-source :: Monad m => StreamingBody -> ActionT exts prms m ()
-source = stream
-
-{-# DEPRECATED redirectFound, redirectSeeOther "use redirect" #-}
--- | redirect with 302 Found. since 0.3.3.0.
-redirectFound       :: Monad m => S.ByteString -> ActionT exts prms m ()
-redirectFound       = redirectWith found302
-
--- | redirect with 303 See Other. since 0.3.3.0.
-redirectSeeOther    :: Monad m => S.ByteString -> ActionT exts prms m ()
-redirectSeeOther    = redirectWith seeOther303
-
-{-# DEPRECATED lbs "use lazyBytes" #-}
--- | append response body from lazy bytestring. since 0.1.0.0.
-lbs :: Monad m => L.ByteString -> ActionT exts prms m ()
-lbs = lazyBytes

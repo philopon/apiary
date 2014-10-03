@@ -15,6 +15,7 @@ module Web.Apiary.WebSockets (
     ) where
 
 import Web.Apiary
+import Control.Monad.Apiary.Action
 import Data.Apiary.Dict
 import qualified Network.Wai.Handler.WebSockets as WS
 import qualified Network.WebSockets as WS

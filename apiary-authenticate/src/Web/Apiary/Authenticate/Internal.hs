@@ -15,7 +15,8 @@ import GHC.Generics(Generic)
 
 import Control.Applicative
 import Control.Monad.Trans.Resource
-import Control.Monad.Apiary.Filter.Internal
+import Control.Monad.Apiary.Filter
+import Control.Monad.Apiary.Action
 
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Client as Client
@@ -30,6 +31,7 @@ import Data.Data (Data)
 import Data.Maybe
 import Data.List
 import Data.Apiary.Compat
+import Data.Apiary.Param
 import Data.Default.Class
 
 import Blaze.ByteString.Builder

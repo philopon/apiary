@@ -16,7 +16,46 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Data.Apiary.Param where
+module Data.Apiary.Param
+    ( -- * route path parameter
+      Path(..)
+    , readPathAs
+      -- * query parameter
+    , Query(..)
+    , QueryRep(..)
+    , File(..)
+    -- * request parameter
+    , Param
+    , ReqParam(..)
+    -- * Strategy
+    , Strategy(..)
+    , StrategyRep(..)
+    , First(..)
+    , One(..)
+    , Many(..)
+    , Some(..)
+    , Option(..)
+    , Optional(..)
+      -- * Proxies
+    , pBool
+    , pInt
+    , pWord
+    , pDouble
+    , pText
+    , pLazyText
+    , pByteString
+    , pLazyByteString
+    , pString
+    , pMaybe
+    , pFile
+    -- ** strategy
+    , pFirst
+    , pOne
+    , pMany
+    , pSome
+    , pOption
+    , pOptional
+    ) where
 
 import Control.Monad
 import Control.Arrow
@@ -50,6 +89,7 @@ jsToBool = flip notElem jsFalse
   where
     jsFalse = ["false", "0", "-0", "", "null", "undefined", "NaN"]
 
+-- | readPath providing type using Proxy.
 readPathAs :: Path a => proxy a -> T.Text -> Maybe a
 readPathAs _ t = readPath t
 {-# INLINE readPathAs #-}
@@ -66,14 +106,17 @@ data File = File
     } deriving (Show, Eq, Typeable)
 
 data QueryRep
-    = Strict   TypeRep
-    | Nullable TypeRep
-    | Check
+    = Strict   TypeRep -- ^ require value
+    | Nullable TypeRep -- ^ allow key only value
+    | Check            -- ^ check existance
     | NoValue
     deriving (Show, Eq)
 
 class Path a where
-    readPath :: T.Text  -> Maybe a
+    -- | read route path parameter.
+    readPath :: T.Text
+             -> Maybe a -- ^ Nothing is failed.
+    -- | pretty type of route path parameter.
     pathRep  :: proxy a -> TypeRep
 
 instance Path Char where
@@ -126,7 +169,11 @@ instance Path String       where readPath = Just . T.unpack;      pathRep _ = ty
 --------------------------------------------------------------------------------
 
 class Query a where
-    readQuery :: Maybe S.ByteString -> Maybe a
+    -- | read query parameter.
+    readQuery :: Maybe S.ByteString -- ^ value of query parameter. Nothing is key only parameter.
+              -> Maybe a -- ^ Noting is fail.
+
+    -- | pretty query parameter.
     queryRep  :: proxy a            -> QueryRep
     queryRep = Strict . qTypeRep
     qTypeRep  :: proxy a            -> TypeRep
@@ -245,32 +292,12 @@ pBool = Proxy
 
 pInt :: Proxy Int
 pInt = Proxy
-pInt8 :: Proxy Int8
-pInt8 = Proxy
-pInt16 :: Proxy Int16
-pInt16 = Proxy
-pInt32 :: Proxy Int32
-pInt32 = Proxy
-pInt64 :: Proxy Int64
-pInt64 = Proxy
-pInteger :: Proxy Integer
-pInteger = Proxy
 
 pWord :: Proxy Word
 pWord = Proxy
-pWord8 :: Proxy Word8
-pWord8 = Proxy
-pWord16 :: Proxy Word16
-pWord16 = Proxy
-pWord32 :: Proxy Word32
-pWord32 = Proxy
-pWord64 :: Proxy Word64
-pWord64 = Proxy
 
 pDouble :: Proxy Double
 pDouble = Proxy
-pFloat :: Proxy Float
-pFloat = Proxy
 
 pText :: Proxy T.Text
 pText = Proxy
@@ -282,9 +309,6 @@ pLazyByteString :: Proxy L.ByteString
 pLazyByteString = Proxy
 pString :: Proxy String
 pString = Proxy
-
-pVoid :: Proxy ()
-pVoid = Proxy
 
 pMaybe :: proxy a -> Proxy (Maybe a)
 pMaybe _ = Proxy

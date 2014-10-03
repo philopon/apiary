@@ -24,6 +24,7 @@ import Web.Apiary.Heroku
 import Control.Applicative
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
+import Control.Monad.Apiary.Action
 
 import Data.Default.Class
 import Data.Apiary.Extension

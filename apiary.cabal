@@ -14,7 +14,8 @@ description:
   .
   main :: IO ()
   main = server (run 3000) . runApiary def $ do
-  &#32;&#32;[capture|/age::Int|] . ([key|name|] =: pLazyByteString) . method GET . action $ \\age name -> do
+  &#32;&#32;[capture|/age::Int|] . ([key|name|] =: pLazyByteString) . method GET . action $ do
+  &#32;&#32;&#32;&#32;&#32;&#32;(age, name) <- [params|age,name|]
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
   &#32;&#32;&#32;&#32;&#32;&#32;contentType &#34;text/html&#34;
   &#32;&#32;&#32;&#32;&#32;&#32;mapM_ lazyBytes [&#34;&#60;h1&#62;Hello, &#34;, name, &#34;!&#60;/h1&#62;\\n&#34;]
@@ -73,11 +74,9 @@ library
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
-                       Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.Extension
-                       Data.Apiary.Extension.Internal
                        Data.Apiary.Param
                        Data.Apiary.Dict
                        Data.Apiary.Method
@@ -85,7 +84,10 @@ library
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
 
-  other-modules:       Control.Monad.Apiary.Internal
+  other-modules:       Data.Apiary.Document.Internal
+                       Data.Apiary.Extension.Internal
+                       Control.Monad.Apiary.Internal
+                       Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal
                        Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Capture.TH

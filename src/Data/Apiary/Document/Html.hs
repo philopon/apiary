@@ -2,7 +2,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Apiary.Document.Html where
+module Data.Apiary.Document.Html
+    ( defaultDocumentToHtml
+    -- * config
+    , DefaultDocumentConfig(..)
+    -- * other functions
+    , rpHtml
+    ) where
 
 import Language.Haskell.TH
 

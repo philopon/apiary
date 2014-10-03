@@ -7,8 +7,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Web.Apiary.Heroku
-    ( Heroku, HerokuConfig(..)
+    ( Heroku
+    -- * configuration
+    , HerokuConfig(..)
+    -- * initializer
     , heroku, herokuWith
+    -- * extension functions
     , getHerokuEnv, getHerokuEnv'
     ) where
 
@@ -86,7 +90,8 @@ heroku :: MonadIO m => (Int -> Application -> m a)
        -> HerokuConfig -> EApplication '[Heroku] m -> m a
 heroku = herokuWith noExtension
 
-getHerokuEnv' :: T.Text -> Heroku -> IO (Maybe T.Text)
+getHerokuEnv' :: T.Text -- ^ heroku environment variable name
+              -> Heroku -> IO (Maybe T.Text)
 getHerokuEnv' key Heroku{..} = try (getEnv $ T.unpack key) >>= \case
     Right e                 -> return (Just $ T.pack e)
     Left (_::SomeException) -> readIORef herokuEnv >>= \case
@@ -106,5 +111,6 @@ getHerokuEnv' key Heroku{..} = try (getEnv $ T.unpack key) >>= \case
             else Nothing <$ writeIORef herokuEnv (Just H.empty)
 
 
-getHerokuEnv :: Has Heroku exts => T.Text -> Extensions exts -> IO (Maybe T.Text)
+getHerokuEnv :: Has Heroku exts => T.Text -- ^ heroku environment variable name
+             -> Extensions exts -> IO (Maybe T.Text)
 getHerokuEnv key exts = getHerokuEnv' key (getExtension Proxy exts)

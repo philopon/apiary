@@ -13,36 +13,40 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Control.Monad.Apiary.Filter (
-    -- * filters
-    -- ** http method
+    -- * http method
       method
-    -- ** http version
-    , Control.Monad.Apiary.Filter.httpVersion
+    -- * http version
     , http09, http10, http11
-    -- ** path matcher
+    -- * path matcher
     , root
     , capture
-    , Capture.path
-    , Capture.endPath
-    , Capture.fetch
-
-    -- ** query matcher
-    , QueryKey(..), (??)
-    -- *** specified operators
+    -- * query matcher
+    , (??)
     , (=:), (=!:), (=?:), (=?!:), (=*:), (=+:)
     , switchQuery
 
-    -- ** header matcher
+    -- * header matcher
     , eqHeader
     , header
     , accept
 
-    -- ** other
+    -- * other
     , ssl
+
+    -- * not export from Web.Apiary
+    , HasDesc(..)
+    , QueryKey(..)
+    , query
+    , Control.Monad.Apiary.Filter.httpVersion
+    , Capture.path
+    , Capture.endPath
+    , Capture.fetch
+    , Capture.restPath
+    , Capture.anyPath
+
+    , function, function', function_, focus
+    , Doc(..)
     
-    -- * deprecated
-    , stdMethod
-    , anyPath
     ) where
 
 import Network.Wai as Wai
@@ -70,7 +74,6 @@ import Data.Apiary.Compat
 import Data.Apiary.Dict
 
 import Data.Apiary.Param
-import Data.Apiary.Document
 import Data.Apiary.Method
 
 -- | filter by HTTP method. since 0.1.0.0.
@@ -81,11 +84,6 @@ import Data.Apiary.Method
 -- @
 method :: Monad actM => Method -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 method m = focus' (DocMethod m) (Just m) id getParams
-
-{-# DEPRECATED stdMethod "use method" #-}
--- | filter by HTTP method using StdMethod. since 0.1.0.0.
-stdMethod :: Monad actM => Method -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-stdMethod = method
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
@@ -111,15 +109,14 @@ http11 = Control.Monad.Apiary.Filter.httpVersion Http.http11 "HTTP/1.1 only"
 root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 root = focus' DocRoot Nothing (RootPath:) getParams
 
-{-# DEPRECATED anyPath "use greedy filter [capture|/**|] or use restPath." #-}
--- | match all subsequent path. since 0.15.0.
-anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-anyPath = focus' id Nothing (RestPath:) getParams
-
 --------------------------------------------------------------------------------
 
 newtype QueryKey (key :: Symbol) = QueryKey { queryKeyDesc :: Maybe Html }
 
+-- | add document to query parameter filter.
+--
+-- > [key|key|] ?? "document" =: pInt
+--
 (??) :: proxy key -> Html -> QueryKey key
 _ ?? d = QueryKey (Just d)
 
@@ -130,6 +127,9 @@ instance HasDesc QueryKey where
     queryDesc = queryKeyDesc
 
 instance HasDesc Proxy where
+    queryDesc = const Nothing
+
+instance HasDesc SProxy where
     queryDesc = const Nothing
 
 --     type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]

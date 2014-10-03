@@ -6,21 +6,29 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+-- | compatibility module for ghc-7.8 & ghc-7.6.
 module Data.Apiary.Compat
-    ( module Export
-    , Symbol, KnownSymbol, symbolVal
+    ( -- * type level string literal
+      Symbol, KnownSymbol, symbolVal
     , SProxy(..)
-#if __GLASGOW_HASKELL__ < 707
+
+    -- * Data.Typeables
+#if MIN_VERSION_base(4,7,0)
+    , module Data.Typeable
+#else
     , typeRep
+    , module Data.Proxy
+    , module Data.Typeable
 #endif
     ) where
 
 import GHC.TypeLits
-#if __GLASGOW_HASKELL__ > 707
-import Data.Typeable as Export
+#if MIN_VERSION_base(4,7,0)
+import Data.Typeable
 #else
-import Data.Proxy    as Export
-import Data.Typeable as Export
+import Data.Proxy
+import Data.Typeable
+
 typeRep :: forall proxy a. Typeable a => proxy a -> TypeRep
 typeRep _ = typeOf (undefined :: a)
 {-# INLINE typeRep #-}
@@ -31,5 +39,5 @@ symbolVal :: forall n proxy. KnownSymbol n => proxy n -> String
 symbolVal _ = fromSing (sing :: Sing n)
 #endif
 
+-- | Symbol Proxy for ghc-7.6.
 data SProxy (a :: Symbol) = SProxy
-

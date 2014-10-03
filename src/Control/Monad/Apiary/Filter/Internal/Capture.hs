@@ -18,11 +18,11 @@ import Control.Applicative
 import Control.Monad
 import Control.Monad.Apiary.Action.Internal
 import Control.Monad.Apiary.Internal
+import Control.Monad.Apiary.Filter.Internal
 
 import Data.Apiary.Compat
 import Data.Apiary.Param
 import Data.Apiary.Dict
-import Data.Apiary.Document
 
 import qualified Data.Text as T
 import Text.Blaze.Html

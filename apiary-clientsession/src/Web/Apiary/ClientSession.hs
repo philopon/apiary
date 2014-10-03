@@ -32,6 +32,7 @@ import Web.Apiary
 import Data.Apiary.Extension
 import Data.Apiary.Compat
 
+import Control.Monad.Apiary.Action
 import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
 import qualified Data.ByteString as S

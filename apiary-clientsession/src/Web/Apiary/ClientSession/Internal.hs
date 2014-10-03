@@ -20,7 +20,8 @@ import Crypto.Random.AESCtr
 
 import Control.Monad
 import Control.Applicative
-import Control.Monad.Apiary.Filter.Internal
+import Control.Monad.Apiary.Filter
+import Control.Monad.Apiary.Action
 
 import Web.Apiary.Wai
 import Web.Apiary
@@ -29,6 +30,7 @@ import Web.ClientSession
 import qualified Network.HTTP.Types as HTTP
 
 import Data.Apiary.Compat
+import Data.Apiary.Param
 import Data.String
 import Data.Maybe
 import Data.Monoid
@@ -36,7 +38,6 @@ import Data.Time
 import Data.Default.Class
 import Data.Binary
 import Data.IORef
-import Data.Apiary.Document
 
 import Text.Blaze.Html
 import qualified Data.ByteString.Base64 as Base64

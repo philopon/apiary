@@ -1,10 +1,13 @@
 module Control.Monad.Apiary
-    ( ApiaryT, EApplication, server, serverWith
+    ( ApiaryT
+    -- * Runner
+    -- ** Apiary -> Application
+    , EApplication
     , runApiaryT
     , runApiary
-    -- * getter
-    , apiaryConfig
-    , apiaryExt
+    , ApiaryConfig(..)
+    -- ** Application -> m a
+    , server, serverWith
     -- * execute action
     , action
     -- * middleware
@@ -14,9 +17,10 @@ module Control.Monad.Apiary
     , document
     , precondition
     , noDoc
-    , rpHtml
+    -- * not export from Web.Apiary
+    , apiaryConfig
+    , apiaryExt
     ) where
 
 import Control.Monad.Apiary.Internal
-
-import Data.Apiary.Document.Html (rpHtml)
+import Control.Monad.Apiary.Action.Internal

@@ -25,12 +25,12 @@ import Web.Apiary
 import Web.Cookie (SetCookie(..))
 import qualified Web.Cookie as Cookie
 
-import Control.Monad.Apiary.Filter.Internal
+import Data.Apiary.Param
+import Control.Monad.Apiary.Filter
 
 import Data.Maybe
 import Data.Time
 import Data.Monoid
-import Data.Apiary.Document
 import Data.Apiary.Compat
 import Blaze.ByteString.Builder
 import Text.Blaze.Html

@@ -13,6 +13,7 @@ import Text.Blaze.Html
 import Data.Monoid
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
+import Data.Apiary.Document.Html
 
 data Test = Test 
     { name :: Maybe String

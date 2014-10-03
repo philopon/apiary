@@ -28,6 +28,8 @@ import Network.HTTP.Client.TLS(tlsManagerSettings)
 import Web.Apiary.ClientSession
 import Control.Monad
 import Control.Monad.Trans.Control
+import Control.Monad.Apiary
+import Control.Monad.Apiary.Action
 
 import qualified Data.Text as T
 import qualified Data.ByteString as S

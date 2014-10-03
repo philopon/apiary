@@ -12,6 +12,7 @@ import Web.Apiary
 import qualified Web.Apiary.PureScript.Internal as I
 import Data.Apiary.Extension
 import Data.Apiary.Compat
+import Control.Monad.Apiary.Action
 
 initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
 initPureScript = initializer' . I.makePureScript

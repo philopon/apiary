@@ -12,6 +12,7 @@ import Network.Wai.EventSource.EventStream (ServerEvent(..))
 import qualified Network.Wai.EventSource.EventStream as E
 
 import Control.Concurrent.Chan (Chan, dupChan, readChan)
+import Control.Monad.Apiary.Action
 
 import Data.Function
 
