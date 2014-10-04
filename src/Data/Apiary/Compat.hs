@@ -14,21 +14,16 @@ module Data.Apiary.Compat
     , SProxy(..)
 
     -- * Data.Typeables
-#if MIN_VERSION_base(4,7,0)
     , module Data.Typeable
-#else
+#if !MIN_VERSION_base(4,7,0)
     , typeRep
     , Proxy(..)
-    , module Data.Typeable
 #endif
     ) where
 
 import GHC.TypeLits
-#if MIN_VERSION_base(4,7,0)
 import Data.Typeable
-#else
-import Data.Proxy
-import Data.Typeable
+#if !MIN_VERSION_base(4,7,0)
 
 typeRep :: forall proxy a. Typeable a => proxy a -> TypeRep
 typeRep _ = typeOf (undefined :: a)
