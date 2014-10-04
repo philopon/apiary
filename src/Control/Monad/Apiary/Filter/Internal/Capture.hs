@@ -36,16 +36,21 @@ endPath :: (Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM
 endPath = focus' id Nothing (EndPath:) getParams
 
 -- | get first path and drill down. since 0.11.0.
-fetch :: forall proxy k p exts prms actM m. (NotMember k prms, KnownSymbol k, Path p, Monad actM)
-      => proxy (k := p) -> Maybe Html
-      -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
-fetch _ h = focus' (DocFetch (T.pack $ symbolVal k) (pathRep p) h) Nothing (FetchPath:) $ liftM actionFetches getState >>= \case
+fetch' :: (NotMember k prms, KnownSymbol k, Path p, Monad actM) => proxy k -> proxy' p -> Maybe Html
+       -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
+fetch' k p h = focus' (DocFetch (T.pack $ symbolVal k) (pathRep p) h) Nothing (FetchPath:) $ liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
         Just r  -> do
             modifyState (\s -> s {actionFetches = fs})
             insert k r <$> getParams
         Nothing -> mzero
+
+
+fetch :: forall proxy k p exts prms actM m. (NotMember k prms, KnownSymbol k, Path p, Monad actM)
+      => proxy (k := p) -> Maybe Html
+      -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
+fetch _ h = fetch' k p h
   where
     k = Proxy :: Proxy k
     p = Proxy :: Proxy p
