@@ -13,7 +13,7 @@ description:
   import qualified Data.ByteString.Lazy.Char8 as L
   .
   main :: IO ()
-  main = server (run 3000) . runApiary def $ do
+  main = runApiary (run 3000) def $ do
   &#32;&#32;[capture|/age::Int|] . ([key|name|] =: pLazyByteString) . method GET . action $ do
   &#32;&#32;&#32;&#32;&#32;&#32;(age, name) <- [params|age,name|]
   &#32;&#32;&#32;&#32;&#32;&#32;guard (age >= 18)
@@ -118,9 +118,6 @@ library
                      , process              >=1.2   && <1.3
                      , unix-compat          >=0.4   && <0.5
                      , http-date            >=0.0   && <0.1
-
-  if impl(ghc < 7.8)
-    build-depends:     tagged               >=0.7   && <0.8
 
   if flag(wai3)
     build-depends:     wai                  >=3.0   && <3.1

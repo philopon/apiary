@@ -5,6 +5,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PolyKinds #-}
 
 -- | compatibility module for ghc-7.8 & ghc-7.6.
 module Data.Apiary.Compat
@@ -17,7 +18,7 @@ module Data.Apiary.Compat
     , module Data.Typeable
 #else
     , typeRep
-    , module Data.Proxy
+    , Proxy(..)
     , module Data.Typeable
 #endif
     ) where
@@ -37,6 +38,8 @@ type KnownSymbol (n :: Symbol) = SingRep n String
 
 symbolVal :: forall n proxy. KnownSymbol n => proxy n -> String
 symbolVal _ = fromSing (sing :: Sing n)
+
+data Proxy a = Proxy
 #endif
 
 -- | Symbol Proxy for ghc-7.6.

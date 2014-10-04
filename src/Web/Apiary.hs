@@ -28,11 +28,10 @@ module Web.Apiary
  
 import Control.Monad.Apiary
     ( ApiaryT
-    , EApplication
-    , runApiaryT
+    , runApiaryTWith
+    , runApiaryWith
     , runApiary
     , ApiaryConfig(..)
-    , server, serverWith
     , action
     , middleware
     , group

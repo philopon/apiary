@@ -17,7 +17,7 @@ main :: IO ()
 main = do
     setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
 
-    serverWith (initPureScript def { development = True }) (run 3000) . runApiary def $ do
+    runApiaryWith (run 3000) (initPureScript def { development = True }) def $ do
         method GET $ do
             root . action $ do
                 contentType "text/html"

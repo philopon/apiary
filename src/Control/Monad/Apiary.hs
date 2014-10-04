@@ -2,12 +2,10 @@ module Control.Monad.Apiary
     ( ApiaryT
     -- * Runner
     -- ** Apiary -> Application
-    , EApplication
-    , runApiaryT
+    , runApiaryTWith
+    , runApiaryWith
     , runApiary
     , ApiaryConfig(..)
-    -- ** Application -> m a
-    , server, serverWith
     -- * execute action
     , action
     -- * middleware

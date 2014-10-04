@@ -52,7 +52,7 @@ assert404 = assertRequest 404 (Just "text/plain") "404 Page Notfound.\n"
 
 --------------------------------------------------------------------------------
 runApp :: ApiaryT '[] '[] IO Identity () -> Application
-runApp = runIdentity . server return . runApiary def
+runApp = runIdentity . runApiary return def
 --------------------------------------------------------------------------------
 
 helloWorldApp :: Application

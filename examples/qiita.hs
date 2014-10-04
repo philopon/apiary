@@ -5,7 +5,7 @@ import Web.Apiary
 import Network.Wai.Handler.Warp
 
 main :: IO ()
-main = server (run 3000) . runApiary def $ do
+main = runApiary (run 3000) def $ do
     [capture|/age::Int|] . ([key|name|] =: pLazyByteString) $ do
         method GET $ do
             action $ do

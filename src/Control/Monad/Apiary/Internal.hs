@@ -146,38 +146,36 @@ routerToAction router = getRequest' >>= go
                 Nothing -> nxt
                 Just cd -> loop fch cd ps `mplus` nxt
 
--- | Application with Extensions.
-type EApplication e m = Extensions e -> m Application
-
--- | run Apiary monad to get EApplication.
-runApiaryT :: (Monad actM, Monad m)
-           => (forall b. actM b -> IO b)
-           -> ApiaryConfig
-           -> ApiaryT exts '[] actM m ()
-           -> EApplication exts m
-runApiaryT runAct conf m exts = do
+-- | run Apiary monad.
+runApiaryTWith :: (Monad actM, Monad m)
+               => (forall b. actM b -> IO b)
+               -> (Application -> m a)
+               -> Initializer m '[] exts
+               -> ApiaryConfig
+               -> ApiaryT exts '[] actM m ()
+               -> m a
+runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
     wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
         mw  = writerMw wtr
-    return $! mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
+        app = mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
+    run app
 
--- | specialized version of runApiaryT.
+runApiaryWith :: Monad m
+              => (Application -> m a)
+              -> Initializer m '[] exts
+              -> ApiaryConfig
+              -> ApiaryT exts '[] IO m ()
+              -> m a
+runApiaryWith = runApiaryTWith id
+
 runApiary :: Monad m
-          => ApiaryConfig
-          -> ApiaryT exts '[] IO m ()
-          -> EApplication exts m
-runApiary = runApiaryT id
-
--- | run server.
-server :: Monad m => (Application -> m a) -> EApplication '[] m -> m a
-server = serverWith noExtension
-
--- | run server with extension.
-serverWith :: Monad m => Initializer m '[] exts 
-           -> (Application -> m a) -> (EApplication exts m) -> m a
-serverWith (Initializer ir) run em = ir NoExtension $ \exts ->
-    em exts >>= run
+          => (Application -> m a)
+          -> ApiaryConfig
+          -> ApiaryT '[] '[] IO m ()
+          -> m a
+runApiary run = runApiaryWith run noExtension
 
 --------------------------------------------------------------------------------
 

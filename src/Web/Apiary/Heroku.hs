@@ -10,8 +10,8 @@ module Web.Apiary.Heroku
     ( Heroku
     -- * configuration
     , HerokuConfig(..)
-    -- * initializer
-    , heroku, herokuWith
+    -- * runner
+    , runHeroku, runHerokuWith, runHerokuTWith
     -- * extension functions
     , getHerokuEnv, getHerokuEnv'
     ) where
@@ -35,7 +35,6 @@ import qualified Data.Text.IO as T
 import Network.Wai
 import Control.Monad.Apiary
 import Data.Apiary.Extension
-import Data.Apiary.Extension.Internal
 
 data Heroku = Heroku 
     { herokuEnv    :: IORef (Maybe (H.HashMap T.Text T.Text))
@@ -46,10 +45,11 @@ data HerokuConfig = HerokuConfig
     { defaultPort          :: Int
     , herokuExecutableName :: String
     , herokuAppName        :: Maybe String
+    , herokuApiaryConfig   :: ApiaryConfig
     }
 
 instance Default HerokuConfig where
-    def = HerokuConfig 3000 "heroku" Nothing
+    def = HerokuConfig 3000 "heroku" Nothing def
 
 initHeroku :: MonadIO m => HerokuConfig -> Initializer' m Heroku
 initHeroku conf = initializer' . liftIO $
@@ -63,32 +63,38 @@ initHeroku conf = initializer' . liftIO $
 --
 -- @ herokuWith exts run def . runApiary def $ foo @
 --
-herokuWith :: MonadIO m => Initializer m '[Heroku] exts
-           -> (Int -> Application -> m a)
-           -> HerokuConfig -> EApplication exts m -> m a
-herokuWith ir run conf eapp = ir' NoExtension $ \exts -> do
+runHerokuTWith :: (MonadIO m, Monad actM)
+               => (forall b. actM b -> IO b)
+               -> (Int -> Application -> m a)
+               -> Initializer m '[Heroku] exts
+               -> HerokuConfig
+               -> ApiaryT exts '[] actM m ()
+               -> m a
+runHerokuTWith runAct run ir conf m = do
     port <- liftIO $ fmap read (getEnv "PORT")
         `catch` (\(_::IOError) -> return $ defaultPort conf)
-    app  <- eapp exts
-    run port app
-  where
-    Initializer ir' = initHeroku conf +> ir
+    runApiaryTWith runAct (run port) (initHeroku conf +> ir) (herokuApiaryConfig conf) m
 
--- | use this function instead of server in heroku app. since 0.17.0.
---
--- @ server (run 3000) . runApiary def $ foo @
---
--- to
---
--- @ heroku run def . runApiary def $ foo @
+runHerokuWith :: MonadIO m
+              => (Int -> Application -> m a)
+              -> Initializer m '[Heroku] exts
+              -> HerokuConfig
+              -> ApiaryT exts '[] IO m ()
+              -> m a
+runHerokuWith = runHerokuTWith id
+
+-- | use this function instead of runApiary in heroku app. since 0.18.0.
 --
 -- this function provide:
 --
 -- * set port by PORT environment variable.
 -- * getHerokuEnv function(get config from environment variable or @ heroku config @ command).
-heroku :: MonadIO m => (Int -> Application -> m a)
-       -> HerokuConfig -> EApplication '[Heroku] m -> m a
-heroku = herokuWith noExtension
+runHeroku :: MonadIO m
+          => (Int -> Application -> m a)
+          -> HerokuConfig
+          -> ApiaryT '[Heroku] '[] IO m ()
+          -> m a
+runHeroku run = runHerokuWith run noExtension
 
 getHerokuEnv' :: T.Text -- ^ heroku environment variable name
               -> Heroku -> IO (Maybe T.Text)
