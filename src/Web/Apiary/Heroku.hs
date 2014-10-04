@@ -26,7 +26,7 @@ import Control.Applicative
 import Control.Monad.Trans
 
 import Data.IORef
-import Data.Proxy
+import Data.Apiary.Compat
 import Data.Default.Class
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text    as T

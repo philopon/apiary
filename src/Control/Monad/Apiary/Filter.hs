@@ -69,7 +69,6 @@ import qualified Data.Text          as T
 import qualified Data.Text.Encoding as T
 import qualified Data.CaseInsensitive as CI
 import Data.Monoid
-import Data.Proxy
 import Data.Apiary.Compat
 import Data.Apiary.Dict
 

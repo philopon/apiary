@@ -65,7 +65,6 @@ import qualified Network.HTTP.Types as Http
 import Data.Int
 import Data.Maybe
 import Data.Word
-import Data.Proxy
 import Data.Apiary.Compat
 import Data.Apiary.Dict
 
