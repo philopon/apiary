@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DataKinds #-}
 
 module Control.Monad.Apiary.Filter.Internal.Capture.TH where
 
@@ -16,6 +17,7 @@ import qualified Data.Text as T
 import Data.String
 import Data.List
 import Data.Apiary.Compat
+import Data.Apiary.Dict (Elem(..))
 
 preCap :: String -> [String]
 preCap ""  = []
@@ -56,7 +58,7 @@ mkCap (str:as)
         let v = T.unpack . T.strip . fst $ T.breakOn    "::" key
             t = T.unpack . T.strip . snd $ T.breakOnEnd "::" key
         ty <- lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
-        [|(Capture.fetch (SProxy :: SProxy $(litT $ strTyLit v)) (Proxy :: Proxy $(conT ty)) $d) . $(mkCap as)|]
+        [|(Capture.fetch (Proxy :: Proxy ((:=) $(litT $ strTyLit v) $(conT ty))) $d) . $(mkCap as)|]
 
     | otherwise = [|(Capture.path (fromString $(stringE str))) . $(mkCap as) |]
 
@@ -69,6 +71,13 @@ mkCap (str:as)
 -- [capture|\/int\/foo::Int|] -- first path == "int" && get 2nd path as Int.
 -- [capture|\/bar::Int\/baz::Double|] -- get first path as Int and get 2nd path as Double.
 -- [capture|/**baz|] -- feed greedy and get all path as [Text] (since 0.17.0). 
+-- @
+--
+-- this QQ can convert pure function easily.
+--
+-- @
+-- [capture|/foo/foo::Int|]        == path "path" . fetch (Proxy :: Proxy ("foo" := Int)) . endPath
+-- [capture|/bar/bar::Int/**rest|] == path "path" . fetch (Proxy :: Proxy ("foo" := Int)) . restPath (Proxy :: Proxy "rest")
 -- @
 --
 capture :: QuasiQuoter
