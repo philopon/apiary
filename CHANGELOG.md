@@ -1,3 +1,20 @@
+# 1.0.0
+* included named parameter. motivation:
+
+    changing filter order
+
+    `filterA . filterB . action $ \a b -> act` to
+
+    `filterB . filterA . action $ \b a -> act`
+                                   ~~~
+    changes argument order. it's too bad...
+
+* simplified Strategy type class.
+* removed DEPRECATED functions.
+* changed runner type.
+* changed module structure.
+* API freeze. I'll pay attention to compatibility, maybe...
+
 # 0.17.2
 * send 302 if file not midified.
 

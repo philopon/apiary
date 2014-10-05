@@ -53,7 +53,7 @@ Bug-reports:         https://github.com/philopon/apiary/issues
 copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
-stability:           experimental
+stability:           stable
 extra-source-files:  static/api-documentation.min.js
                    , static/jquery.cookie-1.4.1.min.js
                    , static/api-documentation.min.css
