@@ -37,10 +37,10 @@ cabal install apiary warp
 > import qualified Data.ByteString as S
 > 
 > main :: IO ()
-> main = serverWith (initLogger def)      (run 3000) . runApiary def $ do
+> main = runApiaryWith (run 3000) (initLogger def) def $ do
 
-                    ~~~~~~~~~~~~~~~~      ~~~~~~~~~
-                    use logger extension  application runner
+                                  ~~~~~~~~~~~~~~~~
+                                  use logger extension
 
 
 
