@@ -47,10 +47,10 @@ cond p t f a = if p a then t a else f a
 -- example:
 --
 -- @
--- cookie "foo" (pFirst pInt)  -- get first Int parameter from foo.
--- cookie "bar" (pOption pDouble)  -- get first Double parameter from bar, allows no cookie.
--- cookie "baz" (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
--- cookie "baz" (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
+-- cookie [key|foo|] (pFirst pInt)  -- get first Int parameter from foo.
+-- cookie [key|bar|] (pOption pDouble)  -- get first Double parameter from bar, allows no cookie.
+-- cookie [key|baz|] (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
+-- cookie [key|baz|] (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
 -- @
 cookie :: (Strategy w, Monad actM, NotMember k prms, KnownSymbol k)
        => proxy k

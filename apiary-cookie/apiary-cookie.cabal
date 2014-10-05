@@ -1,5 +1,5 @@
 name:                apiary-cookie
-version:             1.0.0
+version:             1.0.0.1
 synopsis:            Cookie support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
@@ -12,7 +12,7 @@ Bug-reports:         https://github.com/philopon/apiary/issues
 copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
-stability:           experimental
+stability:           stable
 -- extra-source-files:  
 cabal-version:       >=1.10
 
