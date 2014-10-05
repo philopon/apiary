@@ -19,7 +19,7 @@ main = do
         writeChan chan $ ServerEvent Nothing Nothing [fromShow i]
         threadDelay (10^(6:: Int))) [0::Int ..]
 
-    server (run 3000) . runApiary def $ do
+    runApiary (run 3000) def $ do
         [capture|es|] $ action (eventSourceChan chan)
         root          $ action (file "eventsource.html" Nothing)
 

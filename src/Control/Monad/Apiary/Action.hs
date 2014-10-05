@@ -2,52 +2,57 @@
 
 module Control.Monad.Apiary.Action 
     ( ActionT
-    , ApiaryConfig(..)
-    , defaultDocumentationAction
-    , DefaultDocumentConfig(..)
-    -- * actions
-    , stop, stopWith
+    -- * stop action
+    , stop
 
-    -- ** getter
-    , getRequest
-    , getHeaders
-    , getReqParams
-    , File(..)
-    , getReqFiles
-    , getExt
+    -- * getter
+    , param
+    , params
 
-    -- ** setter
+    -- * setter
     , status
-    -- *** response header
+    -- ** response header
     , addHeader, setHeaders, modifyHeader
-    , ContentType
     , contentType
-    -- *** response body
+    -- ** response body
     , reset
-    , file
-    , file'
     , builder
     , bytes, lazyBytes
     , text,  lazyText
     , showing
     , string, char
-    , stream
-    , rawResponse
-
-    , StreamingBody
+    , file
 
     -- ** monolithic action
     -- *** redirect
     , redirect, redirectPermanently, redirectTemporary
+
+    -- *** documentation
+    , defaultDocumentationAction
+    , DefaultDocumentConfig(..)
+
+    -- * not export from Web.Apiary
+    , ContentType
+    , stopWith
+    -- ** getter
+    , getRequest
+    , getHeaders
+    , getParams
+    , getExt
+    , getQueryParams
+    , getReqBodyParams
+    , getReqBodyFiles
+    -- ** setter
+    , file'
+    , stream
+    , rawResponse
+    , StreamingBody
+    -- ** redirect
     , redirectWith
-   
-    -- * deprecated
-    , redirectFound, redirectSeeOther, source, lbs
     ) where
 
 import Control.Monad.Apiary.Action.Internal
 
-import Data.Apiary.Param
 import Data.Apiary.Document.Html
 
 #ifdef WAI3

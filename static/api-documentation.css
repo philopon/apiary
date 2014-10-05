@@ -1,4 +1,8 @@
 .fetch {
+  text-decoration: underline;
+}
+
+.type .rest {
   color: gray;
 }
 

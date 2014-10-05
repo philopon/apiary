@@ -25,6 +25,7 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
 import Control.Exception.Lifted
+import Control.Monad.Apiary.Action
 
 import Web.Apiary
 import Web.Apiary.Heroku
@@ -34,7 +35,7 @@ import qualified Database.MongoDB as MongoDB
 import Data.Default.Class
 import Data.Time(NominalDiffTime)
 import Data.Pool
-import Data.Apiary.Proxy
+import Data.Apiary.Compat
 import Data.Apiary.Extension
 import qualified Data.Text as T
 import qualified Data.Text.Read as T
@@ -108,7 +109,7 @@ initHerokuMongoDB conf = initializerBracket $ \exts m -> do
 --
 -- if you want to access other db, other accessmode, please use 'useDb' or 'accessMode'.
 access :: (Has MongoDB exts, MonadBaseControl IO m, MonadIO m)
-       => Action (ActionT exts m) a -> ActionT exts m a
+       => Action (ActionT exts prms m) a -> ActionT exts prms m a
 access m = do
     MongoDB mongo conf <- getExt (Proxy :: Proxy MongoDB)
     withResource mongo $ \p ->

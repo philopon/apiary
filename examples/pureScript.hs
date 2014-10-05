@@ -17,7 +17,7 @@ main :: IO ()
 main = do
     setCurrentDirectory $(location >>= stringE . takeDirectory . loc_filename)
 
-    serverWith (initPureScript def { development = True }) (run 3000) . runApiary def $ do
+    runApiaryWith (run 3000) (initPureScript def { development = True }) def $ do
         method GET $ do
             root . action $ do
                 contentType "text/html"
@@ -26,9 +26,10 @@ main = do
             [capture|/test.js|] . action $
                 pureScript "pureScript.purs"
 
-        [capture|/api/:Int|] .
-            ("test" ?? "b(default: 0)" =?: pInt) . 
-            document "a + b" . action $ \i mbj -> do
+        [capture|/api/i::Int|] .
+            ([key|test|] ?? "b(default: 0)" =?: pInt) . 
+            document "a + b" . action $ do
+                (i, mbj) <- [params|i, test|]
                 let j = maybe 0 id mbj
                 contentType "application/json"
                 bytes "{ \"test\": "

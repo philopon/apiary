@@ -20,8 +20,8 @@ module Web.Apiary.ClientSession
     -- ** with sessionConfig
     , setSessionWith
     -- * filter
-    , session
-    , checkToken
+    , I.session
+    , I.checkToken
     -- * Reexport
     -- | deleteCookie
     , module Web.Apiary.Cookie
@@ -30,25 +30,25 @@ module Web.Apiary.ClientSession
 import Web.Apiary
 
 import Data.Apiary.Extension
-import Data.Apiary.Proxy
+import Data.Apiary.Compat
 
+import Control.Monad.Apiary.Action
 import qualified Web.Apiary.ClientSession.Internal as I
 import Web.Apiary.Cookie (deleteCookie)
 import qualified Data.ByteString as S
-import Control.Monad.Apiary.Filter.Internal.Strategy
 
 initSession :: MonadIO m => I.SessionConfig -> Initializer' m I.Session
 initSession c = initializer' $ I.makeSession c
 
 setSession :: (Has I.Session exts, MonadIO m)
            => S.ByteString -> S.ByteString
-           -> ActionT exts m ()
+           -> ActionT exts prms m ()
 setSession k v = do
     sess <- getExt (Proxy :: Proxy I.Session)
     I.setSession sess k v
 
 getSessionConfig :: (Has I.Session exts, Monad m)
-                 => ActionT exts m I.SessionConfig
+                 => ActionT exts prms m I.SessionConfig
 getSessionConfig = do
     sess <- getExt (Proxy :: Proxy I.Session)
     return $ I.sessionConfig sess
@@ -56,26 +56,16 @@ getSessionConfig = do
 setSessionWith :: (Has I.Session exts, MonadIO m)
                => I.SessionConfig
                -> S.ByteString -> S.ByteString
-               -> ActionT exts m ()
+               -> ActionT exts prms m ()
 setSessionWith cfg k v = do
     sess <- getExt (Proxy :: Proxy I.Session)
     I.setSession sess { I.sessionConfig = cfg } k v
 
-session :: (Has I.Session exts, Query a, Strategy w, MonadIO actM)
-        => S.ByteString -> w a
-        -> ApiaryT exts (SNext w prms a) actM m ()
-        -> ApiaryT exts prms actM m ()
-session k w m = I.session k w m
 
 -- | create crypto random (generate random by AES CTR(cprng-aes package) and encode by base64),
 --
 -- set it client session cookie, set XSRF-TOKEN header(when Just angularXsrfCookieName),
 --
 -- and return value. since 0.9.0.0.
-csrfToken :: (Has I.Session exts, MonadIO m) => ActionT exts m S.ByteString
+csrfToken :: (Has I.Session exts, MonadIO m) => ActionT exts prms m S.ByteString
 csrfToken = getExt (Proxy :: Proxy I.Session) >>= I.csrfToken
-
--- | check csrf token. since 0.9.0.0.
-checkToken :: (Has I.Session exts, MonadIO actM)
-           => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-checkToken m = I.checkToken m

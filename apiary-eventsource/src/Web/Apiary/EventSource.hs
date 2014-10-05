@@ -12,6 +12,7 @@ import Network.Wai.EventSource.EventStream (ServerEvent(..))
 import qualified Network.Wai.EventSource.EventStream as E
 
 import Control.Concurrent.Chan (Chan, dupChan, readChan)
+import Control.Monad.Apiary.Action
 
 import Data.Function
 
@@ -41,14 +42,14 @@ ioToSource src send flush = fix $ \loop -> do
 #endif
 
 -- | eventsource with io action. since 0.11.3.
-eventSourceIO :: Monad m => IO ServerEvent -> ActionT exts m ()
+eventSourceIO :: Monad m => IO ServerEvent -> ActionT exts prms m ()
 eventSourceIO io = do
     status status200
     contentType "text/event-stream"
     stream $ ioToSource io
 
 -- | eventsource with chan. since 0.11.3.
-eventSourceChan :: MonadIO m => Chan ServerEvent -> ActionT exts m ()
+eventSourceChan :: MonadIO m => Chan ServerEvent -> ActionT exts prms m ()
 eventSourceChan chan = do
     chan' <- liftIO $ dupChan chan
     eventSourceIO (readChan chan')

@@ -52,7 +52,7 @@ assert404 = assertRequest 404 (Just "text/plain") "404 Page Notfound.\n"
 
 --------------------------------------------------------------------------------
 runApp :: ApiaryT '[] '[] IO Identity () -> Application
-runApp = runIdentity . server return . runApiary def
+runApp = runIdentity . runApiary return def
 --------------------------------------------------------------------------------
 
 helloWorldApp :: Application
@@ -116,7 +116,7 @@ rootFilterTest = testGroup "rootFilter" $ map ($ rootFilterApp)
 
 restFilterApp :: Application
 restFilterApp = runApp $ do
-    [capture|/test/**|]   . action $ \l -> contentType "text/plain" >> showing l
+    [capture|/test/**rest|] . action $ contentType "text/plain" >> param [key|rest|] >>= showing
     [capture|/test/neko|] . action $ contentType "text/plain" >> bytes "nyan"
 
 restFilterTest :: Test
@@ -133,10 +133,10 @@ restFilterTest = testGroup "rest capture" $ map ($ restFilterApp)
 captureApp :: Application
 captureApp = runApp $ do
     [capture|/foo|]  . action $ contentType "text/plain" >> bytes "foo"
-    [capture|/:Int|] . method GET . action $ \i -> contentType "text/plain" >> bytes "Int " >> showing i
-    [capture|/:Double|] . action $ \i -> contentType "text/plain" >> bytes "Double " >> showing i
-    [capture|/bar/:L.ByteString/:Int|] . action $ \s i -> contentType "text/plain" >> lazyBytes s >> char ' ' >> showing i
-    [capture|/:L.ByteString|] . action $ \s -> contentType "text/plain" >> bytes "fall " >> lazyBytes s
+    [capture|/int::Int|] . method GET . action $ contentType "text/plain" >> bytes "Int " >> param [key|int|] >>= showing
+    [capture|/d::Double|] . action $ contentType "text/plain" >> bytes "Double " >> param [key|d|] >>= showing
+    [capture|/bar/s::L.ByteString/i::Int|] . action $ contentType "text/plain" >> param [key|s|] >>= lazyBytes >> char ' ' >> param [key|i|] >>= showing
+    [capture|/s::L.ByteString|] . action $ contentType "text/plain" >> bytes "fall " >> param [key|s|] >>= lazyBytes
 
 captureTest :: Test
 captureTest = testGroup "capture" $ map ($ captureApp)
@@ -153,21 +153,15 @@ captureTest = testGroup "capture" $ map ($ captureApp)
 --------------------------------------------------------------------------------
 
 queryApp f g h = runApp $ do
-    _ <- (f "foo" pInt)        . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
-    _ <- (g "foo" pString)     . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
-    (h "foo" (pMaybe pString)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
+    _ <- (f [key|foo|] pInt)    . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= showing
+    _ <- (g [key|foo|] pString) . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= showing
+    (h [key|foo|] (pMaybe pString)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= showing
 
 queryOptionalApp :: Application
 queryOptionalApp = runApp $ do
-    ("foo" =?!: (5 :: Int))                   . action $ \i -> contentType "text/plain" >> bytes "foo Int " >> showing i
-    ("foo" =?!: ("bar" :: String))            . action $ \i -> contentType "text/plain" >> bytes "foo String " >> showing i
-    ("foo" =?!: (Just "baz" :: Maybe String)) . action $ \i -> contentType "text/plain" >> bytes "foo Maybe String " >> showing i
-
-queryCheckApp :: Application
-queryCheckApp = runApp $ do
-    ("foo" ?: pInt)           . action $ contentType "text/plain" >> bytes "foo Int"
-    ("foo" ?: pString)        . action $ contentType "text/plain" >> bytes "foo String"
-    ("foo" ?: pMaybe pString) . action $ contentType "text/plain" >> bytes "foo Maybe String"
+    ([key|foo|] =?!: (5 :: Int))                   . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= showing
+    ([key|foo|] =?!: ("bar" :: String))            . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= showing
+    ([key|foo|] =?!: (Just "baz" :: Maybe String)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= showing
 
 queryFirstTest :: Test
 queryFirstTest = testGroup "First" $ map ($ queryApp (=:) (=:) (=:))
@@ -199,7 +193,7 @@ queryOptionTest = testGroup "Option" $ map ($ queryApp (=?:) (=?:) (=?:))
     , testReq "GET /?foo=12" . assertPlain200 "foo Int Just 12"
     , testReq "GET /?foo=a" . assertPlain200 "foo String Just \"a\""
     , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int Just 12"
-    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String Just \"12\""
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int Just 12"
     ]
 
 queryOptionalTest :: Test
@@ -210,18 +204,7 @@ queryOptionalTest = testGroup "Optional" $ map ($ queryOptionalApp)
     , testReq "GET /?foo=12" . assertPlain200 "foo Int 12"
     , testReq "GET /?foo=a" . assertPlain200 "foo String \"a\""
     , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int 12"
-    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String \"12\""
-    ]
-
-queryCheckTest :: Test
-queryCheckTest = testGroup "Check" $ map ($ queryCheckApp)
-    [ testReq "GET /" . assert404
-    , testReq "GET /?foo" . assertPlain200 "foo Maybe String"
-    , testReq "GET /?foo&foo=3" . assertPlain200 "foo Maybe String"
-    , testReq "GET /?foo=12" . assertPlain200 "foo Int"
-    , testReq "GET /?foo=a" . assertPlain200 "foo String"
-    , testReq "GET /?foo=12&foo=23" . assertPlain200 "foo Int"
-    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String"
+    , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int 12"
     ]
 
 queryManyTest :: Test
@@ -248,8 +231,10 @@ querySomeTest = testGroup "Some" $ map ($ queryApp (=+:) (=+:) (=+:))
 
 switchQueryApp :: Application
 switchQueryApp = runApp $ do
-    switchQuery "foo" . switchQuery "bar" . action $ \f b ->
-        contentType "text/plain" >> showing f >> showing b
+    switchQuery [key|foo|] . switchQuery [key|bar|] . action $ do
+        contentType "text/plain"
+        param [key|foo|] >>= showing
+        param [key|bar|] >>= showing
 
 switchQueryTest :: Test
 switchQueryTest = testGroup "switch" $ map ($ switchQueryApp)
@@ -269,7 +254,6 @@ queryTest = testGroup "query"
     , queryOneTest
     , queryOptionTest
     , queryOptionalTest
-    , queryCheckTest
     , queryManyTest
     , querySomeTest
     , switchQueryTest
@@ -278,7 +262,8 @@ queryTest = testGroup "query"
 --------------------------------------------------------------------------------
 stopApp :: Application
 stopApp = runApp $ do
-    [capture|/a/:Int|] . action $ \i -> do
+    [capture|/a/i::Int|] . action $ do
+        i <- param [key|i|]
         contentType "text/plain"
         when (i == 1) $ bytes "one\n"
         if i `mod` 2 == 0 then bytes "even\n" else bytes "odd\n"

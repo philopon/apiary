@@ -36,12 +36,11 @@ import Database.Persist.Sql
 
 import Web.Apiary
 import Web.Apiary.Logger
-import Data.Apiary.SList
-import Data.Apiary.Proxy
-import Data.Apiary.Document
+import Control.Monad.Apiary.Action
+import Control.Monad.Apiary.Filter
+import qualified Data.Apiary.Dict as Dict
+import Data.Apiary.Compat
 import Data.Apiary.Extension
-import Data.Apiary.Extension.Internal
-import Control.Monad.Apiary.Filter.Internal
 
 data Migrator
     = Logging Migration
@@ -51,17 +50,17 @@ data Migrator
 
 data Persist
     = PersistPool ConnectionPool
-    | PersistConn Connection
+    | PersistConn SqlBackend
 
 type With c m = forall a. (c -> m a) -> m a
 
-initPersist' :: (MonadIO n, MonadBaseControl IO n) 
+initPersist' :: (MonadIO n, MonadBaseControl IO n, Monad m) 
              => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
-             -> With Connection n -> Migrator -> Initializer m exts (Persist ': exts)
-initPersist' wrap run with migr = Initializer $ \es m -> run es $
+             -> With SqlBackend n -> Migrator -> Initializer m exts (Persist ': exts)
+initPersist' wrap run with migr = initializer $ \es -> run es $
     with $ \conn -> do
         doMigration migr conn
-        wrap $ m (addExtension (PersistConn conn) es)
+        wrap $ return (PersistConn conn)
 
 -- | construct persist extension initializer with no connection pool.
 --
@@ -71,22 +70,22 @@ initPersist' wrap run with migr = Initializer $ \es m -> run es $
 -- initPersist (withSqliteConn "db.sqlite") migrateAll
 -- @
 initPersist :: (MonadIO m, MonadBaseControl IO m) 
-            => With Connection (LogWrapper exts m) -> Migration
+            => With SqlBackend (LogWrapper exts m) -> Migration
             -> Initializer m exts (Persist ': exts)
 initPersist with = initPersist' logWrapper runLogWrapper with . Logging
 
 initPersistNoLog :: (MonadIO m, MonadBaseControl IO m) 
-                 => With Connection (NoLoggingT m)
+                 => With SqlBackend (NoLoggingT m)
                  -> Migration -> Initializer m es (Persist ': es)
 initPersistNoLog with = initPersist' NoLoggingT (const runNoLoggingT) with . Silent
 
-initPersistPool' :: (MonadIO n, MonadBaseControl IO n)
+initPersistPool' :: (MonadIO n, MonadBaseControl IO n, Monad m)
                  => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
                  -> With ConnectionPool n -> Migrator -> Initializer m exts (Persist ': exts)
-initPersistPool' wrap run with migr = Initializer $ \es m -> run es $
+initPersistPool' wrap run with migr = initializer $ \es -> run es $
     with $ \pool -> do
         withResource pool $ doMigration migr
-        wrap $ m (addExtension (PersistPool pool) es)
+        wrap $ return (PersistPool pool)
 
 initPersistPool :: (MonadIO m, MonadBaseControl IO m)
                 => With ConnectionPool (LogWrapper exts m) -> Migration
@@ -98,7 +97,7 @@ initPersistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
                      -> Migration -> Initializer m es (Persist ': es)
 initPersistPoolNoLog with = initPersistPool' NoLoggingT (const runNoLoggingT) with . Silent
 
-doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> Connection -> m ()
+doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> SqlBackend -> m ()
 doMigration migr conn = case migr of
     Logging m -> runReaderT (runMigration m) conn
     Silent  m -> runReaderT (void (runMigrationSilent m)) conn
@@ -107,18 +106,19 @@ doMigration migr conn = case migr of
 
 -- | execute sql in action.
 runSql :: (Has Persist exts, MonadBaseControl IO m)
-       => SqlPersistT (ActionT exts m) a -> ActionT exts m a
+       => SqlPersistT (ActionT exts prms m) a -> ActionT exts prms m a
 runSql a = getExt (Proxy :: Proxy Persist) >>= \case
     PersistPool p -> runSqlPool a p
     PersistConn c -> runSqlConn a c
 
 -- | filter by sql query. since 0.9.0.0.
-sql :: (Has Persist exts, MonadBaseControl IO actM)
+sql :: (Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
     => Maybe Html -- ^ documentation.
-    -> SqlPersistT (ActionT exts actM) a
+    -> proxy k
+    -> SqlPersistT (ActionT exts prms actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
-    -> ApiaryT exts (b ': prms) actM m () -> ApiaryT exts prms actM m ()
-sql doc q p = focus (maybe id DocPrecondition doc) $ \l ->
+    -> ApiaryT exts (k := b ': prms) actM m () -> ApiaryT exts prms actM m ()
+sql doc k q p = focus (maybe id DocPrecondition doc) $ do
     fmap p (runSql q) >>= \case
         Nothing -> mzero
-        Just a  -> return (a ::: l)
+        Just a  -> Dict.insert k a `fmap` getParams

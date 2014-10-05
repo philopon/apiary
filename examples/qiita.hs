@@ -5,26 +5,28 @@ import Web.Apiary
 import Network.Wai.Handler.Warp
 
 main :: IO ()
-main = server (run 3000) . runApiary def $ do
-    [capture|/:Int|] . ("name" =: pLazyByteString) $ do
+main = runApiary (run 3000) def $ do
+    [capture|/age::Int|] . ([key|name|] =: pLazyByteString) $ do
         method GET $ do
-            action $ \age name -> do
+            action $ do
+                (age, name) <- [params|age, name|]
                 guard (age >= 18)
                 contentType "text/html"
                 bytes "<h1>Hello, "
                 lazyBytes name
                 bytes  "!</h1>\n"
 
-            action $ \_ _ -> do
+            action $ do
                 contentType "text/html"
                 bytes "R18\n"
 
-        method POST . action $ \age name -> do
+        method POST . action $ do
+            (age, name) <- [params|age, name|]
             liftIO $ print (age, name)
 
-        method PUT . ("add" =?: pBool) . action $ \age name mbB -> do
-            let bool = maybe False id mbB
-            liftIO $ print (age, name, bool)
+        method PUT . ([key|add|] =?!: False) . action $ do
+            (age, name, add) <- [params|age, name, add|]
+            liftIO $ print (age, name, add)
 
     root . method GET . action $ do
         contentType "text/html"

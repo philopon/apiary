@@ -2,11 +2,18 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.Apiary.Document.Html where
+module Data.Apiary.Document.Html
+    ( defaultDocumentToHtml
+    -- * config
+    , DefaultDocumentConfig(..)
+    -- * other functions
+    , rpHtml
+    ) where
 
 import Language.Haskell.TH
 
-import Data.Monoid
+import Data.Monoid hiding (Any)
+import Data.Maybe
 import Data.Default.Class
 
 import Data.Apiary.Param
@@ -20,24 +27,28 @@ import qualified Data.Text.Encoding as T
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
-
 routeToHtml :: Route -> (T.Text, Html, Html)
-routeToHtml = loop (1::Int) "" mempty []
+routeToHtml = loop "" mempty []
   where
     sp = H.span "/" ! A.class_ "splitter"
-    loop i e r p (Path s d)          = loop i (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
-    loop i e r p (Fetch t Nothing d) = 
-        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> rpHtml (toHtml $ show t) i) p d
-    loop i e r p (Fetch t (Just h) d) = 
-        loop (succ i) (T.concat [e, "/:", T.pack $ show t]) (r <> sp <> rpHtml (toHtml $ show t) i)
-            (p <> [H.tr $ H.td (toHtml i) <> H.td (toHtml $ show t) <> H.td h]) d
-    loop _ e r p End =
-        (e, r
+    loop e r p (Path s d) = loop (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
+    loop e r p (Fetch k t mbh d) = 
+        let r' = r <> sp <> rpHtml (toHtml k) (if isJust mbh then Nothing else Just . toHtml $ show t)
+            p' = maybe p (\h -> p <> [H.tr $ H.td (toHtml k) <> H.td (toHtml $ show t) <> H.td h]) mbh
+        in loop (T.concat [e, "/", k, "::", T.pack $ show t]) r' p' d
+    loop e r p (Rest k mbh) =
+        let p' = maybe p (\h -> p <> [H.tr $ H.td (toHtml k) <> H.td "[Text]" <> H.td h]) mbh
+            in loop (T.concat [e, "/**", k]) (r <> sp <> (H.span "**" ! A.class_ "rest") <> (H.span (toHtml k) ! A.class_ "fetch")) p' End
+    loop e r p Any =
+        loop (T.concat [e, "/**"]) (r <> sp <> (H.span "**" ! A.class_ "rest")) p End
+    loop e r p End =
+        ( e
+        , r
         , if null p
           then mempty
           else H.table ! A.class_ "table table-condensed route-parameters" $
                H.tr (mconcat 
-                    [ H.th ! A.class_ "col-sm-1 com-md-1" $ "#"
+                    [ H.th ! A.class_ "col-sm-1 com-md-1" $ "name"
                     , H.th ! A.class_ "col-sm-1 com-md-1" $ "type"
                     , H.th "description"
                     ]) <> mconcat p
@@ -107,7 +118,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     noDesc = H.span "no description" ! A.class_ "no-description"
 
     query (QueryDoc p s q t) = H.tr . mconcat $
-        [ H.td (toHtml $ T.decodeUtf8 p)
+        [ H.td (toHtml p)
         , H.td (toHtml $ strategyInfo s)
         , H.td (htmlQR q)
         , H.td $ maybe noDesc id t
@@ -179,5 +190,5 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         ]
 
 -- | construct Html as route parameter. since 0.13.0.
-rpHtml :: Html -> Int -> Html
-rpHtml s i = H.span (":" <> s <> H.sup (toHtml i)) ! A.class_ "fetch"
+rpHtml :: Html -> Maybe Html -> Html
+rpHtml k mbt = (H.span k ! A.class_ "fetch") <> maybe mempty (\t -> H.span (" :: " <> t) ! A.class_ "type") mbt

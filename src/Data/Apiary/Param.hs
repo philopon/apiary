@@ -13,17 +13,60 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeOperators #-}
 
-module Data.Apiary.Param where
-
-import Network.Wai
+module Data.Apiary.Param
+    ( -- * route path parameter
+      Path(..)
+    , readPathAs
+      -- * query parameter
+    , Query(..)
+    , QueryRep(..)
+    , File(..)
+    -- * request parameter
+    , Param
+    , ReqParam(..)
+    -- * Strategy
+    , Strategy(..)
+    , StrategyRep(..)
+    , First(..)
+    , One(..)
+    , Many(..)
+    , Some(..)
+    , Option(..)
+    , Optional(..)
+      -- * Proxies
+    , pBool
+    , pInt
+    , pWord
+    , pDouble
+    , pText
+    , pLazyText
+    , pByteString
+    , pLazyByteString
+    , pString
+    , pMaybe
+    , pFile
+    -- ** strategy
+    , pFirst
+    , pOne
+    , pMany
+    , pSome
+    , pOption
+    , pOptional
+    ) where
 
 import Control.Monad
+import Control.Arrow
+
+import qualified Network.HTTP.Types as Http
 
 import Data.Int
+import Data.Maybe
 import Data.Word
-import Data.Proxy
-import Data.Apiary.Proxy
+import Data.Apiary.Compat
+import Data.Apiary.Dict
 
 import Data.String(IsString)
 import Data.Time.Calendar
@@ -45,6 +88,7 @@ jsToBool = flip notElem jsFalse
   where
     jsFalse = ["false", "0", "-0", "", "null", "undefined", "NaN"]
 
+-- | readPath providing type using Proxy.
 readPathAs :: Path a => proxy a -> T.Text -> Maybe a
 readPathAs _ t = readPath t
 {-# INLINE readPathAs #-}
@@ -61,14 +105,17 @@ data File = File
     } deriving (Show, Eq, Typeable)
 
 data QueryRep
-    = Strict   TypeRep
-    | Nullable TypeRep
-    | Check
+    = Strict   TypeRep -- ^ require value
+    | Nullable TypeRep -- ^ allow key only value
+    | Check            -- ^ check existance
     | NoValue
     deriving (Show, Eq)
 
 class Path a where
-    readPath :: T.Text  -> Maybe a
+    -- | read route path parameter.
+    readPath :: T.Text
+             -> Maybe a -- ^ Nothing is failed.
+    -- | pretty type of route path parameter.
     pathRep  :: proxy a -> TypeRep
 
 instance Path Char where
@@ -121,7 +168,11 @@ instance Path String       where readPath = Just . T.unpack;      pathRep _ = ty
 --------------------------------------------------------------------------------
 
 class Query a where
-    readQuery :: Maybe S.ByteString -> Maybe a
+    -- | read query parameter.
+    readQuery :: Maybe S.ByteString -- ^ value of query parameter. Nothing is key only parameter.
+              -> Maybe a -- ^ Noting is fail.
+
+    -- | pretty query parameter.
     queryRep  :: proxy a            -> QueryRep
     queryRep = Strict . qTypeRep
     qTypeRep  :: proxy a            -> TypeRep
@@ -240,32 +291,12 @@ pBool = Proxy
 
 pInt :: Proxy Int
 pInt = Proxy
-pInt8 :: Proxy Int8
-pInt8 = Proxy
-pInt16 :: Proxy Int16
-pInt16 = Proxy
-pInt32 :: Proxy Int32
-pInt32 = Proxy
-pInt64 :: Proxy Int64
-pInt64 = Proxy
-pInteger :: Proxy Integer
-pInteger = Proxy
 
 pWord :: Proxy Word
 pWord = Proxy
-pWord8 :: Proxy Word8
-pWord8 = Proxy
-pWord16 :: Proxy Word16
-pWord16 = Proxy
-pWord32 :: Proxy Word32
-pWord32 = Proxy
-pWord64 :: Proxy Word64
-pWord64 = Proxy
 
 pDouble :: Proxy Double
 pDouble = Proxy
-pFloat :: Proxy Float
-pFloat = Proxy
 
 pText :: Proxy T.Text
 pText = Proxy
@@ -278,9 +309,6 @@ pLazyByteString = Proxy
 pString :: Proxy String
 pString = Proxy
 
-pVoid :: Proxy ()
-pVoid = Proxy
-
 pMaybe :: proxy a -> Proxy (Maybe a)
 pMaybe _ = Proxy
 
@@ -288,7 +316,7 @@ pFile :: Proxy File
 pFile = Proxy
 
 class ReqParam a where
-    reqParams   :: proxy a -> Request -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
+    reqParams   :: proxy a -> Http.Query -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
     reqParamRep :: proxy a -> QueryRep
 
 instance ReqParam File where
@@ -296,6 +324,77 @@ instance ReqParam File where
     reqParamRep   _ = Strict $ typeRep pFile
 
 instance Query a => ReqParam a where
-    reqParams _ r p _ = map (\(k,v) -> (k, readQuery v)) (queryString r) ++
-        map (\(k,v) -> (k, readQuery $ Just v)) p
+    reqParams _ q p _ = map (second readQuery) q ++
+        map (second $ readQuery . Just) p
     reqParamRep = queryRep
+
+newtype StrategyRep = StrategyRep
+    { strategyInfo :: T.Text }
+    deriving (Show, Eq)
+
+
+class Strategy (w :: * -> *) where
+    type SNext w (k::Symbol) a (prms :: [Elem]) :: [Elem]
+    strategy :: (NotMember k prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
+    strategyRep :: w a -> StrategyRep
+
+data First a = First
+instance Strategy First where
+    type SNext First k a ps = k := a ': ps
+    strategy _ k (Just a:_) d = return $ insert k a d
+    strategy _ _ _          _ = mzero
+    strategyRep _ = StrategyRep "first"
+
+data One a = One
+instance Strategy One where
+    type SNext One k a ps = k := a ': ps
+    strategy _ k [Just a] d = return $ insert k a d
+    strategy _ _ _        _ = mzero
+    strategyRep _ = StrategyRep "one"
+
+data Many a = Many
+instance Strategy Many where
+    type SNext Many k a ps = k := [a] ': ps
+    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
+    strategyRep _ = StrategyRep "many"
+
+data Some a = Some
+instance Strategy Some where
+    type SNext Some k a ps = k := [a] ': ps
+    strategy _ _ [] _ = mzero
+    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
+    strategyRep _ = StrategyRep "some"
+
+data Option a = Option
+instance Strategy Option where
+    type SNext Option k a ps = k := Maybe a ': ps
+    strategy _ k (Just a:_)  d = return $ insert k (Just a) d
+    strategy _ _ (Nothing:_) _ = mzero
+    strategy _ k []          d = return $ insert k Nothing d
+    strategyRep _ = StrategyRep "option"
+
+data Optional a = Optional T.Text a
+instance Strategy Optional where
+    type SNext Optional k a ps = k := a ': ps
+    strategy _              k (Just a:_)  d = return $ insert k a d
+    strategy _              _ (Nothing:_) _ = mzero
+    strategy (Optional _ a) k []          d = return $ insert k a d
+    strategyRep (Optional a _) = StrategyRep $ "default:" `T.append` a
+
+pFirst :: proxy a -> First a
+pFirst _ = First
+
+pOne :: proxy a -> One a
+pOne _ = One
+
+pMany :: proxy a -> Many a
+pMany _ = Many
+
+pSome :: proxy a -> Some a
+pSome _ = Some
+
+pOption :: proxy a -> Option a
+pOption _ = Option
+
+pOptional :: Show a => a -> Optional a
+pOptional a = Optional (T.pack $ show a) a

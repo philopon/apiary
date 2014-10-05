@@ -38,8 +38,9 @@ import Control.Exception.Lifted
 
 import Data.Default.Class
 
-import Data.Apiary.Proxy
-import Web.Apiary
+import Control.Monad.Apiary
+import Control.Monad.Apiary.Action
+import Data.Apiary.Compat
 import Data.Apiary.Extension
 
 data LogDest
@@ -79,12 +80,12 @@ initLogger LogConfig{..} = initializerBracket' $ bracket
 
 -- | push log.
 logging :: (Has Logger exts, MonadIO m)
-        => LogStr -> ActionT exts m ()
+        => LogStr -> ActionT exts prms m ()
 logging m = do
     l <- getExt (Proxy :: Proxy Logger)
     liftIO $ pushLog l m
 
-instance (MonadIO m, Has Logger exts) => MonadLogger (ActionT exts m) where
+instance (MonadIO m, Has Logger exts) => MonadLogger (ActionT exts prms m) where
     monadLoggerLog loc src lv msg = do
         l <- getExt (Proxy :: Proxy Logger)
         liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)

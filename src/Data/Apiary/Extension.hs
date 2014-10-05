@@ -6,9 +6,8 @@
 module Data.Apiary.Extension
     ( Has(getExtension)
     , Extensions
-    , addExtension
     , noExtension
-    -- * create initializer
+    -- * initializer constructor
     , Initializer,  initializer
     , Initializer', initializer'
     , initializerBracket
@@ -16,8 +15,6 @@ module Data.Apiary.Extension
 
     -- * combine initializer
     , (+>)
-    -- * deprecated
-    , preAction
     ) where
 
 import Data.Apiary.Extension.Internal
@@ -41,10 +38,6 @@ initializerBracket b = Initializer $ \es n ->
 
 initializerBracket' :: (forall a. (e -> m a) -> m a) -> Initializer m es (e ': es)
 initializerBracket' m = initializerBracket (const m)
-
-{-# DEPRECATED preAction "DEPRECATED" #-}
-preAction :: Monad m => m a -> Initializer m i i
-preAction f = Initializer $ \es n -> f >> n es
 
 -- | combine two Initializer. since 0.16.0.
 (+>) :: Monad m => Initializer m i x -> Initializer m x o -> Initializer m i o

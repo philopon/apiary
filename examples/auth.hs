@@ -11,20 +11,20 @@ sc :: SessionConfig
 sc = def { sessionPath = Just "/", sessionSecure = False }
 
 main :: IO ()
-main = serverWith (initSession def +> initAuth def {authSessionConfig = sc}) (run 3000) . runApiary def $ do
+main = runApiaryWith (run 3000) (initSession def +> initAuth def {authSessionConfig = sc}) def $ do
 
     root . method GET $ do
-        authorized . action $ \s -> do
+        authorized [key|auth|] . action $ do
             contentType "text/html"
 
             bytes "your id: "
-            showing s
+            showing =<< param [key|auth|]
             bytes " \n<a href=\"/logout\">logout</a>"
 
-        cookie "message" (pOption pByteString) . action $ \mbmsg -> do
+        cookie [key|message|] (pOption pByteString) . action $ do
             contentType "text/html"
 
-            maybe (return ()) (\m -> mapM_ bytes ["<h1>", m, "</h1>"]) mbmsg
+            maybe (return ()) (\m -> mapM_ bytes ["<h1>", m, "</h1>"]) =<< param [key|message|]
 
             authRoutes >>= mapM_ (\(n,r) -> do
                 mapM_ bytes ["<div><a href=\"", r, "\">"]
