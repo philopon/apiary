@@ -31,6 +31,7 @@ import qualified Network.HTTP.Types as HTTP
 
 import Data.Apiary.Compat
 import Data.Apiary.Param
+import Data.Apiary.Extension
 import Data.String
 import Data.Maybe
 import Data.Monoid
@@ -50,6 +51,7 @@ data Session = Session
     , tokenGen      :: IORef AESRNG
     , sessionConfig :: SessionConfig
     }
+instance Extension Session
 
 data KeySource
     = KeyFile       FilePath

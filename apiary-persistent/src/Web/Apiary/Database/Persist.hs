@@ -52,6 +52,8 @@ data Persist
     = PersistPool ConnectionPool
     | PersistConn SqlBackend
 
+instance Extension Persist
+
 type With c m = forall a. (c -> m a) -> m a
 
 initPersist' :: (MonadIO n, MonadBaseControl IO n, Monad m) 

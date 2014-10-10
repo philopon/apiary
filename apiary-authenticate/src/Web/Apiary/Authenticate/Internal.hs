@@ -27,6 +27,7 @@ import Web.Apiary.ClientSession
 import qualified Web.Apiary.Wai as Wai
 
 import Data.Binary as Binary
+import Data.Apiary.Extension
 import Data.Data (Data)
 import Data.Maybe
 import Data.List
@@ -70,6 +71,7 @@ data Auth = Auth
     { manager           :: Client.Manager
     , config            :: AuthConfig
     }
+instance Extension Auth
 
 authHandler :: (Monad m, MonadIO actM, Has Session exts)
             => Auth -> ApiaryT exts prms actM m ()

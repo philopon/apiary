@@ -1,5 +1,5 @@
 name:                apiary-eventsource
-version:             1.0.0
+version:             1.1.0
 synopsis:            eventsource support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/eventsource.hs>
@@ -23,7 +23,7 @@ flag wai2apiary
 library
   exposed-modules:     Web.Apiary.EventSource
   build-depends:       base              >=4.6  && <4.8
-                     , apiary            >=1.0  && <1.1
+                     , apiary            >=1.1  && <1.2
                      , blaze-builder     >=0.3  && <0.4
   if flag(wai2apiary)
     build-depends:     wai-eventsource   >=2.0  && <3.0

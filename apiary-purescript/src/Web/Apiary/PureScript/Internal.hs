@@ -23,6 +23,7 @@ import Web.Apiary
 import Data.Default.Class
 import Data.IORef
 import Data.Typeable
+import Data.Apiary.Extension
 import qualified Data.HashMap.Strict as H
 import qualified Text.Parsec.Error as P
 
@@ -67,6 +68,7 @@ data PureScript = PureScript
     { pscConfig :: PureScriptConfig
     , compiled  :: IORef (H.HashMap FilePath String)
     }
+instance Extension PureScript
 
 makePureScript :: MonadIO m => PureScriptConfig -> m PureScript
 makePureScript conf = do

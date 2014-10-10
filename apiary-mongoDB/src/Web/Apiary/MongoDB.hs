@@ -48,6 +48,7 @@ import Database.MongoDB.Admin
 type MongoQuery = MongoDB.Query
 
 data MongoDB = MongoDB (Pool Pipe) MongoDBConfig
+instance Extension MongoDB
 
 data MongoDBConfig = MongoDBConfig
     { mongoDBTimeout     :: Secs
