@@ -247,6 +247,8 @@ instance Applicative (ActionT' exts m) where
         unActionT' mf env st  $ \f !st'  ->
         unActionT' ma env st' $ \a !st'' ->
         cont (f a) st''
+    {-# INLINE pure #-}
+    {-# INLINE (<*>) #-}
 
 instance Monad m => Monad (ActionT' exts m) where
     return x = ActionT' $ \_ !st cont -> cont x st
@@ -255,6 +257,8 @@ instance Monad m => Monad (ActionT' exts m) where
         unActionT' (k a) env st' cont
     fail s = ActionT' $ \(ActionEnv{actionConfig = c}) _ _ -> return $
         Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
+    {-# INLINE return #-}
+    {-# INLINE (>>=) #-}
 
 instance (Monad m, Functor m) => Alternative (ActionT' exts m) where
     empty = mzero

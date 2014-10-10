@@ -160,7 +160,7 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
         rtr = writerRouter wtr emptyRouter
         mw  = allMiddleware exts . writerMw wtr
         app = mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
-    run app
+    run $! app
 
 runApiaryWith :: Monad m
               => (Application -> m a)
