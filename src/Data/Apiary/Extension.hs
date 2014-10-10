@@ -5,6 +5,7 @@
 
 module Data.Apiary.Extension
     ( Has(getExtension)
+    , Extension(..)
     , Extensions
     , noExtension
     -- * initializer constructor
@@ -21,22 +22,22 @@ import Data.Apiary.Extension.Internal
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 
-addExtension :: e -> Extensions es -> Extensions (e ': es)
+addExtension :: Extension e => e -> Extensions es -> Extensions (e ': es)
 addExtension = AddExtension
 
-initializer :: Monad m => (Extensions es -> m e) -> Initializer m es (e ': es)
+initializer :: (Extension e, Monad m) => (Extensions es -> m e) -> Initializer m es (e ': es)
 initializer m = Initializer $ \es n -> do
     e <- m es
     n (addExtension e es)
 
-initializer' :: Monad m => m e -> Initializer' m e
+initializer' :: (Extension e, Monad m) => m e -> Initializer' m e
 initializer' m = initializer (const m)
 
-initializerBracket :: (forall a. Extensions es -> (e -> m a) -> m a) -> Initializer m es (e ': es)
+initializerBracket :: Extension e => (forall a. Extensions es -> (e -> m a) -> m a) -> Initializer m es (e ': es)
 initializerBracket b = Initializer $ \es n ->
     b es $ \e -> n (addExtension e es)
 
-initializerBracket' :: (forall a. (e -> m a) -> m a) -> Initializer m es (e ': es)
+initializerBracket' :: Extension e => (forall a. (e -> m a) -> m a) -> Initializer m es (e ': es)
 initializerBracket' m = initializerBracket (const m)
 
 -- | combine two Initializer. since 0.16.0.
