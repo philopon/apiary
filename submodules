@@ -8,3 +8,4 @@ apiary-eventsource
 apiary-purescript
 apiary-mongoDB
 apiary-memcached
+apiary-helics
