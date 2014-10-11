@@ -20,7 +20,7 @@ library
   other-modules:       
   build-depends:       base               >=4.6   && <4.8
                      , apiary             >=1.1   && <1.2
-                     , helics             >=0.1   && <0.2
+                     , helics             >=0.2   && <0.3
                      , helics-wai         >=0.2   && <0.3
                      , vault              >=0.3   && <0.4
                      , transformers       >=0.3   && <0.5

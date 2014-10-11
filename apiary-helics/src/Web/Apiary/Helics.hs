@@ -19,8 +19,11 @@ module Web.Apiary.Helics
     , datastoreSegment
     , externalSegment
     -- * reexports
+    , H.autoScope
+    , H.rootSegment
     , H.TransactionId
     , H.SegmentId
+    , H.Operation(..)
     , H.DatastoreSegment(..)
     ) where
 
