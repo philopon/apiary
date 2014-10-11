@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.0.0
+version:             1.1.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -32,15 +32,15 @@ description:
   404 Page Notfound.
   @
   .
-    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark/tree/v1.0.0>).
+    * High performance(benchmark: <https://github.com/philopon/apiary-benchmark>).
   .
     * Nestable route handling(Apiary Monad; capture, method and more.).
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v1.0.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v1.0.0/examples/api.html>).
+    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v1.1.0/examples/api.hs>, <https://rawgit.com/philopon/apiary/v1.1.0/examples/api.html>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.0.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.1.0/examples/>
   .
   live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 

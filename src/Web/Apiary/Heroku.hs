@@ -41,6 +41,8 @@ data Heroku = Heroku
     , herokuConfig :: HerokuConfig
     }
 
+instance Extension Heroku
+
 data HerokuConfig = HerokuConfig
     { defaultPort          :: Int
     , herokuExecutableName :: String

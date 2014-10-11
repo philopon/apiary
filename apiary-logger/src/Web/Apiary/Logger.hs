@@ -62,6 +62,7 @@ data Logger = Logger
     { pushLog  :: LogStr -> IO ()
     , closeLog :: IO ()
     }
+instance Extension Logger
 
 newLogger :: BufSize -> LogDest -> IO Logger
 newLogger s (LogFile p) = newFileLoggerSet s p >>= \l -> 

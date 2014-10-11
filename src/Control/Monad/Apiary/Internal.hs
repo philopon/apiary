@@ -158,9 +158,9 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
     wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-        mw  = writerMw wtr
+        mw  = allMiddleware exts . writerMw wtr
         app = mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
-    run app
+    run $! app
 
 runApiaryWith :: Monad m
               => (Application -> m a)

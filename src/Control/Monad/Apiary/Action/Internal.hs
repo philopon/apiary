@@ -69,6 +69,7 @@ data ApiaryConfig = ApiaryConfig
     , defaultStatus       :: Status
       -- | initial headers.
     , defaultHeaders      :: ResponseHeaders
+    , defaultContentType  :: S.ByteString
     , failStatus          :: Status
     , failHeaders         :: ResponseHeaders
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
@@ -95,6 +96,7 @@ instance Default ApiaryConfig where
         { notFound            = defaultNotFound
         , defaultStatus       = ok200
         , defaultHeaders      = []
+        , defaultContentType  = "text/plain"
         , failStatus          = internalServerError500
         , failHeaders         = []
         , rootPattern         = ["index.html", "index.htm"]
@@ -115,34 +117,37 @@ instance Monoid ResponseBody where
     ResponseBuilder a `mappend` ResponseBuilder b = ResponseBuilder $ a <> b
     _ `mappend` b = b
 
-
 toResponse :: ActionState -> Response
 toResponse ActionState{..} = case actionResponse of
-    ResponseFile  f p -> responseFile    actionStatus actionHeaders f p
-    ResponseBuilder b -> responseBuilder actionStatus actionHeaders b
+    ResponseFile  f p -> responseFile    actionStatus headers f p
+    ResponseBuilder b -> responseBuilder actionStatus headers b
 #ifdef WAI3
-    ResponseStream  s -> responseStream  actionStatus actionHeaders s
+    ResponseStream  s -> responseStream  actionStatus headers s
 #else
-    ResponseStream  s -> responseSource  actionStatus actionHeaders s
+    ResponseStream  s -> responseSource  actionStatus headers s
 #endif
     ResponseRaw   f r -> responseRaw f r
-    ResponseFunc    f -> f actionStatus actionHeaders
+    ResponseFunc    f -> f actionStatus headers
+  where
+    headers = ("Content-Type", actionContentType) : actionHeaders
 
 data ActionState = ActionState
-    { actionResponse :: ResponseBody
-    , actionStatus   :: Status
-    , actionHeaders  :: ResponseHeaders
-    , actionReqBody  :: Maybe ([Param], [File])
-    , actionFetches  :: [T.Text]
+    { actionResponse    :: ResponseBody
+    , actionStatus      :: Status
+    , actionHeaders     :: ResponseHeaders
+    , actionContentType :: S.ByteString
+    , actionReqBody     :: Maybe ([Param], [File])
+    , actionFetches     :: [T.Text]
     }
 
 initialState :: ApiaryConfig -> ActionState
 initialState conf = ActionState
-    { actionResponse = ResponseBuilder mempty
-    , actionStatus   = defaultStatus  conf
-    , actionHeaders  = defaultHeaders conf
-    , actionReqBody  = Nothing
-    , actionFetches  = []
+    { actionResponse    = ResponseBuilder mempty
+    , actionStatus      = defaultStatus  conf
+    , actionHeaders     = defaultHeaders conf
+    , actionContentType = defaultContentType conf
+    , actionReqBody     = Nothing
+    , actionFetches     = []
     }
 {-# INLINE initialState #-}
 
@@ -242,6 +247,8 @@ instance Applicative (ActionT' exts m) where
         unActionT' mf env st  $ \f !st'  ->
         unActionT' ma env st' $ \a !st'' ->
         cont (f a) st''
+    {-# INLINE pure #-}
+    {-# INLINE (<*>) #-}
 
 instance Monad m => Monad (ActionT' exts m) where
     return x = ActionT' $ \_ !st cont -> cont x st
@@ -250,6 +257,8 @@ instance Monad m => Monad (ActionT' exts m) where
         unActionT' (k a) env st' cont
     fail s = ActionT' $ \(ActionEnv{actionConfig = c}) _ _ -> return $
         Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
+    {-# INLINE return #-}
+    {-# INLINE (>>=) #-}
 
 instance (Monad m, Functor m) => Alternative (ActionT' exts m) where
     empty = mzero
@@ -440,24 +449,30 @@ getHeaders :: Monad m => ActionT exts prms m RequestHeaders
 getHeaders = requestHeaders `liftM` getRequest
 
 -- | modify response header. since 0.1.0.0.
+--
+-- Don't set Content-Type using this function. Use @contentType@.
 modifyHeader :: Monad m => (ResponseHeaders -> ResponseHeaders) -> ActionT exts prms m ()
 modifyHeader f = modifyState (\s -> s {actionHeaders = f $ actionHeaders s } )
 
 -- | add response header. since 0.1.0.0.
+--
+-- Don't set Content-Type using this function. Use @contentType@.
 addHeader :: Monad m => HeaderName -> S.ByteString -> ActionT exts prms m ()
 addHeader h v = modifyHeader ((h,v):)
 
 -- | set response headers. since 0.1.0.0.
+--
+-- Don't set Content-Type using this function. Use @contentType@.
 setHeaders :: Monad m => ResponseHeaders -> ActionT exts prms m ()
 setHeaders hs = modifyHeader (const hs)
 
 type ContentType = S.ByteString
 
 -- | set content-type header.
+--
 -- if content-type header already exists, replace it. since 0.1.0.0.
 contentType :: Monad m => ContentType -> ActionT exts prms m ()
-contentType c = modifyHeader
-    (\h -> ("Content-Type", c) : filter (("Content-Type" /=) . fst) h)
+contentType c = modifyState (\s -> s { actionContentType = c } )
 
 --------------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 name:                apiary-persistent
-version:             1.0.0
+version:             1.1.0
 synopsis:            persistent support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
@@ -12,7 +12,7 @@ Bug-reports:         https://github.com/philopon/apiary/issues
 copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
-stability:           experimental
+stability:           stable
 -- extra-source-files:  
 cabal-version:       >=1.10
 
@@ -21,8 +21,8 @@ library
   build-depends:       base               >=4.6  && <4.8
                      , persistent         >=2.1  && <2.2
 
-                     , apiary             >=1.0  && <1.1
-                     , apiary-logger      >=1.0  && <1.1
+                     , apiary             >=1.1  && <1.2
+                     , apiary-logger      >=1.1  && <1.2
 
                      , resourcet          >=1.1  && <1.2
                      , resource-pool      >=0.2  && <0.3

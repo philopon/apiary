@@ -38,6 +38,7 @@ import Database.Memcached.Binary.IO
 import qualified Database.Memcached.Binary.Maybe as Maybe
 
 data Memcached = Memcached Connection MemcachedConfig
+instance Extension Memcached
 
 data CacheConfig = CacheConfig
     { cacheFlags        :: Key -> Flags

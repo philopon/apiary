@@ -1,5 +1,5 @@
 name:                apiary-memcached
-version:             1.0.0
+version:             1.1.0
 synopsis:            memcached client for apiary web framework.
 -- description:
 license:             MIT
@@ -11,7 +11,7 @@ Bug-reports:         https://github.com/philopon/apiary/issues
 copyright:           (c) 2014 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
-stability:           experimental
+stability:           stable
 -- extra-source-files:  
 cabal-version:       >=1.10
 
@@ -19,7 +19,7 @@ library
   exposed-modules:     Web.Apiary.Memcached
   other-modules:       
   build-depends:       base               >=4.6   && <4.8
-                     , apiary             >=1.0   && <1.1
+                     , apiary             >=1.1   && <1.2
                      , memcached-binary   >=0.1   && <0.3
                      , data-default-class >=0.0   && <0.1
                      , binary             >=0.7   && <0.8
