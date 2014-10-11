@@ -1,7 +1,7 @@
 name:                apiary-helics
 version:             1.1.0
-synopsis:            
-description:
+synopsis:            helics support for apiary web framework.
+description:         helics support for apiary web framework.
 license:             MIT
 license-file:        LICENSE
 author:              HirotomoMoriwaki<philopon.dependence@gmail.com>
