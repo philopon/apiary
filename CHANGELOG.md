@@ -1,3 +1,7 @@
+# 1.1.0
+* Added Extension class. now Extension can add middleware.
+* Added apiary-helics submodule.
+
 # 1.0.0
 * included named parameter. motivation:
 
