@@ -77,18 +77,19 @@ main = do
 
         -- no document function -> hidden route.
         root . method GET . action $ do
-            bytes "root"
+            contentType "text/html"
+            bytes "<h1>root</h1><a href=\"/api/documentation\">api document</a>"
 
         -- you can generate API document with multiple action.
         -- rpHtml function format as captured route parameter.
         group "dog group" $ do
             [capture|/api/dog/i::Int/**rest|] $ do
-                precondition (rpHtml "i" Nothing <> " is even.") . document "twice" . action $ do
+                precondition (rpHtml "i" <> " is even.") . document "twice" . action $ do
                     i <- param [key|i|]
                     guard $ even i
                     contentType "text/plain"
                     showing (i * 2)
-                precondition (rpHtml "i" Nothing <> " is odd.") . document "succ" . action $ do
+                precondition (rpHtml "i" <> " is odd.") . document "succ" . action $ do
                     i <- param [key|i|]
                     contentType "text/plain"
                     showing (succ i)

@@ -232,7 +232,7 @@ eqHeader k v = focus' (DocPrecondition $ "header: " <> toHtml (symbolVal k) <> "
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-accept ect = focus (DocPrecondition $ "Accept: " <> toHtml (T.decodeUtf8 ect)) $
+accept ect = focus (DocAccept ect) $
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
         Just ac -> if parseContentType ect `elem` map (parseContentType . SC.dropWhile (== ' ')) (SC.split ',' ac)

@@ -14,6 +14,9 @@ module Web.Apiary.Helics
     , recordMetric
     -- ** transaction
     , addAttribute
+    , setError
+    , noticeError
+    , clearError
     -- ** segment
     , genericSegment
     , datastoreSegment
@@ -22,6 +25,7 @@ module Web.Apiary.Helics
     , H.autoScope
     , H.rootSegment
     , H.TransactionId
+    , H.TransactionError
     , H.SegmentId
     , H.Operation(..)
     , H.DatastoreSegment(..)
@@ -43,42 +47,58 @@ import Data.Default.Class
 import qualified Data.Vault.Lazy as V
 import qualified Data.ByteString as S
 
-data Helics = Helics (V.Key H.TransactionId) ThreadId
+data Helics = Helics (V.Key H.TransactionId) ThreadId HelicsConfig
+
 instance Extension Helics where
-    extMiddleware (Helics k _) = Safe.helics k
+    extMiddleware (Helics k _ cfg) =
+        if useDummyMiddleware cfg
+        then Safe.dummyHelics k
+        else Safe.helics k (toHelicsMiddlewareConfig cfg)
 
 data HelicsConfig = HelicsConfig
-    { licenseKey       :: S.ByteString
-    , appName          :: S.ByteString
-    , language         :: S.ByteString
-    , languageVersion  :: S.ByteString
-    , statusCallback   :: Maybe (H.StatusCode -> IO ())
-    , samplerFrequency :: Int
+    { licenseKey         :: S.ByteString
+    , appName            :: S.ByteString
+    , language           :: S.ByteString
+    , languageVersion    :: S.ByteString
+    , statusCallback     :: Maybe (H.StatusCode -> IO ())
+
+    , useDummyMiddleware :: Bool
+    , transactionName    :: Request -> S.ByteString
+
+    , samplerFrequency   :: Int
     }
 
 instance Default HelicsConfig where
-    def = HelicsConfig { licenseKey       = H.licenseKey def
-                       , appName          = H.appName def
-                       , language         = H.language def
-                       , languageVersion  = H.languageVersion def
-                       , statusCallback   = H.statusCallback def
-                       , samplerFrequency = 20
-                       }
+    def = HelicsConfig
+        { licenseKey         = H.licenseKey def
+        , appName            = H.appName def
+        , language           = H.language def
+        , languageVersion    = H.languageVersion def
+        , statusCallback     = H.statusCallback def
+        , transactionName    = rawPathInfo
+        , useDummyMiddleware = False
+        , samplerFrequency   = 20
+        }
 
-conv :: HelicsConfig -> H.HelicsConfig
-conv c = def { H.licenseKey      = licenseKey c
-             , H.appName         = appName c
-             , H.language        = language c
-             , H.languageVersion = languageVersion c
-             , H.statusCallback  = statusCallback c
-             }
+toHelicsConfig :: HelicsConfig -> H.HelicsConfig
+toHelicsConfig c = def
+    { H.licenseKey      = licenseKey c
+    , H.appName         = appName c
+    , H.language        = language c
+    , H.languageVersion = languageVersion c
+    , H.statusCallback  = statusCallback c
+    }
+
+toHelicsMiddlewareConfig :: HelicsConfig -> Safe.HelicsMiddlewareConfig
+toHelicsMiddlewareConfig c = def
+    { Safe.transactionName = transactionName c }
 
 initHelics :: (MonadBaseControl IO m, MonadIO m) => HelicsConfig -> Initializer' m Helics
 initHelics cnf = initializerBracket' $ \m -> do
     k <- liftIO $ V.newKey
-    control $ \run -> H.withHelics (conv cnf) $ run $ do
+    control $ \run -> H.withHelics (toHelicsConfig cnf) $ run $ do
         tid <- liftIO $ forkIO $ H.sampler (samplerFrequency cnf)
-        m (Helics k tid)
+        m (Helics k tid cnf)
 
 recordMetric :: MonadIO m => S.ByteString -> Double
              -> ActionT exts prms m ()
@@ -87,7 +107,7 @@ recordMetric n v = liftIO $ H.recordMetric n v
 transactionId :: (Has Helics exts, Monad m)
               => ActionT exts prms m H.TransactionId
 transactionId = do
-    Helics key _ <- getExt Proxy
+    Helics key _ _ <- getExt Proxy
     maybe (error "apiary-helics: vault value not found.") id .
         V.lookup key . vault <$> getRequest
 
@@ -124,3 +144,20 @@ externalSegment :: (Has Helics exts, MonadBaseControl IO m)
 externalSegment sid host name act = do
     tid <- transactionId
     control $ \run -> H.externalSegment sid host name (run act) tid
+
+setError :: (Has Helics exts, MonadIO m)
+         => Maybe H.TransactionError -> ActionT exts prms m ()
+setError err = do
+    tid <- transactionId
+    liftIO $ H.setError err tid
+
+noticeError :: (Has Helics exts, MonadIO m)
+            => H.TransactionError -> ActionT exts prms m ()
+noticeError err = do
+    tid <- transactionId
+    liftIO $ H.noticeError err tid
+
+clearError :: (Has Helics exts, MonadIO m) => ActionT exts prms m ()
+clearError = do
+    tid <- transactionId
+    liftIO $ H.clearError tid
