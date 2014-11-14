@@ -95,10 +95,18 @@ toHelicsMiddlewareConfig c = def
 
 initHelics :: (MonadBaseControl IO m, MonadIO m) => HelicsConfig -> Initializer' m Helics
 initHelics cnf = initializerBracket' $ \m -> do
-    k <- liftIO $ V.newKey
+    k <- liftIO V.newKey
     control $ \run -> H.withHelics (toHelicsConfig cnf) $ run $ do
         tid <- liftIO $ forkIO $ H.sampler (samplerFrequency cnf)
         m (Helics k tid cnf)
+
+initHerokuHelics cnf = initializerBracket $ \exts m -> do
+    k    <- liftIO V.newKey
+    cnf' <- maybe cnf (\key -> cnf { licenseKey = key } )
+        <$> getHerokuEnv "NEW_RELIC_LICENSE_KEY" exts
+    control $ \run -> H.withHelics (toHelicsConfig cnf') $ run $ do
+        tid <- liftIO $ forkIO $ H.sampler (samplerFrequency cnf')
+        m (Helics k tid cnf')
 
 recordMetric :: MonadIO m => S.ByteString -> Double
              -> ActionT exts prms m ()
