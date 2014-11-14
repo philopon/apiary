@@ -19,6 +19,7 @@ import Data.Apiary.Method
 
 import Text.Blaze.Html
 import qualified Data.Text as T
+import qualified Data.ByteString as S
 
 data Doc
     = DocPath   T.Text       Doc
@@ -31,6 +32,7 @@ data Doc
     | DocMethod Method       Doc
     | DocQuery  T.Text StrategyRep QueryRep (Maybe Html) Doc
     | DocPrecondition Html   Doc
+    | DocAccept S.ByteString Doc
     | DocGroup  T.Text       Doc
     | Document  T.Text       Doc
     | Action
@@ -73,30 +75,46 @@ data QueryDoc = QueryDoc
 data MethodDoc = MethodDoc
     { queries       :: [QueryDoc]
     , preconditions :: [Html]
+    , accept        :: Maybe S.ByteString
     , document      :: T.Text
     }
 
 --------------------------------------------------------------------------------
 
+data ToDocumentState = ToDocumentState
+    { toDocumentPath      :: Route -> Route
+    , toDocumentMethodDoc :: [MethodDoc] -> [(Method, [MethodDoc])]
+    , toDocumentQueries   :: [QueryDoc] -> [QueryDoc]
+    , toDocumentPreconds  :: [Html] -> [Html]
+    , toDocumentAccept    :: Maybe S.ByteString
+    , toDocumentDocument  :: Maybe T.Text
+    }
+
+initialToDocumentState :: ToDocumentState
+initialToDocumentState = ToDocumentState id (\md -> [("*", md)]) id id Nothing Nothing
+
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup "" d') -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
-    (DocGroup g  d') -> (Just  g,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
-    d'               -> (Nothing,) <$> loop id (\md -> [("*", md)]) id id Nothing d'
+    (DocGroup "" d') -> (Nothing,) <$> loop initialToDocumentState d'
+    (DocGroup g  d') -> (Just  g,) <$> loop initialToDocumentState d'
+    d'               -> (Nothing,) <$> loop initialToDocumentState d'
   where
-    loop ph mh qs ps doc     (DocDropNext       d) = loop ph mh qs ps doc (dropNext d)
-    loop ph mh qs pc doc     (DocPath         t d) = loop (ph . Path t) mh qs pc doc d
-    loop _  mh qs pc doc     (DocRoot           d) = loop (const $ Path "" End) mh qs pc doc d
-    loop ph mh qs pc doc     (DocFetch    k t h d) = loop (ph . Fetch k t h) mh qs pc doc d
-    loop ph mh qs pc doc     (DocRest     k   h d) = loop (ph . const (Rest k h)) mh qs pc doc d
-    loop ph mh qs pc doc     (DocAny            d) = loop (ph . const Any) mh qs pc doc d
-    loop ph _  qs pc doc     (DocMethod       m d) = loop ph (\md -> [(m, md)]) qs pc doc d
-    loop ph mh qs pc doc     (DocQuery  p s q t d) = loop ph mh (qs . (QueryDoc p s q t:)) pc doc d
-    loop ph mh qs pc doc     (DocPrecondition h d) = loop ph mh qs (pc . (h:)) doc d
-    loop ph mh qs pc doc     (DocGroup        _ d) = loop ph mh qs pc doc d
-    loop ph mh qs pc _       (Document        t d) = loop ph mh qs pc (Just t) d
-    loop ph mh qs pc (Just t) Action               = Just . PathDoc (ph End) $ mh [MethodDoc (qs []) (pc []) t]
-    loop _  _  _  _  Nothing  Action               = Nothing
+    loop st (DocDropNext       d) = loop st (dropNext d)
+    loop st (DocPath         p d) = loop st { toDocumentPath = toDocumentPath st . Path p } d
+    loop st (DocRoot           d) = loop st { toDocumentPath = const $ Path "" End } d
+    loop st (DocFetch    k t h d) = loop st { toDocumentPath = toDocumentPath st . Fetch k t h } d
+    loop st (DocRest     k   h d) = loop st { toDocumentPath = toDocumentPath st . const (Rest k h) } d
+    loop st (DocAny            d) = loop st { toDocumentPath = toDocumentPath st . const Any } d
+    loop st (DocMethod       m d) = loop st { toDocumentMethodDoc = (\md -> [(m, md)]) } d
+    loop st (DocQuery  p s q t d) = loop st { toDocumentQueries = toDocumentQueries st . (QueryDoc p s q t:) } d
+    loop st (DocPrecondition h d) = loop st { toDocumentPreconds = toDocumentPreconds st . (h:) } d
+    loop st (DocGroup        _ d) = loop st d
+    loop st (DocAccept       a d) = loop st { toDocumentAccept = Just a } d
+    loop st (Document        t d) = loop st { toDocumentDocument = Just t} d
+    loop st Action                = case toDocumentDocument st of
+        Nothing  -> Nothing
+        Just doc -> Just . PathDoc (toDocumentPath st End) $ toDocumentMethodDoc st
+            [MethodDoc (toDocumentQueries st []) (toDocumentPreconds st []) (toDocumentAccept st) doc]
 
     dropNext (DocPath         _ d) = d
     dropNext (DocRoot           d) = d
@@ -108,6 +126,7 @@ docToDocument = \case
     dropNext (DocQuery  _ _ _ _ d) = d
     dropNext (DocPrecondition _ d) = d
     dropNext (DocGroup        _ d) = d
+    dropNext (DocAccept       _ d) = d
     dropNext (Document        _ d) = d
     dropNext Action                = Action
 

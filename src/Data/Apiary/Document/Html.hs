@@ -13,7 +13,6 @@ module Data.Apiary.Document.Html
 import Language.Haskell.TH
 
 import Data.Monoid hiding (Any)
-import Data.Maybe
 import Data.Default.Class
 
 import Data.Apiary.Param
@@ -27,17 +26,20 @@ import qualified Data.Text.Encoding as T
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
+noDescription :: Html
+noDescription = H.span "no description" ! A.class_ "no-description"
+
 routeToHtml :: Route -> (T.Text, Html, Html)
 routeToHtml = loop "" mempty []
   where
     sp = H.span "/" ! A.class_ "splitter"
     loop e r p (Path s d) = loop (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
     loop e r p (Fetch k t mbh d) = 
-        let r' = r <> sp <> rpHtml (toHtml k) (if isJust mbh then Nothing else Just . toHtml $ show t)
-            p' = maybe p (\h -> p <> [H.tr $ H.td (toHtml k) <> H.td (toHtml $ show t) <> H.td h]) mbh
+        let r' = r <> sp <> rpHtml (toHtml k)
+            p' = p <> [H.tr $ H.td (toHtml k) <> H.td (toHtml $ show t) <> H.td (maybe noDescription id mbh)]
         in loop (T.concat [e, "/", k, "::", T.pack $ show t]) r' p' d
     loop e r p (Rest k mbh) =
-        let p' = maybe p (\h -> p <> [H.tr $ H.td (toHtml k) <> H.td "[Text]" <> H.td h]) mbh
+        let p' = p <> [H.tr $ H.td (toHtml k) <> H.td "[Text]" <> H.td (maybe noDescription id mbh)]
             in loop (T.concat [e, "/**", k]) (r <> sp <> (H.span "**" ! A.class_ "rest") <> (H.span (toHtml k) ! A.class_ "fetch")) p' End
     loop e r p Any =
         loop (T.concat [e, "/**"]) (r <> sp <> (H.span "**" ! A.class_ "rest")) p End
@@ -71,7 +73,6 @@ analytics code = H.script . H.preEscapedToHtml . T.concat $
     , "ga('send', 'pageview');"
     ]
 
-
 instance Default DefaultDocumentConfig where
     def = DefaultDocumentConfig "API documentation" Nothing True Nothing
 
@@ -87,9 +88,9 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     mcMap f = mconcat . map f
 
     cdns = mconcat
-        [ css "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-        , js  "//code.jquery.com/jquery-2.1.1.min.js"
-        , js  "//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
+        [ css "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
+        , js  "http://code.jquery.com/jquery-2.1.1.min.js"
+        , js  "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
         ]
 
     embeds = $( do
@@ -101,10 +102,12 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
             ]
          |])
 
-    headH = mconcat 
+    headH = mconcat
         [ H.title (toHtml documentTitle)
         , if documentUseCDN then cdns else embeds
         , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+--        , H.script "" ! A.src "/static/api-documentation.js"
+--        , H.link ! A.rel "stylesheet" ! A.href "/static/api-documentation.css"
         , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
         , $(runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         , maybe mempty analytics documentGoogleAnalytics
@@ -115,19 +118,17 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     htmlQR  Check       = "check"
     htmlQR  NoValue     = "-"
 
-    noDesc = H.span "no description" ! A.class_ "no-description"
-
     query (QueryDoc p s q t) = H.tr . mconcat $
         [ H.td (toHtml p)
         , H.td (toHtml $ strategyInfo s)
         , H.td (htmlQR q)
-        , H.td $ maybe noDesc id t
+        , H.td $ maybe noDescription id t
         ]
 
     queriesH [] = mempty
     queriesH qs =
-        H.div ! A.class_ "col-sm-offset-1 col-md-offset-1" $
-        H.table ! A.class_ "table table-condensed" $ mconcat
+        H.div $
+        H.table ! A.class_ "query-parameters table table-condensed" $ mconcat
         [ H.caption "Query parameters"
         , H.tr $ mconcat [ H.th ! A.class_ "col-sm-1 col-md-1" $ "name"
                          , H.th ! A.class_ "col-sm-1 col-md-1" $ "num"
@@ -138,7 +139,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         ]
 
     preconds [] = mempty
-    preconds p =
+    preconds p  =
         H.div ! A.class_ "well well-sm precondition" $ mconcat
             [ H.p "Preconditions:"
             , H.ul $ mcMap (\h -> H.li h) p
@@ -149,9 +150,10 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         , mcMap action ms
         ]
 
-    action (MethodDoc qs pc d) = H.div ! A.class_ "action col-sm-offset-1 col-md-offset-1" $ mconcat
-        [ preconds pc
-        , H.div $ H.p (toHtml d)
+    action (MethodDoc qs pc a d) = H.div ! A.class_ "action col-sm-offset-1 col-md-offset-1" $ mconcat
+        [ preconds $ maybe pc (\ac -> ("Accept: " <> toHtml (T.decodeUtf8 ac)) : pc) a
+        , maybe mempty (\ac -> H.script ! A.class_ "accept" ! A.type_ "text/plain" $ (toHtml $ T.decodeUtf8 ac)) a
+        , H.div (H.p $ toHtml d)
         , queriesH qs
         ]
 
@@ -190,5 +192,5 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         ]
 
 -- | construct Html as route parameter. since 0.13.0.
-rpHtml :: Html -> Maybe Html -> Html
-rpHtml k mbt = (H.span k ! A.class_ "fetch") <> maybe mempty (\t -> H.span (" :: " <> t) ! A.class_ "type") mbt
+rpHtml :: Html -> Html
+rpHtml k = (H.span k ! A.class_ "fetch")
