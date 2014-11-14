@@ -1,4 +1,7 @@
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
@@ -7,6 +10,7 @@ module Web.Apiary.Helics
     -- * initializer
     , HelicsConfig(..)
     , initHelics
+    , initHerokuHelics
     -- * action
     -- ** raw
     , transactionId
@@ -43,9 +47,11 @@ import qualified Network.Helics.Wai.Safe as Safe
 
 import Data.Apiary.Compat
 import Data.Apiary.Extension
+import Web.Apiary.Heroku
 import Data.Default.Class
 import qualified Data.Vault.Lazy as V
 import qualified Data.ByteString as S
+import qualified Data.Text.Encoding as T
 
 data Helics = Helics (V.Key H.TransactionId) ThreadId HelicsConfig
 
@@ -100,10 +106,12 @@ initHelics cnf = initializerBracket' $ \m -> do
         tid <- liftIO $ forkIO $ H.sampler (samplerFrequency cnf)
         m (Helics k tid cnf)
 
+initHerokuHelics :: (MonadBaseControl IO m, MonadIO m, Has Heroku exts)
+                 => HelicsConfig -> Initializer m exts (Helics ': exts)
 initHerokuHelics cnf = initializerBracket $ \exts m -> do
     k    <- liftIO V.newKey
-    cnf' <- maybe cnf (\key -> cnf { licenseKey = key } )
-        <$> getHerokuEnv "NEW_RELIC_LICENSE_KEY" exts
+    cnf' <- maybe cnf (\key -> cnf { licenseKey = T.encodeUtf8 key } )
+        <$> liftIO (getHerokuEnv "NEW_RELIC_LICENSE_KEY" exts)
     control $ \run -> H.withHelics (toHelicsConfig cnf') $ run $ do
         tid <- liftIO $ forkIO $ H.sampler (samplerFrequency cnf')
         m (Helics k tid cnf')
