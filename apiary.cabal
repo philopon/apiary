@@ -38,7 +38,7 @@ description:
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <https://github.com/philopon/apiary/blob/v1.1.1/examples/api.hs>, <https://rawgit.com/philopon/apiary/v1.1.1/examples/api.html>).
+    * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
   .
   more examples: <https://github.com/philopon/apiary/blob/v1.1.1/examples/>
   .
