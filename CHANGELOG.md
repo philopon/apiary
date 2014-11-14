@@ -1,3 +1,6 @@
+# 1.1.1
+* add request test to web API documentation.
+
 # 1.1.0
 * Added Extension class. now Extension can add middleware.
 * Added apiary-helics submodule.
