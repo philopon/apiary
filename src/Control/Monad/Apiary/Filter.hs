@@ -46,11 +46,10 @@ module Control.Monad.Apiary.Filter (
 
     , function, function', function_, focus
     , Doc(..)
-    
     ) where
 
 import Network.Wai as Wai
-import Network.Wai.Parse (parseContentType)
+import Network.Wai.Parse (parseContentType, parseHttpAccept)
 import qualified Network.HTTP.Types as Http
 
 import Control.Applicative
@@ -234,6 +233,21 @@ accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT ex
 accept ect = focus (DocAccept ect) $
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
-        Just ac -> if parseContentType ect `elem` map (parseContentType . SC.dropWhile (== ' ')) (SC.split ',' ac)
-                   then contentType ect >> getParams
-                   else mzero
+        Just ac -> 
+            let (et, _)  = parseContentType ect
+                accepts  = map parseContentType (parseHttpAccept ac)
+            in case filter (flip matchContentType et . fst) accepts of
+                []      -> mzero
+                (_,p):_ -> contentType (prettyContentType ect p) >> getParams
+
+matchContentType :: SC.ByteString -> SC.ByteString -> Bool
+matchContentType acc ct = case SC.break (== '/') acc of
+    ("*", "/*") -> True
+    (a,   "/*") -> a == SC.takeWhile (/= '/') ct
+    _           -> acc == ct
+
+prettyContentType :: SC.ByteString -> [(SC.ByteString, SC.ByteString)] -> SC.ByteString
+prettyContentType ct prms =
+    let pprms = SC.concat $ concatMap (\(k,v) -> [";", k, "=", v]) prms
+    in ct `SC.append` pprms
+

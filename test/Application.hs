@@ -289,8 +289,12 @@ acceptApp = runApp $ [capture|/|] $ do
 acceptTest :: Test
 acceptTest = testGroup "accept" $ map ($ acceptApp)
     [ testReq "GET / application/json" . (\a r -> assertJson200 "json"   a $ addA "application/json" r)
-    , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"   a $ addA "text/html"  r)
+    , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"   a $ addA "text/html"     r)
+    , testReq "GET / text/html;p=a"    . (\a r -> assertHtml200 "html"   a $ addA "text/html;p=a" r)
     , testReq "GET / text/plain"       . (\a r -> assertRequest 200 Nothing "other" a $ addA "text/plain" r)
+    , testReq "GET / text/*"           . (\a r -> assertHtml200 "html"   a $ addA "text/*" r)
+    , testReq "GET / text/*;p=a"       . (\a r -> assertHtml200 "html"   a $ addA "text/*;p=a" r)
+    , testReq "GET / */*"              . (\a r -> assertJson200 "json"   a $ addA "*/*" r)
     , testReq "GET /"                  . assertRequest 200 Nothing "other"
     ]
   where
