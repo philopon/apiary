@@ -66,7 +66,6 @@ import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 import Text.Blaze.Html
 import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text          as T
-import qualified Data.Text.Encoding as T
 import qualified Data.CaseInsensitive as CI
 import Data.Monoid
 import Data.Apiary.Compat

@@ -1,3 +1,6 @@
+# 1.1.2
+* re-export Web.Apiary from Web.Apiary.Heroku.
+
 # 1.1.1
 * add request test to web API documentation.
 

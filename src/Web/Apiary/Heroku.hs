@@ -14,6 +14,10 @@ module Web.Apiary.Heroku
     , runHeroku, runHerokuWith, runHerokuTWith
     -- * extension functions
     , getHerokuEnv, getHerokuEnv'
+
+    -- * reexports
+    -- | exclude run* functions.
+    , module Web.Apiary
     ) where
 
 import System.Environment
@@ -35,6 +39,7 @@ import qualified Data.Text.IO as T
 import Network.Wai
 import Control.Monad.Apiary
 import Data.Apiary.Extension
+import Web.Apiary hiding (runApiary, runApiaryWith, runApiaryTWith)
 
 data Heroku = Heroku 
     { herokuEnv    :: IORef (Maybe (H.HashMap T.Text T.Text))
@@ -59,11 +64,11 @@ initHeroku conf = initializer' . liftIO $
 
 -- | use this function instead of serverWith in heroku app. since 0.17.0.
 --
--- @ serverWith exts (run 3000) . runApiary def $ foo @
+-- @ runApiaryTWith id (run 3000) exts def $ foo @
 --
 -- to
 --
--- @ herokuWith exts run def . runApiary def $ foo @
+-- @ runHerokuTWith id  run       exts def $ foo @
 --
 runHerokuTWith :: (MonadIO m, Monad actM)
                => (forall b. actM b -> IO b)
@@ -100,10 +105,10 @@ runHeroku run = runHerokuWith run noExtension
 
 getHerokuEnv' :: T.Text -- ^ heroku environment variable name
               -> Heroku -> IO (Maybe T.Text)
-getHerokuEnv' key Heroku{..} = try (getEnv $ T.unpack key) >>= \case
+getHerokuEnv' envkey Heroku{..} = try (getEnv $ T.unpack envkey) >>= \case
     Right e                 -> return (Just $ T.pack e)
     Left (_::SomeException) -> readIORef herokuEnv >>= \case
-        Just hm -> return $ H.lookup key hm
+        Just hm -> return $ H.lookup envkey hm
         Nothing -> do
             let args = ["config", "-s"] ++
                     maybe [] (\n -> ["--app", n]) (herokuAppName herokuConfig)
@@ -115,10 +120,10 @@ getHerokuEnv' key Heroku{..} = try (getEnv $ T.unpack key) >>= \case
                 hm <- H.fromList . map (second T.tail . T.break  (== '=')) . T.lines
                     <$> T.hGetContents hout
                 writeIORef herokuEnv (Just hm)
-                return $ H.lookup key hm
+                return $ H.lookup envkey hm
             else Nothing <$ writeIORef herokuEnv (Just H.empty)
 
 
 getHerokuEnv :: Has Heroku exts => T.Text -- ^ heroku environment variable name
              -> Extensions exts -> IO (Maybe T.Text)
-getHerokuEnv key exts = getHerokuEnv' key (getExtension Proxy exts)
+getHerokuEnv envkey exts = getHerokuEnv' envkey (getExtension Proxy exts)

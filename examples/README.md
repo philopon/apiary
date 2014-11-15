@@ -4,7 +4,7 @@ examples
 tutorials
 ---
 * [main.lhs](main.lhs) -- tutorial
-* [api.hs](api.hs)   -- auto generate API document tutorial. generated document: https://rawgit.com/philopon/apiary/master/examples/api.html
+* [api.hs](api.hs)   -- auto generate API document tutorial. generated document: http://rawgit.com/philopon/apiary/master/examples/api.html
 
 * [qiita.hs](qiita.hs) -- http://qiita.com/philopon/items/99760c65bcc2d3fcc4c1
 
