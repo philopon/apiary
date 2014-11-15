@@ -283,18 +283,20 @@ stopTest = testGroup "stop" $ map ($ stopApp)
 acceptApp :: Application
 acceptApp = runApp $ [capture|/|] $ do
     accept "application/json" . action $ bytes "json"
+    accept "text/html;prm=t"  . action $ bytes "html+prm"
     accept "text/html"        . action $ bytes "html"
     action                             $ bytes "other"
 
 acceptTest :: Test
 acceptTest = testGroup "accept" $ map ($ acceptApp)
-    [ testReq "GET / application/json" . (\a r -> assertJson200 "json"   a $ addA "application/json" r)
-    , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"   a $ addA "text/html"     r)
-    , testReq "GET / text/html;p=a"    . (\a r -> assertHtml200 "html"   a $ addA "text/html;p=a" r)
+    [ testReq "GET / application/json" . (\a r -> assertJson200 "json"     a $ addA "application/json" r)
+    , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"     a $ addA "text/html"     r)
+    , testReq "GET / text/html;p=a"    . (\a r -> assertHtml200 "html"     a $ addA "text/html;p=a" r)
+    , testReq "GET / text/html;prm=t"  . (\a r -> assertHtml200 "html+prm" a $ addA "text/html;prm=t" r)
     , testReq "GET / text/plain"       . (\a r -> assertRequest 200 Nothing "other" a $ addA "text/plain" r)
-    , testReq "GET / text/*"           . (\a r -> assertHtml200 "html"   a $ addA "text/*" r)
-    , testReq "GET / text/*;p=a"       . (\a r -> assertHtml200 "html"   a $ addA "text/*;p=a" r)
-    , testReq "GET / */*"              . (\a r -> assertJson200 "json"   a $ addA "*/*" r)
+    , testReq "GET / text/*"           . (\a r -> assertHtml200 "html"     a $ addA "text/*" r)
+    , testReq "GET / text/*;p=a"       . (\a r -> assertHtml200 "html"     a $ addA "text/*;p=a" r)
+    , testReq "GET / */*"              . (\a r -> assertJson200 "json"     a $ addA "*/*" r)
     , testReq "GET /"                  . assertRequest 200 Nothing "other"
     ]
   where

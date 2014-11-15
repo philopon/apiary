@@ -234,17 +234,21 @@ accept ect = focus (DocAccept ect) $
     (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
         Just ac -> 
-            let (et, _)  = parseContentType ect
-                accepts  = map parseContentType (parseHttpAccept ac)
-            in case filter (flip matchContentType et . fst) accepts of
+            let ex@(et, _) = parseContentType ect
+                accepts    = map parseContentType (parseHttpAccept ac)
+            in case filter (matchContentType ex) accepts of
                 []      -> mzero
-                (_,p):_ -> contentType (prettyContentType ect p) >> getParams
+                (_,p):_ -> contentType (prettyContentType et p) >> getParams
 
-matchContentType :: SC.ByteString -> SC.ByteString -> Bool
-matchContentType acc ct = case SC.break (== '/') acc of
-    ("*", "/*") -> True
-    (a,   "/*") -> a == SC.takeWhile (/= '/') ct
-    _           -> acc == ct
+matchContentType :: (SC.ByteString, [(SC.ByteString, SC.ByteString)])
+                 -> (SC.ByteString, [(SC.ByteString, SC.ByteString)])
+                 -> Bool
+matchContentType (ct, ep) (acc, ip) = case SC.break (== '/') acc of
+    ("*", "/*") -> prmCheck
+    (a,   "/*") -> a == SC.takeWhile (/= '/') ct && prmCheck
+    _           -> acc == ct && prmCheck
+  where
+    prmCheck = all (\(k,v) -> Just v == lookup k ip) ep
 
 prettyContentType :: SC.ByteString -> [(SC.ByteString, SC.ByteString)] -> SC.ByteString
 prettyContentType ct prms =
