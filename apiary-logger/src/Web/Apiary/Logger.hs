@@ -19,7 +19,7 @@ module Web.Apiary.Logger
     -- * initialize
     , initLogger
     -- * action
-    , logging
+    , Logging(..)
     -- * wrapper
     , LogWrapper, logWrapper, runLogWrapper
     ) where
@@ -27,7 +27,6 @@ module Web.Apiary.Logger
 import System.Log.FastLogger
 
 import Control.Applicative
-import Control.Monad
 import Control.Monad.Base
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
@@ -80,21 +79,29 @@ initLogger LogConfig{..} = initializerBracket' $ bracket
     (liftIO . closeLog)
 
 -- | push log.
-logging :: (Has Logger exts, MonadIO m)
-        => LogStr -> ActionT exts prms m ()
-logging m = do
-    l <- getExt (Proxy :: Proxy Logger)
-    liftIO $ pushLog l m
+class Logging m where
+    logging :: LogStr -> m ()
 
-instance (MonadIO m, Has Logger exts) => MonadLogger (ActionT exts prms m) where
-    monadLoggerLog loc src lv msg = do
-        l <- getExt (Proxy :: Proxy Logger)
-        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
+instance (Has Logger exts, MonadIO m) => Logging (ActionT exts prms m) where
+    logging m = getExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
 
-instance (Monad actM, MonadIO m, Has Logger exts) => MonadLogger (ApiaryT exts prms actM m) where
-    monadLoggerLog loc src lv msg = do
-        l <- apiaryExt (Proxy :: Proxy Logger)
-        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
+instance (Has Logger exts, MonadIO m, Monad actM) => Logging (ApiaryT exts prms actM m) where
+    logging m = apiaryExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
+
+instance (Has Logger exts, MonadIO m) => Logging (LogWrapper exts m) where
+    logging m = LogWrapper ask >>= \e -> liftIO $ pushLog (getExtension (Proxy :: Proxy Logger) e) m
+
+monadLoggerLog' :: (Logging m, ToLogStr msg) => Loc -> LogSource -> LogLevel -> msg -> m ()
+monadLoggerLog' loc src lv msg = logging $ defaultLogStr loc src lv (toLogStr msg)
+
+instance (Has Logger exts, MonadIO m) => MonadLogger (ActionT exts prms m) where
+    monadLoggerLog = monadLoggerLog'
+
+instance (Has Logger exts, MonadIO m, Monad actM) => MonadLogger (ApiaryT exts prms actM m) where
+    monadLoggerLog = monadLoggerLog'
+
+instance (Has Logger exts, MonadIO m) => MonadLogger (LogWrapper exts m) where
+    monadLoggerLog = monadLoggerLog'
 
 -- | wrapper to use as MonadLogger using Logger Extenson.
 newtype LogWrapper exts m a =
@@ -107,11 +114,6 @@ logWrapper = LogWrapper . lift
 
 runLogWrapper :: Extensions exts -> LogWrapper exts m a -> m a
 runLogWrapper e = flip runReaderT e . unLogWrapper
-
-instance (MonadIO m, Has Logger exts) => MonadLogger (LogWrapper exts m) where
-    monadLoggerLog loc src lv msg = do
-        l <- getExtension (Proxy :: Proxy Logger) `liftM` LogWrapper ask
-        liftIO . pushLog l $ defaultLogStr loc src lv (toLogStr msg)
 
 instance MonadTransControl (LogWrapper exts) where
     newtype StT (LogWrapper exts) a = StLogWrapper { unStLogWrapper :: StT (ReaderT (Extensions exts)) a }

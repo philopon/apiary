@@ -28,14 +28,15 @@ module Web.Apiary.Database.Persist
 
 import Data.Pool
 import Control.Monad
+import Control.Monad.Apiary
 import Control.Monad.Logger
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Control
+import Web.Apiary.Logger
 
 import Database.Persist.Sql
 
 import Web.Apiary
-import Web.Apiary.Logger
 import Control.Monad.Apiary.Action
 import Control.Monad.Apiary.Filter
 import qualified Data.Apiary.Dict as Dict
@@ -57,12 +58,12 @@ instance Extension Persist
 type With c m = forall a. (c -> m a) -> m a
 
 initPersist' :: (MonadIO n, MonadBaseControl IO n, Monad m) 
-             => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
+             => (forall a. Extensions exts -> n a -> m a)
              -> With SqlBackend n -> Migrator -> Initializer m exts (Persist ': exts)
-initPersist' wrap run with migr = initializer $ \es -> run es $
+initPersist' run with migr = initializer $ \es -> run es $
     with $ \conn -> do
         doMigration migr conn
-        wrap $ return (PersistConn conn)
+        return (PersistConn conn)
 
 -- | construct persist extension initializer with no connection pool.
 --
@@ -74,30 +75,30 @@ initPersist' wrap run with migr = initializer $ \es -> run es $
 initPersist :: (MonadIO m, MonadBaseControl IO m) 
             => With SqlBackend (LogWrapper exts m) -> Migration
             -> Initializer m exts (Persist ': exts)
-initPersist with = initPersist' logWrapper runLogWrapper with . Logging
+initPersist with = initPersist' runLogWrapper with . Logging
 
 initPersistNoLog :: (MonadIO m, MonadBaseControl IO m) 
                  => With SqlBackend (NoLoggingT m)
                  -> Migration -> Initializer m es (Persist ': es)
-initPersistNoLog with = initPersist' NoLoggingT (const runNoLoggingT) with . Silent
+initPersistNoLog with = initPersist' (const runNoLoggingT) with . Silent
 
 initPersistPool' :: (MonadIO n, MonadBaseControl IO n, Monad m)
-                 => (forall a. m a -> n a) -> (forall a. Extensions exts -> n a -> m a)
+                 => (forall a. Extensions exts -> n a -> m a)
                  -> With ConnectionPool n -> Migrator -> Initializer m exts (Persist ': exts)
-initPersistPool' wrap run with migr = initializer $ \es -> run es $
+initPersistPool' run with migr = initializer $ \es -> run es $
     with $ \pool -> do
         withResource pool $ doMigration migr
-        wrap $ return (PersistPool pool)
+        return (PersistPool pool)
 
 initPersistPool :: (MonadIO m, MonadBaseControl IO m)
                 => With ConnectionPool (LogWrapper exts m) -> Migration
                 -> Initializer m exts (Persist ': exts)
-initPersistPool with = initPersistPool' logWrapper runLogWrapper with . Logging
+initPersistPool with = initPersistPool' runLogWrapper with . Logging
 
 initPersistPoolNoLog :: (MonadIO m, MonadBaseControl IO m)
                      => With ConnectionPool (NoLoggingT m)
                      -> Migration -> Initializer m es (Persist ': es)
-initPersistPoolNoLog with = initPersistPool' NoLoggingT (const runNoLoggingT) with . Silent
+initPersistPoolNoLog with = initPersistPool' (const runNoLoggingT) with . Silent
 
 doMigration :: (MonadIO m, MonadBaseControl IO m) => Migrator -> SqlBackend -> m ()
 doMigration migr conn = case migr of
@@ -107,11 +108,19 @@ doMigration migr conn = case migr of
     NoMigrate -> return ()
 
 -- | execute sql in action.
-runSql :: (Has Persist exts, MonadBaseControl IO m)
-       => SqlPersistT (ActionT exts prms m) a -> ActionT exts prms m a
-runSql a = getExt (Proxy :: Proxy Persist) >>= \case
+class RunSQL m where
+    runSql :: SqlPersistT m a -> m a
+
+runSql' :: MonadBaseControl IO m => SqlPersistT m a -> Persist -> m a
+runSql' a persist = case persist of
     PersistPool p -> runSqlPool a p
     PersistConn c -> runSqlConn a c
+
+instance (Has Persist exts, MonadBaseControl IO m) => RunSQL (ActionT exts prms m) where
+    runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
+
+instance (Has Persist exts, MonadBaseControl IO m, Monad actM) => RunSQL (ApiaryT exts prms actM m) where
+    runSql a = apiaryExt (Proxy :: Proxy Persist) >>= runSql' a
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
