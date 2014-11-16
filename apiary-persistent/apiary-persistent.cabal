@@ -1,5 +1,5 @@
 name:                apiary-persistent
-version:             1.1.0
+version:             1.1.1
 synopsis:            persistent support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
@@ -18,19 +18,19 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary.Database.Persist
-  build-depends:       base               >=4.6  && <4.8
-                     , persistent         >=2.1  && <2.2
+  build-depends:       base               >=4.6   && <4.8
+                     , persistent         >=2.1   && <2.2
 
-                     , apiary             >=1.1  && <1.2
-                     , apiary-logger      >=1.1  && <1.2
+                     , apiary             >=1.1   && <1.2
+                     , apiary-logger      >=1.1.1 && <1.2
 
-                     , resourcet          >=1.1  && <1.2
-                     , resource-pool      >=0.2  && <0.3
+                     , resourcet          >=1.1   && <1.2
+                     , resource-pool      >=0.2   && <0.3
 
-                     , monad-logger       >=0.3  && <0.4
-                     , transformers       >=0.2  && <0.5
-                     , transformers-base  >=0.4  && <0.5
-                     , monad-control      >=0.3  && <0.4
+                     , monad-logger       >=0.3   && <0.4
+                     , transformers       >=0.2   && <0.5
+                     , transformers-base  >=0.4   && <0.5
+                     , monad-control      >=0.3   && <0.4
                      , persistent-sqlite
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

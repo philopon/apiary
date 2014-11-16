@@ -1,3 +1,15 @@
+# 1.1.3
+* wildcard, parameter Accept header.
+
+## apiary-mongoDB(1.1.1)
+* MongoAccess class
+
+## apiary-logger(1.1.1)
+* Logging class
+
+## apiary-persistent(1.1.1)
+* RunSQL class
+
 # 1.1.2
 * re-export Web.Apiary from Web.Apiary.Heroku.
 

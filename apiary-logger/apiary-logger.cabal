@@ -1,5 +1,5 @@
 name:                apiary-logger
-version:             1.1.0
+version:             1.1.1
 synopsis:            fast-logger support for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/persistent.hs>
