@@ -28,6 +28,7 @@ module Web.Apiary.Database.Persist
 
 import Data.Pool
 import Control.Monad
+import Control.Monad.Apiary
 import Control.Monad.Logger
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Control
@@ -107,11 +108,19 @@ doMigration migr conn = case migr of
     NoMigrate -> return ()
 
 -- | execute sql in action.
-runSql :: (Has Persist exts, MonadBaseControl IO m)
-       => SqlPersistT (ActionT exts prms m) a -> ActionT exts prms m a
-runSql a = getExt (Proxy :: Proxy Persist) >>= \case
+class RunSQL m where
+    runSql :: SqlPersistT m a -> m a
+
+runSql' :: MonadBaseControl IO m => SqlPersistT m a -> Persist -> m a
+runSql' a persist = case persist of
     PersistPool p -> runSqlPool a p
     PersistConn c -> runSqlConn a c
+
+instance (Has Persist exts, MonadBaseControl IO m) => RunSQL (ActionT exts prms m) where
+    runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
+
+instance (Has Persist exts, MonadBaseControl IO m, Monad actM) => RunSQL (ApiaryT exts prms actM m) where
+    runSql a = apiaryExt (Proxy :: Proxy Persist) >>= runSql' a
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
