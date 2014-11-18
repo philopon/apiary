@@ -106,6 +106,8 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         [ H.title (toHtml documentTitle)
         , if documentUseCDN then cdns else embeds
         , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+--        , H.script "" ! A.src "/static/api-documentation.js"
+--        , H.link ! A.rel "stylesheet" ! A.href "/static/api-documentation.css"
         , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
         , $(runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         , maybe mempty analytics documentGoogleAnalytics

@@ -235,11 +235,8 @@ if (location.protocol.slice(0,4) == "http") {(function(){
             }
           }
 
-          console.log(accept);
-
           function beforeSend (xhr) {
             var t = accept.val();
-            console.log(t);
             if(t !== "") {
               xhr.setRequestHeader('Accept', t);
             }
