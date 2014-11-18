@@ -80,13 +80,23 @@ if (location.protocol.slice(0,4) == "http") {(function(){
         var h4     = method.find('h4:first');
         var method_str = h4.text();
 
-        var div = $('<div class="request-test">')
+        var div = $('<div class="request-test clearfix">')
         method.find('h4:first').replaceWith(div);
         div.append($('<button class="test-method btn btn-default">'+method_str+'</button>'));
         var span = $('<span class="route-string">');
         div.append(span);
         span.append($('<span class="route-url"></span>'));
         span.append($('<span class="route-params"></span>'));
+
+        var accept = $('<input class="pull-right accept-header form-control form-inline" placeholder="accept" />');
+        accept.val(method.find(".precondition-accept:first span").text());
+        div.append(accept);
+
+        $('.precondition-accept').click(function(){
+          var at = $(this).find('span').text();
+          accept.val(at);
+        });
+
         var callout = $('<div class="hidden request-result bs-callout"><div class="clearfix title"><h4 class="pull-left"></h4></div><div class="well headers"><pre><code></code></pre></div><div class="body"><pre><code></code></pre></div></div>');
         var close = $('<div class="close-btn pull-right">&times;</div>');
         callout.find('.title').append(close);
@@ -199,7 +209,7 @@ if (location.protocol.slice(0,4) == "http") {(function(){
         var method_btn = method.find('.test-method');
         var route_url  = method.find('.route-url');
         var result     = method.find('.request-result');
-        var accept     = method.find('.accept');
+        var accept     = method.find('.accept-header');
         function request_test () {
           if (method_btn.hasClass('disabled')){return}
           var url = route_url.text() + query_param.text();
@@ -225,9 +235,13 @@ if (location.protocol.slice(0,4) == "http") {(function(){
             }
           }
 
+          console.log(accept);
+
           function beforeSend (xhr) {
-            if(accept.length == 1) {
-              xhr.setRequestHeader('Accept', accept.text());
+            var t = accept.val();
+            console.log(t);
+            if(t !== "") {
+              xhr.setRequestHeader('Accept', t);
             }
           }
 
