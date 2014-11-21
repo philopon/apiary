@@ -580,6 +580,7 @@ devFile' f = liftIO (fileExist f) >>= \e ->
     then liftIO (L.readFile f) >>= lazyBytes
     else mzero
 
+-- | send file contents as lazy bytestring response. since v1.1.4.
 {-# WARNING devFile "use file in production." #-}
 devFile :: MonadIO m => FilePath -> ActionT exts prms m ()
 devFile f = do

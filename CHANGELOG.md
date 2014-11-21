@@ -1,3 +1,8 @@
+# 1.1.4
+* enhance API documentation.
+* add MonadHas class.
+* add devFile action.
+
 # 1.1.3
 * wildcard, parameter Accept header.
 
