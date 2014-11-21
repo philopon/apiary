@@ -353,6 +353,9 @@ instance MonadReader r m => MonadReader r (ActionT exts prms m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
+instance (Monad m, Has e exts) => MonadHas e (ActionT exts prms m) where
+    getExt p = liftM (getExtension p . actionExts) getEnv
+
 --------------------------------------------------------------------------------
 
 getEnv :: Monad m => ActionT exts prms m (ActionEnv exts)
@@ -367,10 +370,6 @@ getRequest = liftM actionRequest getEnv
 
 getConfig :: Monad m => ActionT exts prms m ApiaryConfig
 getConfig = liftM actionConfig getEnv
-
--- | get extension.
-getExt :: (Has e exts, Monad m) => proxy e -> ActionT exts prms m e
-getExt p = liftM (getExtension p . actionExts) getEnv
 
 getParams :: Monad m => ActionT exts prms m (Dict prms)
 getParams = ActionT $ \d _ s c -> c d s
@@ -573,6 +572,21 @@ file f p = do
             contentType (mime f)
             maybe (return ()) (addHeader "Last-Modified" . formatHTTPDate) t
             file' f p
+
+{-# WARNING devFile' "use file' in production." #-}
+devFile' :: MonadIO m => FilePath -> ActionT exts prms m ()
+devFile' f = liftIO (fileExist f) >>= \e ->
+    if e
+    then liftIO (L.readFile f) >>= lazyBytes
+    else mzero
+
+-- | send file contents as lazy bytestring response. since v1.1.4.
+{-# WARNING devFile "use file in production." #-}
+devFile :: MonadIO m => FilePath -> ActionT exts prms m ()
+devFile f = do
+    mime <- mimeType <$> getConfig
+    contentType (mime f)
+    devFile' f
 
 -- | append response body from builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT exts prms m ()

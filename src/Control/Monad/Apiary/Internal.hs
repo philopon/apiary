@@ -220,14 +220,19 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
+instance (Has e exts, Monad actM) => MonadHas e (ApiaryT exts prms actM m) where
+    getExt p = getExtension p . envExts <$> getApiaryEnv
+    {-# INLINE getExt #-}
+
 --------------------------------------------------------------------------------
 
 getApiaryEnv :: Monad actM => ApiaryT exts prms actM m (ApiaryEnv exts prms actM)
 getApiaryEnv = ApiaryT $ \env cont -> cont env mempty
 
+{-# DEPRECATED apiaryExt "use getExt" #-}
 -- | get Apiary extension.
 apiaryExt :: (Has e exts, Monad actM) => proxy e -> ApiaryT exts prms actM m e
-apiaryExt p = getExtension p . envExts <$> getApiaryEnv
+apiaryExt = getExt
 
 -- | get Apiary configuration.
 apiaryConfig :: Monad actM => ApiaryT exts prms actM m ApiaryConfig

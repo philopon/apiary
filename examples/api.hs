@@ -104,6 +104,13 @@ main = do
                     ]
                 }
 
+        [capture|/neko|] . document "nyan" $ do
+            accept "text/plain"       . action $ bytes "nyan"
+            accept "application/json" . action $ bytes "{\"neko\": \"yes\"}"
+
+        [capture|/static/api-documentation.js|] . action $ file "static/api-documentation.js" Nothing
+        [capture|/static/api-documentation.css|] . action $ file "static/api-documentation.css" Nothing
+
 dName :: Html
 dName = H.ul $ H.li "name of cat." <> H.li "if null, homeless."
 

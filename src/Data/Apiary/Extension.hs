@@ -1,10 +1,12 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ConstraintKinds #-}
 
 module Data.Apiary.Extension
     ( Has(getExtension)
+    , MonadHas(..)
     , Extension(..)
     , Extensions
     , noExtension
@@ -19,6 +21,9 @@ module Data.Apiary.Extension
     ) where
 
 import Data.Apiary.Extension.Internal
+
+class MonadHas e m where
+    getExt :: proxy e -> m e
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 
