@@ -22,6 +22,7 @@ module Control.Monad.Apiary.Action
     , showing
     , string, char
     , file
+    , devFile
 
     -- ** monolithic action
     -- *** redirect
@@ -43,6 +44,7 @@ module Control.Monad.Apiary.Action
     , getReqBodyFiles
     -- ** setter
     , file'
+    , devFile'
     , stream
     , rawResponse
     , StreamingBody

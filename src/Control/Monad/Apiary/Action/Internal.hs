@@ -573,6 +573,20 @@ file f p = do
             maybe (return ()) (addHeader "Last-Modified" . formatHTTPDate) t
             file' f p
 
+{-# WARNING devFile' "use file' in production." #-}
+devFile' :: MonadIO m => FilePath -> ActionT exts prms m ()
+devFile' f = liftIO (fileExist f) >>= \e ->
+    if e
+    then liftIO (L.readFile f) >>= lazyBytes
+    else mzero
+
+{-# WARNING devFile "use file in production." #-}
+devFile :: MonadIO m => FilePath -> ActionT exts prms m ()
+devFile f = do
+    mime <- mimeType <$> getConfig
+    contentType (mime f)
+    devFile' f
+
 -- | append response body from builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT exts prms m ()
 builder b = modifyState (\s -> s { actionResponse = actionResponse s <> ResponseBuilder b } )
