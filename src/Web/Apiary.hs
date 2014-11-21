@@ -7,7 +7,7 @@ module Web.Apiary
 
     -- | Method(..)
     , module Data.Apiary.Method
-    -- | Has, Extensions, Initializer, Initializer', (+>)
+    -- | Has, MonadHas, Extensions, Initializer, Initializer', (+>)
     , module Data.Apiary.Extension
     -- | key, Member, Members, NotMember, Elem((:=))
     , module Data.Apiary.Dict
@@ -82,7 +82,7 @@ import Data.Apiary.Param
     )
 
 import Data.Apiary.Method(Method(..))
-import Data.Apiary.Extension(Has, Extensions, Initializer, Initializer', (+>))
+import Data.Apiary.Extension(Has, MonadHas(..), Extensions, Initializer, Initializer', (+>))
 import Data.Apiary.Dict(key, Member, Members, NotMember, Elem((:=)))
 
 import Network.HTTP.Types.Status hiding (mkStatus)

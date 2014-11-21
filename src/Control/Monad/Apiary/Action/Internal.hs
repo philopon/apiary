@@ -353,6 +353,9 @@ instance MonadReader r m => MonadReader r (ActionT exts prms m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
+instance (Monad m, Has e exts) => MonadHas e (ActionT exts prms m) where
+    getExt p = liftM (getExtension p . actionExts) getEnv
+
 --------------------------------------------------------------------------------
 
 getEnv :: Monad m => ActionT exts prms m (ActionEnv exts)
@@ -367,10 +370,6 @@ getRequest = liftM actionRequest getEnv
 
 getConfig :: Monad m => ActionT exts prms m ApiaryConfig
 getConfig = liftM actionConfig getEnv
-
--- | get extension.
-getExt :: (Has e exts, Monad m) => proxy e -> ActionT exts prms m e
-getExt p = liftM (getExtension p . actionExts) getEnv
 
 getParams :: Monad m => ActionT exts prms m (Dict prms)
 getParams = ActionT $ \d _ s c -> c d s

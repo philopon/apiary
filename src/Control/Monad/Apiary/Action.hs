@@ -38,7 +38,6 @@ module Control.Monad.Apiary.Action
     , getRequest
     , getHeaders
     , getParams
-    , getExt
     , getQueryParams
     , getReqBodyParams
     , getReqBodyFiles
