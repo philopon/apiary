@@ -11,6 +11,7 @@ module Data.Apiary.Document.Html
     ) where
 
 import Language.Haskell.TH
+import Language.Haskell.TH.Syntax(addDependentFile)
 
 import Data.Monoid hiding (Any)
 import Data.Default.Class
@@ -106,10 +107,8 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         [ H.title (toHtml documentTitle)
         , if documentUseCDN then cdns else embeds
         , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
---        , H.script "" ! A.src "/static/api-documentation.js"
---        , H.link ! A.rel "stylesheet" ! A.href "/static/api-documentation.css"
-        , $(runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        , $(runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
+        , $(addDependentFile "static/api-documentation.min.js"  >> runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+        , $(addDependentFile "static/api-documentation.min.css" >> runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         , maybe mempty analytics documentGoogleAnalytics
         ]
 

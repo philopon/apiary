@@ -76,21 +76,6 @@ table.route-parameters {
   opacity: 1;
 }
 
-.accept-header {
-  max-width: 300px;
-  width: 20%;
-}
-
-.precondition-accept span {
-  color: #428BCA;
-  cursor: pointer;
-}
-
-.precondition-accept span:hover {
-  color: #23527C;
-  text-decoration: underline;
-}
-
 /* http://cpratt.co/twitter-bootstrap-callout-css-styles/ */
 
 .bs-callout {
