@@ -21,8 +21,13 @@ module Control.Monad.Apiary.Action
     , text,  lazyText
     , showing
     , string, char
+    , appendBuilder
+    , appendBytes, appendLazyBytes
+    , appendText, appendLazyText
+    , appendShowing
+    , appendString, appendChar
     , file
-    , devFile
+    , file'
 
     -- ** monolithic action
     -- *** redirect
@@ -43,7 +48,7 @@ module Control.Monad.Apiary.Action
     , getReqBodyParams
     , getReqBodyFiles
     -- ** setter
-    , file'
+    , devFile
     , devFile'
     , stream
     , rawResponse

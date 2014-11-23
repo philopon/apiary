@@ -54,6 +54,11 @@ import Control.Monad.Apiary.Action
     , text,  lazyText
     , showing
     , string, char
+    , appendBuilder
+    , appendBytes, appendLazyBytes
+    , appendText, appendLazyText
+    , appendShowing
+    , appendString, appendChar
     , file, file'
     , redirect, redirectPermanently, redirectTemporary
     , defaultDocumentationAction

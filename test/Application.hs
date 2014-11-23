@@ -133,10 +133,10 @@ restFilterTest = testGroup "rest capture" $ map ($ restFilterApp)
 captureApp :: Application
 captureApp = runApp $ do
     [capture|/foo|]  . action $ contentType "text/plain" >> bytes "foo"
-    [capture|/int::Int|] . method GET . action $ contentType "text/plain" >> bytes "Int " >> param [key|int|] >>= showing
-    [capture|/d::Double|] . action $ contentType "text/plain" >> bytes "Double " >> param [key|d|] >>= showing
-    [capture|/bar/s::L.ByteString/i::Int|] . action $ contentType "text/plain" >> param [key|s|] >>= lazyBytes >> char ' ' >> param [key|i|] >>= showing
-    [capture|/s::L.ByteString|] . action $ contentType "text/plain" >> bytes "fall " >> param [key|s|] >>= lazyBytes
+    [capture|/int::Int|] . method GET . action $ contentType "text/plain" >> bytes "Int " >> param [key|int|] >>= appendShowing
+    [capture|/d::Double|] . action $ contentType "text/plain" >> bytes "Double " >> param [key|d|] >>= appendShowing
+    [capture|/bar/s::L.ByteString/i::Int|] . action $ contentType "text/plain" >> param [key|s|] >>= lazyBytes >> appendChar ' ' >> param [key|i|] >>= appendShowing
+    [capture|/s::L.ByteString|] . action $ contentType "text/plain" >> bytes "fall " >> param [key|s|] >>= appendLazyBytes
 
 captureTest :: Test
 captureTest = testGroup "capture" $ map ($ captureApp)
@@ -153,15 +153,15 @@ captureTest = testGroup "capture" $ map ($ captureApp)
 --------------------------------------------------------------------------------
 
 queryApp f g h = runApp $ do
-    _ <- (f [key|foo|] pInt)    . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= showing
-    _ <- (g [key|foo|] pString) . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= showing
-    (h [key|foo|] (pMaybe pString)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= showing
+    _ <- (f [key|foo|] pInt)    . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= appendShowing
+    _ <- (g [key|foo|] pString) . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= appendShowing
+    (h [key|foo|] (pMaybe pString)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= appendShowing
 
 queryOptionalApp :: Application
 queryOptionalApp = runApp $ do
-    ([key|foo|] =?!: (5 :: Int))                   . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= showing
-    ([key|foo|] =?!: ("bar" :: String))            . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= showing
-    ([key|foo|] =?!: (Just "baz" :: Maybe String)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= showing
+    ([key|foo|] =?!: (5 :: Int))                   . action $ contentType "text/plain" >> bytes "foo Int " >> param [key|foo|] >>= appendShowing
+    ([key|foo|] =?!: ("bar" :: String))            . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= appendShowing
+    ([key|foo|] =?!: (Just "baz" :: Maybe String)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= appendShowing
 
 queryFirstTest :: Test
 queryFirstTest = testGroup "First" $ map ($ queryApp (=:) (=:) (=:))
@@ -234,7 +234,7 @@ switchQueryApp = runApp $ do
     switchQuery [key|foo|] . switchQuery [key|bar|] . action $ do
         contentType "text/plain"
         param [key|foo|] >>= showing
-        param [key|bar|] >>= showing
+        param [key|bar|] >>= appendShowing
 
 switchQueryTest :: Test
 switchQueryTest = testGroup "switch" $ map ($ switchQueryApp)
@@ -266,9 +266,9 @@ stopApp = runApp $ do
         i <- param [key|i|]
         contentType "text/plain"
         when (i == 1) $ bytes "one\n"
-        if i `mod` 2 == 0 then bytes "even\n" else bytes "odd\n"
+        if i `mod` 2 == 0 then appendBytes "even\n" else appendBytes "odd\n"
         when (i == 2) stop
-        bytes "after stop"
+        appendBytes "after stop"
 
 stopTest :: Test
 stopTest = testGroup "stop" $ map ($ stopApp)

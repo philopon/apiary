@@ -588,37 +588,69 @@ devFile f = do
     contentType (mime f)
     devFile' f
 
--- | append response body from builder. since 0.1.0.0.
+-- | set response body from builder. since 0.1.0.0.
 builder :: Monad m => Builder -> ActionT exts prms m ()
-builder b = modifyState (\s -> s { actionResponse = actionResponse s <> ResponseBuilder b } )
+builder b = modifyState (\s -> s { actionResponse = ResponseBuilder b } )
 
--- | append response body from strict bytestring. since 0.15.2.
+-- | set response body from strict bytestring. since 0.15.2.
 bytes :: Monad m => S.ByteString -> ActionT exts prms m ()
 bytes = builder . B.fromByteString
 
--- | append response body from lazy bytestring. since 0.15.2.
+-- | set response body from lazy bytestring. since 0.15.2.
 lazyBytes :: Monad m => L.ByteString -> ActionT exts prms m ()
 lazyBytes = builder . B.fromLazyByteString
 
--- | append response body from strict text. encoding UTF-8. since 0.15.2.
+-- | set response body from strict text. encoding UTF-8. since 0.15.2.
 text :: Monad m => T.Text -> ActionT exts prms m ()
 text = builder . B.fromText
 
--- | append response body from lazy text. encoding UTF-8. since 0.15.2.
+-- | set response body from lazy text. encoding UTF-8. since 0.15.2.
 lazyText :: Monad m => TL.Text -> ActionT exts prms m ()
 lazyText = builder . B.fromLazyText
 
--- | append response body from show. encoding UTF-8. since 0.15.2.
+-- | set response body from show. encoding UTF-8. since 0.15.2.
 showing :: (Monad m, Show a) => a -> ActionT exts prms m ()
 showing = builder . B.fromShow
 
--- | append response body from string. encoding UTF-8. since 0.15.2.
+-- | set response body from string. encoding UTF-8. since 0.15.2.
 string :: Monad m => String -> ActionT exts prms m ()
 string = builder . B.fromString
 
--- | append response body from char. encoding UTF-8. since 0.15.2.
+-- | set response body from char. encoding UTF-8. since 0.15.2.
 char :: Monad m => Char -> ActionT exts prms m ()
 char = builder . B.fromChar
+
+-- | append response body from builder. since 1.2.0.
+appendBuilder :: Monad m => Builder -> ActionT exts prms m ()
+appendBuilder b = modifyState (\s -> s { actionResponse = actionResponse s <> ResponseBuilder b } )
+
+-- | append response body from strict bytestring. since 1.2.0.
+appendBytes :: Monad m => S.ByteString -> ActionT exts prms m ()
+appendBytes = appendBuilder . B.fromByteString
+
+-- | append response body from lazy bytestring. since 1.2.0.
+appendLazyBytes :: Monad m => L.ByteString -> ActionT exts prms m ()
+appendLazyBytes = appendBuilder . B.fromLazyByteString
+
+-- | append response body from strict text. encoding UTF-8. since 1.2.0.
+appendText :: Monad m => T.Text -> ActionT exts prms m ()
+appendText = appendBuilder . B.fromText
+
+-- | append response body from lazy text. encoding UTF-8. since 1.2.0.
+appendLazyText :: Monad m => TL.Text -> ActionT exts prms m ()
+appendLazyText = appendBuilder . B.fromLazyText
+
+-- | append response body from show. encoding UTF-8. since 1.2.0.
+appendShowing :: (Monad m, Show a) => a -> ActionT exts prms m ()
+appendShowing = appendBuilder . B.fromShow
+
+-- | append response body from string. encoding UTF-8. since 1.2.0.
+appendString :: Monad m => String -> ActionT exts prms m ()
+appendString = appendBuilder . B.fromString
+
+-- | append response body from char. encoding UTF-8. since 1.2.0.
+appendChar :: Monad m => Char -> ActionT exts prms m ()
+appendChar = appendBuilder . B.fromChar
 
 -- | set response body source. since 0.9.0.0.
 stream :: Monad m => StreamingBody -> ActionT exts prms m ()
