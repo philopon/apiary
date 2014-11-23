@@ -54,7 +54,7 @@ import Control.Monad.Apiary.Action
     , text,  lazyText
     , showing
     , string, char
-    , file, devFile
+    , file, file'
     , redirect, redirectPermanently, redirectTemporary
     , defaultDocumentationAction
     , DefaultDocumentConfig(..)

@@ -14,10 +14,6 @@ module Web.Apiary.Heroku
     , runHeroku, runHerokuWith, runHerokuTWith
     -- * extension functions
     , getHerokuEnv, getHerokuEnv'
-
-    -- * reexports
-    -- | exclude run* functions.
-    , module Web.Apiary
     ) where
 
 import System.Environment
@@ -39,7 +35,6 @@ import qualified Data.Text.IO as T
 import Network.Wai
 import Control.Monad.Apiary
 import Data.Apiary.Extension
-import Web.Apiary hiding (runApiary, runApiaryWith, runApiaryTWith)
 
 data Heroku = Heroku 
     { herokuEnv    :: IORef (Maybe (H.HashMap T.Text T.Text))
