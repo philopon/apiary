@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.1.4
+version:             1.2.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -40,7 +40,7 @@ description:
   .
     * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.1.4/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.2.0/examples/>
   .
   live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
