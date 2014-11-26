@@ -353,8 +353,8 @@ instance MonadReader r m => MonadReader r (ActionT exts prms m) where
     ask     = lift ask
     local f = hoistActionT $ local f
 
-instance (Monad m, Has e exts) => MonadHas e (ActionT exts prms m) where
-    getExt p = liftM (getExtension p . actionExts) getEnv
+instance Monad m => MonadExts exts (ActionT exts prms m) where
+    getExts = liftM actionExts getEnv
 
 --------------------------------------------------------------------------------
 

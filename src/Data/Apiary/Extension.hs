@@ -1,12 +1,16 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Apiary.Extension
     ( Has(getExtension)
-    , MonadHas(..)
+    , MonadExts(..), getExt
     , Extension(..)
     , Extensions
     , noExtension
@@ -20,10 +24,17 @@ module Data.Apiary.Extension
     , (+>)
     ) where
 
+import Control.Monad.Reader
 import Data.Apiary.Extension.Internal
 
-class MonadHas e m where
-    getExt :: proxy e -> m e
+class Monad m => MonadExts es m | m -> es where
+    getExts :: m (Extensions es)
+
+getExt :: (MonadExts es m, Has e es) => proxy e -> m e
+getExt p = getExtension p `liftM` getExts
+
+instance Monad m => MonadExts es (ReaderT (Extensions es) m) where
+    getExts = ask
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 

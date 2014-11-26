@@ -220,9 +220,9 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
-instance (Has e exts, Monad actM) => MonadHas e (ApiaryT exts prms actM m) where
-    getExt p = getExtension p . envExts <$> getApiaryEnv
-    {-# INLINE getExt #-}
+instance Monad actM => MonadExts exts (ApiaryT exts prms actM m) where
+    getExts = envExts <$> getApiaryEnv
+    {-# INLINE getExts #-}
 
 --------------------------------------------------------------------------------
 
