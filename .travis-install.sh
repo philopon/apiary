@@ -1,11 +1,13 @@
 #!/usr/bin/env bash -eu
 
-BASE=http://download.newrelic.com/agent_sdk
-FILE=`curl $BASE/ | sed -e '/<\/a>/ !d; s/.*<a *href="\(.*\)">.*/\1/g; /tar\.gz/ !d'`
-curl -O $BASE/$FILE
-tar xvf $FILE
-sudo cp ${FILE%.tar.gz}/include/* /usr/local/include
-sudo cp ${FILE%.tar.gz}/lib/*     /usr/local/lib
+if [ $# -eq 0 ]; then
+  BASE=http://download.newrelic.com/agent_sdk
+  FILE=`curl $BASE/ | sed -e '/<\/a>/ !d; s/.*<a *href="\(.*\)">.*/\1/g; /tar\.gz/ !d'`
+  curl -O $BASE/$FILE
+  tar xvf $FILE
+  sudo cp ${FILE%.tar.gz}/include/* /usr/local/include
+  sudo cp ${FILE%.tar.gz}/lib/*     /usr/local/lib
+fi
 
 path=("." "./examples")
 for p in `cat submodules`; do
