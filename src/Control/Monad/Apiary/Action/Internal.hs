@@ -40,7 +40,7 @@ import qualified Network.Wai.Parse as P
 
 import Data.Monoid hiding (All)
 import Data.Apiary.Extension
-import Data.Apiary.Dict
+import Data.Apiary.Dict as Dict
 import Data.Apiary.Param
 import Data.Apiary.Compat
 import Data.Apiary.Document
@@ -195,44 +195,17 @@ hoistActionT :: (Monad m, Monad n)
 hoistActionT run m = actionT $ \d e s -> run (runActionT m d e s)
 {-# INLINE hoistActionT #-}
 
-newtype ActionT' exts m a = ActionT' { unActionT' :: forall b. 
-    ActionEnv exts
-    -> ActionState
-    -> (a -> ActionState -> m (Action b))
-    -> m (Action b)
-    } deriving (Functor)
-
-applyDict :: Dict prms -> ActionT exts prms m a -> ActionT' exts m a
-applyDict d (ActionT m) = ActionT' (m d)
+applyDict :: Dict prms -> ActionT exts prms m a -> ActionT exts '[] m a
+applyDict d (ActionT m) = ActionT $ const (m d)
 {-# INLINE applyDict #-}
 
-actionT' :: Monad m 
-         => (ActionEnv exts -> ActionState -> m (Action a))
-         -> ActionT' exts m a
-actionT' f = ActionT' $ \env !st cont -> f env st >>= \case
-    Pass            -> return Pass
-    Stop s          -> return $ Stop s
-    Continue !st' a -> cont a st'
-{-# INLINE actionT' #-}
-
-runActionT' :: Monad m => ActionT' exts m a
-            -> ActionEnv exts -> ActionState
-            -> m (Action a)
-runActionT' m env st = unActionT' m env st $ \a !st' -> return (Continue st' a)
-{-# INLINE runActionT' #-}
-
-hoistActionT' :: (Monad m, Monad n)
-              => (forall b. m b -> n b) -> ActionT' exts m a -> ActionT' exts n a
-hoistActionT' run m = actionT' $ \e s -> run (runActionT' m e s)
-{-# INLINE hoistActionT' #-}
-
-execActionT' :: ApiaryConfig -> Extensions exts -> Documents -> ActionT' exts IO () -> Application
+execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts '[] IO () -> Application
 #ifdef WAI3
-execActionT' config exts doc m request send = 
+execActionT config exts doc m request send = 
 #else
-execActionT' config exts doc m request = let send = return in
+execActionT config exts doc m request = let send = return in
 #endif
-    runActionT' m (ActionEnv config request doc exts) (initialState config) >>= \case
+    runActionT m Dict.empty (ActionEnv config request doc exts) (initialState config) >>= \case
 #ifdef WAI3
         Pass         -> notFound config request send
 #else
@@ -241,39 +214,6 @@ execActionT' config exts doc m request = let send = return in
         Stop s       -> send s
         Continue r _ -> send $ toResponse r
 
-instance Applicative (ActionT' exts m) where
-    pure x = ActionT' $ \_ !st cont -> cont x st
-    mf <*> ma = ActionT' $ \env st cont ->
-        unActionT' mf env st  $ \f !st'  ->
-        unActionT' ma env st' $ \a !st'' ->
-        cont (f a) st''
-    {-# INLINE pure #-}
-    {-# INLINE (<*>) #-}
-
-instance Monad m => Monad (ActionT' exts m) where
-    return x = ActionT' $ \_ !st cont -> cont x st
-    m >>= k  = ActionT' $ \env !st cont ->
-        unActionT' m env st $ \a !st' ->
-        unActionT' (k a) env st' cont
-    fail s = ActionT' $ \(ActionEnv{actionConfig = c}) _ _ -> return $
-        Stop (responseLBS (failStatus c) (failHeaders c) $ LC.pack s)
-    {-# INLINE return #-}
-    {-# INLINE (>>=) #-}
-
-instance (Monad m, Functor m) => Alternative (ActionT' exts m) where
-    empty = mzero
-    (<|>) = mplus
-    {-# INLINE empty #-}
-    {-# INLINE (<|>) #-}
-
-instance Monad m => MonadPlus (ActionT' exts m) where
-    mzero = ActionT' $ \_ _ _ -> return Pass
-    mplus m n = ActionT' $ \e !s cont -> unActionT' m e s cont >>= \case
-        Continue !st a -> return $ Continue st a
-        Stop stp       -> return $ Stop stp
-        Pass           -> unActionT' n e s cont
-    {-# INLINE mzero #-}
-    {-# INLINE mplus #-}
 --------------------------------------------------------------------------------
 
 instance Applicative (ActionT exts prms m) where
@@ -361,9 +301,6 @@ instance Monad m => MonadExts exts (ActionT exts prms m) where
 getEnv :: Monad m => ActionT exts prms m (ActionEnv exts)
 getEnv = ActionT $ \_ e s c -> c e s
 
-getRequest' :: Monad m => ActionT' exts m Request
-getRequest' = ActionT' $ \e s c -> c (actionRequest e) s
-
 -- | get raw request. since 0.1.0.0.
 getRequest :: Monad m => ActionT exts prms m Request
 getRequest = liftM actionRequest getEnv
@@ -429,9 +366,6 @@ getReqBodyFiles :: MonadIO m => ActionT exts prms m [File]
 getReqBodyFiles = snd <$> getRequestBody
 
 --------------------------------------------------------------------------------
-
-modifyState' :: Monad m => (ActionState -> ActionState) -> ActionT' exts m ()
-modifyState' f = ActionT' $ \_ s c -> c () (f s)
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT exts prms m ()
 modifyState f = ActionT $ \_ _ s c -> c () (f s)

@@ -44,6 +44,8 @@ data Router exts actM = Router
     , pathMethod :: PathMethod exts actM
     }
 
+type ActionT' exts actM a = ActionT exts '[] actM a
+
 data PathMethod exts actM = PathMethod
     { methodMap :: H.HashMap S.ByteString (ActionT' exts actM ())
     , anyMethod :: Maybe (ActionT' exts actM ())
@@ -121,7 +123,7 @@ apiaryT :: Monad m
 apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a, w) -> cont a w
 
 routerToAction :: Monad actM => Router exts actM -> ActionT' exts actM ()
-routerToAction router = getRequest' >>= go
+routerToAction router = getRequest >>= go
   where
     go req = loop id router (pathInfo req)
       where
@@ -132,7 +134,7 @@ routerToAction router = getRequest' >>= go
             in maybe a (`mplus` a) $ H.lookup method mm
 
         loop fch (Router _ _ anp pm) [] = do
-            modifyState' (\s -> s { actionFetches = fch [] } )
+            modifyState (\s -> s { actionFetches = fch [] } )
             pmAction (maybe mzero (pmAction mzero) anp) pm 
 
         loop fch (Router c mbcp anp _) (p:ps) = case mbcp of
@@ -140,7 +142,7 @@ routerToAction router = getRequest' >>= go
             Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
             ana = do
-                modifyState' (\s -> s {actionFetches = fch $ p:ps} ) 
+                modifyState (\s -> s {actionFetches = fch $ p:ps} ) 
                 maybe mzero (pmAction mzero) anp
             cld nxt = case H.lookup p c of
                 Nothing -> nxt
@@ -159,7 +161,7 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
         mw  = allMiddleware exts . writerMw wtr
-        app = mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
+        app = mw $ execActionT conf exts doc (hoistActionT runAct $ routerToAction rtr)
     run $! app
 
 runApiaryWith :: Monad m
