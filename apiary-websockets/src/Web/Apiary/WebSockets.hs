@@ -52,7 +52,7 @@ actionWithWebSockets' :: (Monad m, Monad actM)
                       -> ActionT exts prms actM ()
                       -> ApiaryT exts prms actM m ()
 actionWithWebSockets' conn srv m =
-    action $ websocketsToAction conn srv >> m
+    action $ websocketsToAction conn srv `mplus` m
 
 actionWithWebSockets :: (Monad m, Monad actM)
                      => (Dict prms -> WS.ServerApp)
