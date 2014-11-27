@@ -11,6 +11,7 @@
 module Data.Apiary.Extension
     ( Has(getExtension)
     , MonadExts(..), getExt
+    , Middleware'
     , Extension(..)
     , Extensions
     , noExtension
@@ -26,15 +27,10 @@ module Data.Apiary.Extension
 
 import Control.Monad.Reader
 import Data.Apiary.Extension.Internal
-
-class Monad m => MonadExts es m | m -> es where
-    getExts :: m (Extensions es)
+import Control.Monad.Apiary.Action.Internal
 
 getExt :: (MonadExts es m, Has e es) => proxy e -> m e
 getExt p = getExtension p `liftM` getExts
-
-instance Monad m => MonadExts es (ReaderT (Extensions es) m) where
-    getExts = ask
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 

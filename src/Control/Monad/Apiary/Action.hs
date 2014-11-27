@@ -53,6 +53,12 @@ module Control.Monad.Apiary.Action
     , stream
     , rawResponse
     , StreamingBody
+    -- ** vault
+    , lookupVault
+    , modifyVault
+    , insertVault
+    , adjustVault
+    , deleteVault
     -- ** redirect
     , redirectWith
     ) where

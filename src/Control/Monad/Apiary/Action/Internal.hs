@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE DeriveDataTypeable #-}
@@ -8,6 +9,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE BangPatterns #-}
@@ -15,6 +17,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
@@ -39,7 +42,6 @@ import Network.Wai
 import qualified Network.Wai.Parse as P
 
 import Data.Monoid hiding (All)
-import Data.Apiary.Extension
 import Data.Apiary.Dict as Dict
 import Data.Apiary.Param
 import Data.Apiary.Compat
@@ -56,6 +58,7 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
+import qualified Data.Vault.Lazy as V
 
 #ifndef WAI3
 import Data.Conduit
@@ -135,6 +138,7 @@ data ActionState = ActionState
     { actionResponse    :: ResponseBody
     , actionStatus      :: Status
     , actionHeaders     :: ResponseHeaders
+    , actionVault       :: V.Vault
     , actionContentType :: S.ByteString
     , actionReqBody     :: Maybe ([Param], [File])
     , actionFetches     :: [T.Text]
@@ -145,6 +149,7 @@ initialState conf = ActionState
     { actionResponse    = ResponseBuilder mempty
     , actionStatus      = defaultStatus  conf
     , actionHeaders     = defaultHeaders conf
+    , actionVault       = V.empty
     , actionContentType = defaultContentType conf
     , actionReqBody     = Nothing
     , actionFetches     = []
@@ -152,6 +157,21 @@ initialState conf = ActionState
 {-# INLINE initialState #-}
 
 --------------------------------------------------------------------------------
+data Extensions (es :: [*]) where
+    NoExtension  :: Extensions '[]
+    AddExtension :: Extension e => (e :: *) -> Extensions es -> Extensions (e ': es)
+
+type Middleware' = forall exts. ActionT exts '[] IO () -> ActionT exts '[] IO ()
+
+class Extension e where
+    extMiddleware  :: e -> Middleware'
+    extMiddleware  _ = id
+
+class Monad m => MonadExts es m | m -> es where
+    getExts :: m (Extensions es)
+
+instance Monad m => MonadExts es (ReaderT (Extensions es) m) where
+    getExts = ask
 
 data ActionEnv exts = ActionEnv
     { actionConfig    :: ApiaryConfig
@@ -365,21 +385,18 @@ getReqBodyParams = fst <$> getRequestBody
 getReqBodyFiles :: MonadIO m => ActionT exts prms m [File]
 getReqBodyFiles = snd <$> getRequestBody
 
+-- | get all request headers. since 0.6.0.0.
+getHeaders :: Monad m => ActionT exts prms m RequestHeaders
+getHeaders = requestHeaders `liftM` getRequest
+
 --------------------------------------------------------------------------------
 
 modifyState :: Monad m => (ActionState -> ActionState) -> ActionT exts prms m ()
 modifyState f = ActionT $ \_ _ s c -> c () (f s)
 
-getState :: ActionT exts prms m ActionState
-getState = ActionT $ \_ _ s c -> c s s
-
 -- | set status code. since 0.1.0.0.
 status :: Monad m => Status -> ActionT exts prms m ()
 status st = modifyState (\s -> s { actionStatus = st } )
-
--- | get all request headers. since 0.6.0.0.
-getHeaders :: Monad m => ActionT exts prms m RequestHeaders
-getHeaders = requestHeaders `liftM` getRequest
 
 -- | modify response header. since 0.1.0.0.
 --
@@ -406,6 +423,29 @@ type ContentType = S.ByteString
 -- if content-type header already exists, replace it. since 0.1.0.0.
 contentType :: Monad m => ContentType -> ActionT exts prms m ()
 contentType c = modifyState (\s -> s { actionContentType = c } )
+
+getState :: ActionT exts prms m ActionState
+getState = ActionT $ \_ _ s c -> c s s
+
+-- | lookup extensional state. since v1.2.0.
+lookupVault :: V.Key a -> ActionT exts prms m (Maybe a)
+lookupVault k = V.lookup k . actionVault <$> getState
+
+-- | modify extensional state. since v1.2.0.
+modifyVault :: (V.Vault -> V.Vault) -> ActionT exts prms m ()
+modifyVault f = ActionT $ \_ _ s c -> c () (s {actionVault = f $ actionVault s})
+
+-- | insert extensional state. since v1.2.0.
+insertVault :: V.Key a -> a -> ActionT exts prms m ()
+insertVault k i = modifyVault $ V.insert k i
+
+-- | adjust extensional state. since v1.2.0.
+adjustVault :: (a -> a) -> V.Key a -> ActionT exts prms m ()
+adjustVault f k = modifyVault $ V.adjust f k
+
+-- | delete extensional state. since v1.2.0.
+deleteVault :: V.Key a -> ActionT exts prms m ()
+deleteVault k = modifyVault $ V.delete k
 
 --------------------------------------------------------------------------------
 

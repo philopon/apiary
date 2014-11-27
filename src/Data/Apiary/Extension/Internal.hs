@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -10,12 +11,10 @@
 
 module Data.Apiary.Extension.Internal where
 
-import Network.Wai
+#if __GLASGOW_HASKELL__ >= 708
 import qualified Control.Category as Cat
-
-data Extensions (es :: [*]) where
-    NoExtension  :: Extensions '[]
-    AddExtension :: Extension e => (e :: *) -> Extensions es -> Extensions (e ': es)
+#endif
+import Control.Monad.Apiary.Action.Internal
 
 class Has a (as :: [*]) where
     getExtension :: proxy a -> Extensions as -> a
@@ -29,11 +28,7 @@ instance Has a as => Has a (a' ': as) where
 newtype Initializer m i o = Initializer 
     {unInitializer :: forall a. Extensions i -> (Extensions o -> m a) -> m a}
 
-class Extension a where
-    extMiddleware  :: a -> Middleware
-    extMiddleware  _ = id
-
-allMiddleware :: Extensions es -> Middleware
+allMiddleware :: Extensions es -> Middleware'
 allMiddleware NoExtension         = id
 allMiddleware (AddExtension e es) = extMiddleware e . allMiddleware es
 
