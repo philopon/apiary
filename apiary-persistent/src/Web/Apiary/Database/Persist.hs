@@ -122,7 +122,7 @@ instance (Has Persist es, MonadExts es m, MonadBaseControl IO m) => RunSQL m whe
     runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
 
 -- | filter by sql query. since 0.9.0.0.
-sql :: (Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
+sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
     => Maybe Html -- ^ documentation.
     -> proxy k
     -> SqlPersistT (ActionT exts prms actM) a
