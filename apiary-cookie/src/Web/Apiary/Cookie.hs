@@ -12,6 +12,8 @@ module Web.Apiary.Cookie
     ( -- * setter
       setCookie
     , deleteCookie
+    -- * getter
+    , getCookies
     -- * filter
     , cookie
     , cookie'
@@ -19,6 +21,9 @@ module Web.Apiary.Cookie
     -- | SetCookie(..)
     , module Web.Cookie
     ) where
+
+import Control.Applicative
+import Control.Monad.Apiary.Action
 
 import Web.Apiary.Wai
 import Web.Apiary
@@ -39,6 +44,7 @@ import qualified Data.ByteString.Char8 as SC
 
 cond :: (a -> Bool) -> (a -> b) -> (a -> b) -> a -> b
 cond p t f a = if p a then t a else f a
+{-# INLINE cond #-}
 
 -- | cookie filter. since 0.5.1.0.
 --
@@ -65,6 +71,12 @@ cookie' =
     concatMap Cookie.parseCookies .
     mapMaybe (cond (("cookie" ==) . fst) (Just . snd) (const Nothing)) .
     requestHeaders
+
+getCookies :: Monad m => ActionT exts prms m [(S.ByteString, S.ByteString)]
+getCookies =
+    concatMap (Cookie.parseCookies . snd) .
+    filter (("cookie" ==) . fst) <$>
+    getHeaders
 
 -- | delete cookie. since 0.6.1.0.
 deleteCookie :: Monad m => S.ByteString -> ActionT exts prms m ()

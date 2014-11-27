@@ -28,8 +28,6 @@ import Network.HTTP.Client.TLS(tlsManagerSettings)
 import Web.Apiary.ClientSession
 import Control.Monad
 import Control.Monad.Trans.Control
-import Control.Monad.Apiary
-import Control.Monad.Apiary.Action
 
 import qualified Data.Text as T
 import qualified Data.ByteString as S
@@ -55,7 +53,7 @@ initAuth = initAuthWith tlsManagerSettings
 -- | default auth handlers. since 0.8.0.0.
 authHandler :: (Monad m, MonadIO actM, Has I.Auth exts, Has Session exts)
             => ApiaryT exts prms actM m ()
-authHandler = apiaryExt (Proxy :: Proxy I.Auth) >>= I.authHandler 
+authHandler = getExt (Proxy :: Proxy I.Auth) >>= I.authHandler 
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: (Has Session exts, MonadIO actM, KnownSymbol k, NotMember k prms)

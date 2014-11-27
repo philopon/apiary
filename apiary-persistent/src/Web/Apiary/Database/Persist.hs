@@ -1,4 +1,6 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DataKinds #-}
@@ -116,11 +118,8 @@ runSql' a persist = case persist of
     PersistPool p -> runSqlPool a p
     PersistConn c -> runSqlConn a c
 
-instance (Has Persist exts, MonadBaseControl IO m) => RunSQL (ActionT exts prms m) where
+instance (Has Persist es, MonadExts es m, MonadBaseControl IO m) => RunSQL m where
     runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
-
-instance (Has Persist exts, MonadBaseControl IO m, Monad actM) => RunSQL (ApiaryT exts prms actM m) where
-    runSql a = apiaryExt (Proxy :: Proxy Persist) >>= runSql' a
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)

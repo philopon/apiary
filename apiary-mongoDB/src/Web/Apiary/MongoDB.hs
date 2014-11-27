@@ -25,10 +25,7 @@ import Control.Monad
 import Control.Monad.Trans.Maybe
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control
-import Control.Monad.Trans.Reader
 import Control.Exception.Lifted
-import Control.Monad.Apiary.Action
-import Control.Monad.Apiary
 
 import Web.Apiary
 import Web.Apiary.Heroku
@@ -112,21 +109,17 @@ initHerokuMongoDB conf = initializerBracket $ \exts m -> do
 -- | query using 'MongoDBConfig' settings.
 --
 -- if you want to access other db, other accessmode, please use 'useDb' or 'accessMode'.
-class MongoAccess m where
-    access :: Action m a -> m a
+access :: (MonadExts es m, Has MongoDB es, MonadBaseControl IO m, MonadIO m)
+       => Action m a -> m a
+access m = getExt (Proxy :: Proxy MongoDB) >>= flip access' m
 
-accessImpl :: (MonadBaseControl IO m, MonadIO m) => Action m a -> MongoDB -> m a
-accessImpl m (MongoDB mongo conf) = withResource mongo $ \p ->
+
+access' :: (MonadBaseControl IO m, MonadIO m)
+        => MongoDB -> Action m a -> m a
+access' (MongoDB mongo conf) m = withResource mongo $ \p ->
     MongoDB.access p (mongoDBAccessMode conf) (mongoDBDatabase conf) $
     maybe (return True) (uncurry auth) (mongoDBAuth conf)
     >>= flip unless (throwIO $ ConnectionFailure $ userError "auth failed.")
     >> m
 
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m) => MongoAccess (ActionT exts prms m) where
-    access m = getExt (Proxy :: Proxy MongoDB) >>= accessImpl m
 
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m, Monad actM) => MongoAccess (ApiaryT exts prms actM m) where
-    access m = apiaryExt (Proxy :: Proxy MongoDB) >>= accessImpl m
-
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m) => MongoAccess (ReaderT (Extensions exts) m) where
-    access m = ask >>= accessImpl m . getExtension (Proxy :: Proxy MongoDB)

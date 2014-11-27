@@ -19,7 +19,7 @@ module Web.Apiary.Logger
     -- * initialize
     , initLogger
     -- * action
-    , Logging(..)
+    , logging
     -- * wrapper
     , LogWrapper, logWrapper, runLogWrapper
     ) where
@@ -37,8 +37,6 @@ import Control.Exception.Lifted
 
 import Data.Default.Class
 
-import Control.Monad.Apiary
-import Control.Monad.Apiary.Action
 import Data.Apiary.Compat
 import Data.Apiary.Extension
 
@@ -79,29 +77,11 @@ initLogger LogConfig{..} = initializerBracket' $ bracket
     (liftIO . closeLog)
 
 -- | push log.
-class Logging m where
-    logging :: LogStr -> m ()
+logging :: (Has Logger es, MonadExts es m, MonadIO m) => LogStr -> m ()
+logging m = getExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
 
-instance (Has Logger exts, MonadIO m) => Logging (ActionT exts prms m) where
-    logging m = getExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
-
-instance (Has Logger exts, MonadIO m, Monad actM) => Logging (ApiaryT exts prms actM m) where
-    logging m = apiaryExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
-
-instance (Has Logger exts, MonadIO m) => Logging (LogWrapper exts m) where
-    logging m = LogWrapper ask >>= \e -> liftIO $ pushLog (getExtension (Proxy :: Proxy Logger) e) m
-
-monadLoggerLog' :: (Logging m, ToLogStr msg) => Loc -> LogSource -> LogLevel -> msg -> m ()
-monadLoggerLog' loc src lv msg = logging $ defaultLogStr loc src lv (toLogStr msg)
-
-instance (Has Logger exts, MonadIO m) => MonadLogger (ActionT exts prms m) where
-    monadLoggerLog = monadLoggerLog'
-
-instance (Has Logger exts, MonadIO m, Monad actM) => MonadLogger (ApiaryT exts prms actM m) where
-    monadLoggerLog = monadLoggerLog'
-
-instance (Has Logger exts, MonadIO m) => MonadLogger (LogWrapper exts m) where
-    monadLoggerLog = monadLoggerLog'
+instance (Has Logger es, MonadExts es m, MonadIO m) => MonadLogger m where
+    monadLoggerLog loc src lv msg = logging $ defaultLogStr loc src lv (toLogStr msg)
 
 -- | wrapper to use as MonadLogger using Logger Extenson.
 newtype LogWrapper exts m a =
@@ -124,3 +104,6 @@ instance MonadBaseControl b m => MonadBaseControl b (LogWrapper exts m) where
     newtype StM (LogWrapper exts m) a = StMLogWrapper { unStMLogWrapper :: ComposeSt (LogWrapper exts) m a }
     liftBaseWith = defaultLiftBaseWith StMLogWrapper
     restoreM     = defaultRestoreM     unStMLogWrapper
+
+instance Monad m => MonadExts exts (LogWrapper exts m) where
+    getExts = LogWrapper ask
