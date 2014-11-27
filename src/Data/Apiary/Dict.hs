@@ -34,14 +34,14 @@ import Data.Apiary.Compat
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import GHC.Exts
+import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
+import Unsafe.Coerce
 
 -- | (kind) Dict element.
 data Elem = forall a. Symbol := a
 
-data Dict (ks :: [Elem]) where
-    Empty :: Dict '[]
-    Insert :: proxy (k :: Symbol) -> v -> Dict ks -> Dict (k := v ': ks)
-
+newtype Dict (ks :: [Elem]) = Dict (H.HashMap T.Text Any)
 
 class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
 
@@ -63,11 +63,14 @@ class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
 
     get :: proxy k -> Dict kvs -> v
 
-instance Member k v (k := v ': kvs) where
-    get _ (Insert _ v _) = v
+getImpl :: KnownSymbol k => proxy k -> Dict any -> b
+getImpl p (Dict d) = maybe (error "Dict: no value.") unsafeCoerce $ H.lookup (T.pack $ symbolVal p) d
 
-instance Member k v kvs => Member k v (k' := v' ': kvs) where
-    get p (Insert _ _ d) = get p d
+instance KnownSymbol k => Member k v (k := v ': kvs) where
+    get = getImpl
+
+instance (KnownSymbol k, Member k v kvs) => Member k v (k' := v' ': kvs) where
+    get = getImpl
 
 -- | type family version Member for NotMember constraint.
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ >= 708
@@ -92,7 +95,7 @@ type instance Members (k := v ': kvs) prms = (Member k v prms, Members kvs prms)
 
 -- | empty Dict.
 empty :: Dict '[]
-empty = Empty
+empty = Dict H.empty
 
 -- | insert element.
 -- 
@@ -117,8 +120,8 @@ empty = Empty
 -- >       insert (SProxy :: SProxy "foo") (0.5 :: Double)
 -- >       $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
 
-insert :: NotMember k kvs => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
-insert = Insert
+insert :: (KnownSymbol k, NotMember k kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
+insert p v (Dict d) = Dict (H.insert (T.pack $ symbolVal p) (unsafeCoerce v) d)
 
 -- | construct string literal proxy.
 --
