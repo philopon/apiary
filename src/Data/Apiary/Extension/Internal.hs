@@ -14,6 +14,7 @@ module Data.Apiary.Extension.Internal where
 #if __GLASGOW_HASKELL__ >= 708
 import qualified Control.Category as Cat
 #endif
+import Network.Wai
 import Control.Monad.Apiary.Action.Internal
 
 class Has a (as :: [*]) where
@@ -28,8 +29,12 @@ instance Has a as => Has a (a' ': as) where
 newtype Initializer m i o = Initializer 
     {unInitializer :: forall a. Extensions i -> (Extensions o -> m a) -> m a}
 
-allMiddleware :: Extensions es -> Middleware'
-allMiddleware NoExtension         = id
+allMiddleware' :: Extensions es -> Middleware'
+allMiddleware' NoExtension         = id
+allMiddleware' (AddExtension e es) = extMiddleware' e . allMiddleware' es
+
+allMiddleware :: Extensions es -> Middleware
+allMiddleware NoExtension = id
 allMiddleware (AddExtension e es) = extMiddleware e . allMiddleware es
 
 #if __GLASGOW_HASKELL__ >= 708

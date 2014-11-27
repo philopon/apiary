@@ -164,8 +164,13 @@ data Extensions (es :: [*]) where
 type Middleware' = forall exts. ActionT exts '[] IO () -> ActionT exts '[] IO ()
 
 class Extension e where
-    extMiddleware  :: e -> Middleware'
-    extMiddleware  _ = id
+    extMiddleware :: e -> Middleware
+    extMiddleware _ = id
+    {-# INLINE extMiddleware #-}
+
+    extMiddleware'  :: e -> Middleware'
+    extMiddleware'  _ = id
+    {-# INLINE extMiddleware' #-}
 
 class Monad m => MonadExts es m | m -> es where
     getExts :: m (Extensions es)

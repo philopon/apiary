@@ -160,8 +160,8 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
     wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
-        mw  = writerMw wtr
-        mw' = allMiddleware exts
+        mw  = allMiddleware exts . writerMw wtr
+        mw' = allMiddleware' exts
         app = mw $ execActionT conf exts doc (mw' $ hoistActionT runAct $ routerToAction rtr)
     run $! app
 
