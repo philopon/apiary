@@ -15,25 +15,29 @@ main = runApiaryWith (run 3000) (initSession def +> initAuth def {authSessionCon
 
     root . method GET $ do
         authorized [key|auth|] . action $ do
+            liftIO $ print "a"
             contentType "text/html"
 
             bytes "your id: "
-            showing =<< param [key|auth|]
-            bytes " \n<a href=\"/logout\">logout</a>"
+            appendShowing =<< param [key|auth|]
+            appendBytes " \n<a href=\"/logout\">logout</a>"
 
         cookie [key|message|] (pOption pByteString) . action $ do
+            liftIO $ print "b"
             contentType "text/html"
 
-            maybe (return ()) (\m -> mapM_ bytes ["<h1>", m, "</h1>"]) =<< param [key|message|]
+            reset
+            maybe (return ()) (\m -> mapM_ appendBytes ["<h1>", m, "</h1>"]) =<< param [key|message|]
 
             authRoutes >>= mapM_ (\(n,r) -> do
-                mapM_ bytes ["<div><a href=\"", r, "\">"]
-                text n
-                bytes "</a></div>")
+                mapM_ appendBytes ["<div><a href=\"", r, "\">"]
+                appendText n
+                appendBytes "</a></div>")
 
             deleteCookie "message"
 
     [capture|/logout|] . method GET . action $ do
+        liftIO $ print "c"
         authLogout
         setCookie def { setCookieName = "message", setCookieValue = "logout done, bye." }
         redirect "/"

@@ -13,12 +13,12 @@ main = runApiary (run 3000) def $ do
                 guard (age >= 18)
                 contentType "text/html"
                 bytes "<h1>Hello, "
-                lazyBytes name
-                bytes  "!</h1>\n"
+                appendLazyBytes name
+                appendBytes  "!</h1>\n"
 
             action $ do
                 contentType "text/html"
-                bytes "R18\n"
+                appendBytes "R18\n"
 
         method POST . action $ do
             (age, name) <- [params|age, name|]

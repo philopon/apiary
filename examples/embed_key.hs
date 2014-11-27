@@ -10,7 +10,7 @@ main = runApiaryWith (run 3000) (initSession $embedDefaultKeyConfig { sessionSec
     root . method GET $ do
         session [key|test|] (pOne pLazyByteString) . action $ do
             lazyBytes "session: "
-            lazyBytes =<< param [key|test|]
+            appendLazyBytes =<< param [key|test|]
 
         action $ do
             setSession "test" "nyan"

@@ -33,8 +33,8 @@ main = do
                 let j = maybe 0 id mbj
                 contentType "application/json"
                 bytes "{ \"test\": "
-                showing (i + j)
-                char '}'
+                appendShowing (i + j)
+                appendChar '}'
 
         [capture|/api/documentation|] . method GET . action $
             defaultDocumentationAction def

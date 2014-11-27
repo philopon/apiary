@@ -8,11 +8,11 @@ import qualified Data.ByteString.Char8 as S
 page :: Monad m => S.ByteString -> ActionT exts prms m ()
 page tok = do
     contentType "text/html"
-    bytes "<form method=\"POST\" action=\"/\">"
-    bytes   "<input type=\"text\" name=\"str\"/>"
-    bytes   "<input type=\"hidden\" name=\"_token\" value=\"" >> bytes tok >> bytes "\">"
-    bytes   "<button type=\"submit\">submit</button>"
-    bytes "</form>"
+    appendBytes "<form method=\"POST\" action=\"/\">"
+    appendBytes   "<input type=\"text\" name=\"str\"/>"
+    appendBytes   "<input type=\"hidden\" name=\"_token\" value=\"" >> appendBytes tok >> appendBytes "\">"
+    appendBytes   "<button type=\"submit\">submit</button>"
+    appendBytes "</form>"
 
 main :: IO ()
 main = runApiaryWith (run 3000) (initSession def {sessionSecure = False}) def $ do
