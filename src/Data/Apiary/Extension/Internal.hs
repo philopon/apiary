@@ -1,12 +1,10 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE CPP #-}
 
 module Data.Apiary.Extension.Internal where
@@ -14,8 +12,10 @@ module Data.Apiary.Extension.Internal where
 #if __GLASGOW_HASKELL__ >= 708
 import qualified Control.Category as Cat
 #endif
-import Network.Wai
+import qualified Network.Wai as Wai
 import Control.Monad.Apiary.Action.Internal
+    ( Extensions(AddExtension, NoExtension)
+    , Extension(extMiddleware, extMiddleware'), Middleware')
 
 class Has a (as :: [*]) where
     getExtension :: proxy a -> Extensions as -> a
@@ -33,7 +33,7 @@ allMiddleware' :: Extensions es -> Middleware'
 allMiddleware' NoExtension         = id
 allMiddleware' (AddExtension e es) = extMiddleware' e . allMiddleware' es
 
-allMiddleware :: Extensions es -> Middleware
+allMiddleware :: Extensions es -> Wai.Middleware
 allMiddleware NoExtension = id
 allMiddleware (AddExtension e es) = extMiddleware e . allMiddleware es
 

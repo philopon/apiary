@@ -1,23 +1,20 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Data.Apiary.Document.Internal where
 
-import Control.Applicative
+import Control.Applicative((<$>))
 
-import Data.Typeable
-import Data.Maybe
-import Data.List
-import Data.Function
+import Data.Typeable(TypeRep)
+import Data.Maybe(mapMaybe)
+import Data.List(groupBy)
+import Data.Function(on)
 
-import Data.Apiary.Param
-import Data.Apiary.Method
+import Data.Apiary.Param(StrategyRep, QueryRep)
+import Data.Apiary.Method(Method)
 
-import Text.Blaze.Html
+import Text.Blaze.Html(Html)
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 

@@ -1,22 +1,22 @@
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE DataKinds #-}
 
-module Control.Monad.Apiary.Filter.Internal.Capture.TH where
+module Control.Monad.Apiary.Filter.Internal.Capture.TH(capture) where
 
-import Control.Arrow
-import Control.Applicative
+import Control.Arrow(first)
+import Control.Applicative((<$>))
 
-import Language.Haskell.TH
-import Language.Haskell.TH.Quote
+import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
 import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 
 import qualified Data.Text as T
-import Data.String
-import Data.List
-import Data.Apiary.Compat
+import Data.String(IsString(..))
+import Data.List(isInfixOf)
+import Data.Apiary.Compat(Proxy(..), SProxy(..))
 
 preCap :: String -> [String]
 preCap ""  = []
@@ -27,39 +27,37 @@ preCap p       = splitPath p
 splitPath :: String -> [String]
 splitPath = map T.unpack . T.splitOn "/" . T.pack
 
---            S h  -> [|Just $(stringE h)|]
---            N n  -> [|Just $(varE n)|]
-description :: String -> Q (String, ExpQ)
+description :: String -> TH.Q (String, TH.ExpQ)
 description s = case break (`elem` "([") s of
     (t, []) -> return (t, [|Nothing|])
     (t, st) -> case break (`elem` ")]") st of
         (_:'$':b, ")") -> do
-            reportWarning "DEPRECATED () description. use []."
-            v <- lookupValueName b
-            maybe (fail $ b ++ " not found.") (\n -> return (t, [|Just $(varE n)|])) v
+            TH.reportWarning "DEPRECATED () description. use []."
+            v <- TH.lookupValueName b
+            maybe (fail $ b ++ " not found.") (\n -> return (t, [|Just $(TH.varE n)|])) v
         (_:b,     ")") -> do
-            reportWarning "DEPRECATED () description. use []."
-            return (t, [|Just $(stringE b)|])
-        (_:'$':b, "]") -> lookupValueName b >>=
-            maybe (fail $ b ++ " not found.") (\n -> return (t, [|Just $(varE n)|]))
-        (_:b,     "]") -> return (t, [|Just $(stringE b)|])
+            TH.reportWarning "DEPRECATED () description. use []."
+            return (t, [|Just $(TH.stringE b)|])
+        (_:'$':b, "]") -> TH.lookupValueName b >>=
+            maybe (fail $ b ++ " not found.") (\n -> return (t, [|Just $(TH.varE n)|]))
+        (_:b,     "]") -> return (t, [|Just $(TH.stringE b)|])
         (_, _)         -> fail "capture: syntax error." 
 
-mkCap :: [String] -> ExpQ
+mkCap :: [String] -> TH.ExpQ
 mkCap [] = [|Capture.endPath|]
 mkCap (('*':'*':[]):as) = [|Capture.anyPath . $(mkCap as) |]
 mkCap (('*':'*':tS):as) = do
     (k, d) <- description tS
-    [|Capture.restPath (SProxy :: SProxy $(litT $ strTyLit k)) $d . $(mkCap as) |]
+    [|Capture.restPath (SProxy :: SProxy $(TH.litT $ TH.strTyLit k)) $d . $(mkCap as) |]
 mkCap (str:as)
     | "::" `isInfixOf` fst (break (`elem` "([") str) = do
         (key, d) <- first T.pack <$> description str
         let v = T.unpack . T.strip . fst $ T.breakOn    "::" key
             t = T.unpack . T.strip . snd $ T.breakOnEnd "::" key
-        ty <- lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
-        [|(Capture.fetch' (SProxy :: SProxy $(litT $ strTyLit v)) (Proxy :: Proxy $(conT ty)) $d) . $(mkCap as)|]
+        ty <- TH.lookupTypeName t >>= maybe (fail $ t ++ " not found.") return
+        [|(Capture.fetch' (SProxy :: SProxy $(TH.litT $ TH.strTyLit v)) (Proxy :: Proxy $(TH.conT ty)) $d) . $(mkCap as)|]
 
-    | otherwise = [|(Capture.path (fromString $(stringE str))) . $(mkCap as) |]
+    | otherwise = [|(Capture.path (fromString $(TH.stringE str))) . $(mkCap as) |]
 
 -- | capture QuasiQuoter. since 0.1.0.0.
 --

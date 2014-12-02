@@ -1,10 +1,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.Heroku
     ( Heroku
@@ -16,25 +15,31 @@ module Web.Apiary.Heroku
     , getHerokuEnv, getHerokuEnv'
     ) where
 
-import System.Environment
+import System.Environment(getEnv)
 import System.Process
-import System.Exit
+    ( proc, CreateProcess(..), createProcess
+    , StdStream(CreatePipe), waitForProcess)
+import System.Exit (ExitCode(ExitSuccess))
 
-import Control.Exception
-import Control.Arrow hiding (app)
-import Control.Applicative
-import Control.Monad.Trans
+import qualified Network.Wai as Wai
 
-import Data.IORef
-import Data.Apiary.Compat
-import Data.Default.Class
+import Control.Exception(catch, try, SomeException)
+import Control.Arrow(second)
+import Control.Applicative((<$>), (<$), Applicative(..))
+import Control.Monad.Trans(MonadIO(..))
+
+import Data.IORef(IORef, newIORef, readIORef, writeIORef)
+import Data.Default.Class(Default(def))
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text    as T
 import qualified Data.Text.IO as T
 
-import Network.Wai
-import Control.Monad.Apiary
+import Control.Monad.Apiary(ApiaryT, runApiaryTWith, ApiaryConfig)
 import Data.Apiary.Extension
+    ( Has, Extension, Extensions, getExtension, noExtension
+    , Initializer, Initializer', initializer', (+>)
+    )
+import Data.Apiary.Compat(Proxy(..))
 
 data Heroku = Heroku 
     { herokuEnv    :: IORef (Maybe (H.HashMap T.Text T.Text))
@@ -67,7 +72,7 @@ initHeroku conf = initializer' . liftIO $
 --
 runHerokuTWith :: (MonadIO m, Monad actM)
                => (forall b. actM b -> IO b)
-               -> (Int -> Application -> m a)
+               -> (Int -> Wai.Application -> m a)
                -> Initializer m '[Heroku] exts
                -> HerokuConfig
                -> ApiaryT exts '[] actM m ()
@@ -78,7 +83,7 @@ runHerokuTWith runAct run ir conf m = do
     runApiaryTWith runAct (run port) (initHeroku conf +> ir) (herokuApiaryConfig conf) m
 
 runHerokuWith :: MonadIO m
-              => (Int -> Application -> m a)
+              => (Int -> Wai.Application -> m a)
               -> Initializer m '[Heroku] exts
               -> HerokuConfig
               -> ApiaryT exts '[] IO m ()
@@ -92,7 +97,7 @@ runHerokuWith = runHerokuTWith id
 -- * set port by PORT environment variable.
 -- * getHerokuEnv function(get config from environment variable or @ heroku config @ command).
 runHeroku :: MonadIO m
-          => (Int -> Application -> m a)
+          => (Int -> Wai.Application -> m a)
           -> HerokuConfig
           -> ApiaryT '[Heroku] '[] IO m ()
           -> m a

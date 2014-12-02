@@ -1,11 +1,11 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Data.Apiary.Method where
 
-import Data.String
+import Data.Hashable(Hashable(..))
+import Data.String(IsString(..))
 import qualified Data.ByteString.Char8 as S
-import Data.Hashable
 import qualified Data.ByteString.Unsafe as U
 
 data Method

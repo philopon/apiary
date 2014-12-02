@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP #-}
-
 module Control.Monad.Apiary.Action 
     ( ActionT
     -- * stop action
@@ -64,9 +62,6 @@ module Control.Monad.Apiary.Action
     ) where
 
 import Control.Monad.Apiary.Action.Internal
-
+import Network.Wai
 import Data.Apiary.Document.Html
 
-#ifdef WAI3
-import Network.Wai
-#endif

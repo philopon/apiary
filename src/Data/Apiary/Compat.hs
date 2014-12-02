@@ -1,10 +1,6 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE CPP #-}
 
 -- | compatibility module for ghc-7.8 & ghc-7.6.
 module Data.Apiary.Compat

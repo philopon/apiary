@@ -1,21 +1,11 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 module Data.Apiary.Param
     ( -- * route path parameter
@@ -58,21 +48,25 @@ module Data.Apiary.Param
     , pOptional
     ) where
 
-import Control.Monad
-import Control.Arrow
+import Control.Monad(when, unless, MonadPlus(mzero))
+import Control.Arrow(second)
 
-import qualified Network.HTTP.Types as Http
+import qualified Network.HTTP.Types as HTTP
 
-import Data.Int
-import Data.Maybe
-import Data.Word
+import Data.Int(Int8, Int16, Int32, Int64)
+import Data.Word(Word, Word8, Word16, Word32, Word64)
+import Data.Maybe(isJust, catMaybes)
+import Data.Apiary.Dict(Elem((:=)), NotMember, Dict)
+import qualified Data.Apiary.Dict as Dict
 import Data.Apiary.Compat
-import Data.Apiary.Dict
+    ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
+    , Symbol, KnownSymbol
+    )
 
 import Data.String(IsString)
-import Data.Time.Calendar
+import Data.Time.Calendar(Day, fromGregorian)
 import qualified Data.Text.Read as TR
-import Data.Text.Encoding.Error
+import           Data.Text.Encoding.Error(lenientDecode)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
@@ -317,7 +311,7 @@ pFile :: Proxy File
 pFile = Proxy
 
 class ReqParam a where
-    reqParams   :: proxy a -> Http.Query -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
+    reqParams   :: proxy a -> HTTP.Query -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
     reqParamRep :: proxy a -> QueryRep
 
 instance ReqParam File where
@@ -342,44 +336,44 @@ class Strategy (w :: * -> *) where
 data First a = First
 instance Strategy First where
     type SNext First k a ps = k := a ': ps
-    strategy _ k (Just a:_) d = return $ insert k a d
+    strategy _ k (Just a:_) d = return $ Dict.insert k a d
     strategy _ _ _          _ = mzero
     strategyRep _ = StrategyRep "first"
 
 data One a = One
 instance Strategy One where
     type SNext One k a ps = k := a ': ps
-    strategy _ k [Just a] d = return $ insert k a d
+    strategy _ k [Just a] d = return $ Dict.insert k a d
     strategy _ _ _        _ = mzero
     strategyRep _ = StrategyRep "one"
 
 data Many a = Many
 instance Strategy Many where
     type SNext Many k a ps = k := [a] ': ps
-    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
+    strategy _ k as d = if all isJust as then return $ Dict.insert k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "many"
 
 data Some a = Some
 instance Strategy Some where
     type SNext Some k a ps = k := [a] ': ps
     strategy _ _ [] _ = mzero
-    strategy _ k as d = if all isJust as then return $ insert k (catMaybes as) d else mzero
+    strategy _ k as d = if all isJust as then return $ Dict.insert k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "some"
 
 data Option a = Option
 instance Strategy Option where
     type SNext Option k a ps = k := Maybe a ': ps
-    strategy _ k (Just a:_)  d = return $ insert k (Just a) d
+    strategy _ k (Just a:_)  d = return $ Dict.insert k (Just a) d
     strategy _ _ (Nothing:_) _ = mzero
-    strategy _ k []          d = return $ insert k Nothing d
+    strategy _ k []          d = return $ Dict.insert k Nothing d
     strategyRep _ = StrategyRep "option"
 
 data Optional a = Optional T.Text a
 instance Strategy Optional where
     type SNext Optional k a ps = k := a ': ps
-    strategy _              k (Just a:_)  d = return $ insert k a d
+    strategy _              k (Just a:_)  d = return $ Dict.insert k a d
     strategy _              _ (Nothing:_) _ = mzero
-    strategy (Optional _ a) k []          d = return $ insert k a d
+    strategy (Optional _ a) k []          d = return $ Dict.insert k a d
     strategyRep (Optional a _) = StrategyRep $ "default:" `T.append` a
 
 pFirst :: proxy a -> First a

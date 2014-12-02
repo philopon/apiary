@@ -1,19 +1,13 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 -- | type sefe dictionaly.
 module Data.Apiary.Dict
@@ -30,13 +24,15 @@ module Data.Apiary.Dict
     , Members
     ) where
 
-import Data.Apiary.Compat
+import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, SProxy(..))
 
-import Language.Haskell.TH
-import Language.Haskell.TH.Quote
-import GHC.Exts
+import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH.Quote(QuasiQuoter(..))
+
 import qualified Data.HashMap.Strict as H
 import qualified Data.Text as T
+
+import GHC.Exts(Any, Constraint)
 import Unsafe.Coerce
 
 -- | (kind) Dict element.
@@ -130,8 +126,8 @@ insert p v (Dict d) = Dict (H.insert (T.pack $ symbolVal p) (unsafeCoerce v) d)
 --
 key :: QuasiQuoter
 key = QuasiQuoter
-    { quoteExp  = \s -> [| SProxy :: SProxy $(litT $ strTyLit s) |]
+    { quoteExp  = \s -> [| SProxy :: SProxy $(TH.litT $ TH.strTyLit s) |]
     , quotePat  = error "key qq only exp or type."
-    , quoteType = \s -> [t| SProxy $(litT $ strTyLit s) |]
+    , quoteType = \s -> [t| SProxy $(TH.litT $ TH.strTyLit s) |]
     , quoteDec  = error "key qq only exp or type."
     }

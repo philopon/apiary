@@ -1,12 +1,6 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DataKinds #-}
 
 module Data.Apiary.Extension
     ( Has(getExtension)
@@ -25,9 +19,10 @@ module Data.Apiary.Extension
     , (+>)
     ) where
 
-import Control.Monad.Reader
-import Data.Apiary.Extension.Internal
+import Control.Monad(liftM)
+import Data.Apiary.Extension.Internal(Has, getExtension, Initializer(Initializer))
 import Control.Monad.Apiary.Action.Internal
+    (MonadExts(getExts), Extension(..), Extensions(AddExtension), Middleware')
 
 getExt :: (MonadExts es m, Has e es) => proxy e -> m e
 getExt p = getExtension p `liftM` getExts

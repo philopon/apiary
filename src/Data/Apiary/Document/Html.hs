@@ -1,6 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Data.Apiary.Document.Html
     ( defaultDocumentToHtml
@@ -10,17 +10,20 @@ module Data.Apiary.Document.Html
     , rpHtml
     ) where
 
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax(addDependentFile)
+import qualified Language.Haskell.TH as TH
+import qualified Language.Haskell.TH.Syntax as TH (addDependentFile)
 
-import Data.Monoid hiding (Any)
-import Data.Default.Class
+import Data.Monoid(Monoid(..), (<>))
+import Data.Default.Class(Default(..))
 
-import Data.Apiary.Param
-import Data.Apiary.Method
+import Data.Apiary.Param(QueryRep(Strict, Nullable, Check, NoValue), strategyInfo)
+import Data.Apiary.Method(renderMethod)
 import Data.Apiary.Document
+    ( Route(Path, Fetch, Rest, Any, End), Documents(..)
+    , QueryDoc(..), MethodDoc(..), PathDoc(..)
+    )
 
-import Text.Blaze.Html
+import Text.Blaze.Html(Html, toHtml, (!), preEscapedToHtml, toValue)
 import Text.Blaze.Internal(attribute)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -95,7 +98,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
         ]
 
     embeds = $( do
-        let embed f p = runIO (readFile p) >>= \c -> [|$(varE f) $ preEscapedToHtml (c :: String)|]
+        let embed f p = TH.runIO (readFile p) >>= \c -> [|$(TH.varE f) $ preEscapedToHtml (c :: String)|]
         [| mconcat 
             [ $(embed 'H.style  "static/bootstrap.min.css")
             , $(embed 'H.script "static/jquery-2.1.1.min.js")
@@ -106,9 +109,11 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs =
     headH = mconcat
         [ H.title (toHtml documentTitle)
         , if documentUseCDN then cdns else embeds
-        , $(runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        , $(addDependentFile "static/api-documentation.min.js"  >> runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        , $(addDependentFile "static/api-documentation.min.css" >> runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
+        , $(TH.runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+        -- , H.script "" ! A.src "/static/api-documentation.js"
+        -- , H.link ! A.rel "stylesheet" ! A.href "/static/api-documentation.css"
+        , $(TH.addDependentFile "static/api-documentation.min.js"  >> TH.runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
+        , $(TH.addDependentFile "static/api-documentation.min.css" >> TH.runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
         , maybe mempty analytics documentGoogleAnalytics
         ]
 
