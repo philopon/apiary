@@ -1,5 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE LambdaCase #-}
@@ -69,7 +70,7 @@ import qualified Data.Apiary.Dict as Dict
 
 import Data.Apiary.Param
     ( ReqParam, StrategyRep(..), QueryRep(NoValue)
-    , Strategy(SNext, strategy, strategyRep), reqParamRep, reqParams
+    , Strategy(..), reqParamRep, reqParams
     , pFirst, pOne, pOption, pOptional, pMany, pSome
     )
 import Data.Apiary.Method(Method)
