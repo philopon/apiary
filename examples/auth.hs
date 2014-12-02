@@ -4,18 +4,17 @@
 import Web.Apiary
 import Web.Apiary.Cookie
 import Web.Apiary.Authenticate
-import Web.Apiary.ClientSession
+import Web.Apiary.Session.ClientSession
 import Network.Wai.Handler.Warp
 
-sc :: SessionConfig
-sc = def { sessionPath = Just "/", sessionSecure = False }
+sc :: ClientSessionConfig
+sc = def { csCookiePath = Just "/", csCookieSecure = False }
 
 main :: IO ()
-main = runApiaryWith (run 3000) (initSession def +> initAuth def {authSessionConfig = sc}) def $ do
+main = runApiaryWith (run 3000) (initClientSession pOpenId sc +> initAuth def) def $ do
 
     root . method GET $ do
-        authorized [key|auth|] . action $ do
-            liftIO $ print "a"
+        authorized . action $ do
             contentType "text/html"
 
             bytes "your id: "
@@ -23,7 +22,6 @@ main = runApiaryWith (run 3000) (initSession def +> initAuth def {authSessionCon
             appendBytes " \n<a href=\"/logout\">logout</a>"
 
         cookie [key|message|] (pOption pByteString) . action $ do
-            liftIO $ print "b"
             contentType "text/html"
 
             reset
@@ -37,7 +35,6 @@ main = runApiaryWith (run 3000) (initSession def +> initAuth def {authSessionCon
             deleteCookie "message"
 
     [capture|/logout|] . method GET . action $ do
-        liftIO $ print "c"
         authLogout
         setCookie def { setCookieName = "message", setCookieValue = "logout done, bye." }
         redirect "/"

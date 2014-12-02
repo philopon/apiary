@@ -11,8 +11,6 @@
 
 module Web.Apiary.Authenticate.Internal where
 
-import GHC.Generics(Generic)
-
 import Control.Applicative
 import Control.Monad.Trans.Resource
 import Control.Monad.Apiary.Filter
@@ -23,29 +21,25 @@ import qualified Network.HTTP.Client as Client
 
 import Web.Authenticate.OpenId
 import Web.Apiary
-import Web.Apiary.ClientSession
+import Web.Apiary.Session
 import qualified Web.Apiary.Wai as Wai
 
-import Data.Binary as Binary
+import Data.Serialize as Serialize
 import Data.Apiary.Extension
 import Data.Data (Data)
 import Data.Maybe
 import Data.List
 import Data.Apiary.Compat
-import Data.Apiary.Param
 import Data.Default.Class
 
 import Blaze.ByteString.Builder
 import qualified Data.ByteString.Char8 as S
-import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 
 
 data AuthConfig = AuthConfig
-    { authSessionName   :: S.ByteString
-    , authSuccessPage   :: S.ByteString
-    , authSessionConfig :: SessionConfig
+    { authSuccessPage   :: S.ByteString
     , authUrl           :: T.Text
 
     , authPrefix        :: [T.Text]
@@ -62,7 +56,7 @@ data Provider = Provider
     }
 
 instance Default AuthConfig where
-    def = AuthConfig "_ID" "/" def "http://localhost:3000" ["auth"] ["return_to"] ["logout"] $ 
+    def = AuthConfig "/" "http://localhost:3000" ["auth"] ["return_to"] ["logout"] $ 
         [ ("google", Provider "https://www.google.com/accounts/o8/id" Nothing [])
         , ("yahoo",  Provider "http://me.yahoo.com/"                  Nothing [])
         ]
@@ -73,14 +67,14 @@ data Auth = Auth
     }
 instance Extension Auth
 
-authHandler :: (Monad m, MonadIO actM, Has Session exts)
+authHandler :: (Monad m, MonadIO actM, Has (Session OpenId actM) exts)
             => Auth -> ApiaryT exts prms actM m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
     pfxPath p = function id (\d r -> if p `isPrefixOf` Wai.pathInfo r then Just d else Nothing)
 
     retH = pfxPath (authPrefix config ++ authReturnToPath config) . method GET . action $
-        returnAction (authSessionConfig config) manager (authSessionName config) (authSuccessPage config)
+        returnAction manager (authSuccessPage config)
 
     go name Provider{..} = pfxPath (authPrefix config ++ [name]) . method GET . action $
         authAction manager providerUrl returnTo realm parameters
@@ -99,8 +93,9 @@ authRoutes auth =
     map (\(k,_) -> (k, toByteString . HTTP.encodePathSegments $ authPrefix (config auth) ++ [k])) $
     providers (config auth)
 
-authLogout :: Monad m => Auth -> ActionT exts prms m ()
-authLogout auth = deleteCookie (authSessionName $ config auth)
+-- | delete session. since 0.7.0.0.
+authLogout :: (Has (Session OpenId m) exts, Monad m) => ActionT exts prms m ()
+authLogout = deleteSession (Proxy :: Proxy OpenId)
 
 authAction :: MonadIO m => Client.Manager -> T.Text -> T.Text
            -> Maybe T.Text -> [(T.Text, T.Text)] -> ActionT exts prms m ()
@@ -112,19 +107,15 @@ data OpenId_ a = OpenId_
     { opLocal :: a
     , params  :: [(a, a)]
     , claimed :: Maybe a
-    } deriving (Show, Read, Eq, Ord, Data, Typeable, Generic, Functor)
-instance Binary (OpenId_ S.ByteString)
+    } deriving (Show, Read, Eq, Ord, Data, Typeable, Functor)
 
-instance Binary (OpenId_ T.Text) where
-    get   = fmap (fmap T.decodeUtf8) (Binary.get :: Get (OpenId_ S.ByteString))
-    put g = put (fmap T.encodeUtf8 g)
+instance Serialize.Serialize (OpenId_ S.ByteString) where
+    put (OpenId_ loc prm cld) = put loc >> put prm >> put cld
+    get = OpenId_ <$> get <*> get <*> get
 
-instance Query (OpenId_ T.Text) where
-    readQuery Nothing  = Nothing
-    readQuery (Just s) = case decodeOrFail (L.fromStrict s) of
-        Right (s',_,a) | L.null s' -> Just a
-        _                          -> Nothing
-    qTypeRep = typeRep
+instance Serialize.Serialize (OpenId_ T.Text) where
+    get = fmap (fmap T.decodeUtf8) Serialize.get
+    put = put . fmap T.encodeUtf8
 
 type OpenId = OpenId_ T.Text
 
@@ -134,13 +125,12 @@ toOpenId r = OpenId_
     (oirParams r)
     (identifier <$> oirClaimed r)
 
-returnAction :: (MonadIO m, Has Session exts)
-             => SessionConfig -> Client.Manager
-             -> S.ByteString -> S.ByteString -> ActionT exts prms m ()
-returnAction sc mgr ky to = do
+returnAction :: (MonadIO m, Has (Session OpenId m) exts)
+             => Client.Manager -> S.ByteString -> ActionT exts prms m ()
+returnAction mgr to = do
     q <- Wai.queryString <$> getRequest
     r <- liftIO . runResourceT $ authenticateClaimed (mapMaybe queryElem q) mgr
-    setSessionWith sc ky . L.toStrict $ encode (toOpenId r)
+    setSession Proxy (toOpenId r)
     redirect to
   where
     queryElem (_, Nothing) = Nothing
