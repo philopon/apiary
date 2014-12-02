@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -335,7 +336,7 @@ newtype StrategyRep = StrategyRep
 
 class Strategy (w :: * -> *) where
     type SNext w (k::Symbol) a (prms :: [Elem]) :: [Elem]
-    strategy :: (NotMember k prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
+    strategy :: (KnownSymbol k, NotMember k prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
     strategyRep :: w a -> StrategyRep
 
 data First a = First

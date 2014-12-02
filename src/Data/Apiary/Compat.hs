@@ -32,6 +32,7 @@ type KnownSymbol (n :: Symbol) = SingRep n String
 
 symbolVal :: forall n proxy. KnownSymbol n => proxy n -> String
 symbolVal _ = fromSing (sing :: Sing n)
+{-# INLINE symbolVal #-}
 
 data Proxy a = Proxy
 #endif

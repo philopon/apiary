@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 
@@ -13,6 +14,7 @@ import Control.Monad
 import Control.Monad.Apiary.Internal
 import Control.Monad.Apiary.Action
 
+import Data.Apiary.Compat
 import Data.Apiary.Dict
 import Data.Apiary.Document.Internal
 
@@ -25,7 +27,7 @@ function d f = focus d $ getParams >>= \p -> getRequest >>= \r -> case f p r of
     Just c' -> return c'
 
 -- | filter and append argument.
-function' :: (Monad actM, NotMember key prms) => (Doc -> Doc) -> (Request -> Maybe (proxy key, prm))
+function' :: (KnownSymbol key, Monad actM, NotMember key prms) => (Doc -> Doc) -> (Request -> Maybe (proxy key, prm))
           -> ApiaryT exts (key := prm ': prms) actM m () -> ApiaryT exts prms actM m ()
 function' d f = function d $ \c r -> f r >>= \(k, p) -> return $ insert k p c
 
