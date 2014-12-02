@@ -1,10 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.Memcached
     ( Memcached, CacheConfig(..), MemcachedConfig(..)
@@ -18,38 +17,43 @@ module Web.Apiary.Memcached
     , cache, cacheMaybe
     ) where
 
-import Web.Apiary
-import Web.Apiary.Heroku
+import Web.Apiary(MonadIO(..))
+import Web.Apiary.Heroku(Heroku, getHerokuEnv')
 
-import Control.Applicative
-import Control.Monad.Trans.Maybe
-import Control.Monad.Trans.Control
+import Control.Applicative((<$>), (<*>), (<|>))
+import Control.Monad.Trans.Maybe(MaybeT(MaybeT, runMaybeT))
+import Control.Monad.Trans.Control(MonadBaseControl, control)
+import Control.Monad.Apiary.Action(ActionT)
 
-import Data.Default.Class
+import Data.Default.Class(Default(..))
 import Data.Apiary.Extension
-import Data.Apiary.Compat
+    (Has, Extension, Initializer', initializerBracket'
+    , Initializer, initializerBracket, getExtension, getExt
+    )
+import Data.Apiary.Compat(Proxy(Proxy))
 import qualified Data.Serialize as Serialize
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Read as T
 
-import Database.Memcached.Binary.IO
+import qualified Database.Memcached.Binary.IO as Memcached
+import qualified Database.Memcached.Binary.IO as IO
 import qualified Database.Memcached.Binary.Maybe as Maybe
 
-data Memcached = Memcached Connection MemcachedConfig
+data Memcached = Memcached Memcached.Connection MemcachedConfig
 instance Extension Memcached
 
 data CacheConfig = CacheConfig
-    { cacheFlags        :: Key -> Flags
-    , cacheExpiry       :: Expiry
-    , cacheNotHitExpiry :: Expiry
+    { cacheFlags        :: Memcached.Key -> Memcached.Flags
+    , cacheExpiry       :: Memcached.Expiry
+    , cacheNotHitExpiry :: Memcached.Expiry
     }
 
 instance Default CacheConfig where
     def = CacheConfig (\_ -> 0) 0 0
 
 data MemcachedConfig = MemcachedConfig
-    { connectInfo :: ConnectInfo
+    { connectInfo :: Memcached.ConnectInfo
     , cacheConfig :: Maybe CacheConfig
     }
 
@@ -58,7 +62,7 @@ instance Default MemcachedConfig where
 
 initMemcached :: MonadBaseControl IO m => MemcachedConfig -> Initializer' m Memcached
 initMemcached cfg = initializerBracket' $ \m -> control $ \run -> 
-    withConnection (connectInfo cfg) (\c -> run $ m (Memcached c cfg))
+    Memcached.withConnection (connectInfo cfg) (\c -> run $ m (Memcached c cfg))
 
 getHerokuConfig :: T.Text -> MemcachedConfig -> Heroku -> MaybeT IO MemcachedConfig
 getHerokuConfig pfx ci exts = do
@@ -69,13 +73,13 @@ getHerokuConfig pfx ci exts = do
     let (hst, prtTxt) = T.breakOnEnd ":" svr
     prt <- either fail (return . fst) $ T.decimal prtTxt
 
-    let auth = Plain <$> (T.encodeUtf8 <$> usr) <*> (T.encodeUtf8 <$> pwd)
+    let auth = Memcached.Plain <$> (T.encodeUtf8 <$> usr) <*> (T.encodeUtf8 <$> pwd)
 
     return ci {connectInfo = (connectInfo ci)
-        { connectHost = T.unpack $ T.init hst
-        , connectPort = PortNumber prt
-        , connectAuth =
-            maybe id (\a -> (a:)) auth $ connectAuth (connectInfo ci)
+        { Memcached.connectHost = T.unpack $ T.init hst
+        , Memcached.connectPort = Memcached.PortNumber prt
+        , Memcached.connectAuth =
+            maybe id (\a -> (a:)) auth $ Memcached.connectAuth (connectInfo ci)
         }}
 
 -- | initialize memcached extension using heroku service.
@@ -92,16 +96,17 @@ initHerokuMemcached cfg = initializerBracket $ \exts m -> control $ \run -> do
     cfg'  <- fmap (maybe cfg id) . runMaybeT $
         getHerokuConfig "MEMCACHIER"     cfg hc <|>
         getHerokuConfig "MEMCACHEDCLOUD" cfg hc
-    withConnection (connectInfo cfg') (\c -> run $ m (Memcached c cfg'))
+    Memcached.withConnection (connectInfo cfg') (\c -> run $ m (Memcached c cfg'))
 
 memcached :: (Has Memcached exts, MonadIO m)
-          => (Connection -> IO a) -> ActionT exts prms m a
+          => (Memcached.Connection -> IO a) -> ActionT exts prms m a
 memcached q = do
     Memcached conn _ <- getExt Proxy
     liftIO $ q conn
 
 cache :: (MonadIO m, Has Memcached exts)
-      => Key -> ActionT exts prms m Value -> ActionT exts prms m Value
+      => Memcached.Key -> ActionT exts prms m Memcached.Value
+      -> ActionT exts prms m Memcached.Value
 cache ky actn = do
     Memcached conn cfg <- getExt Proxy
     case cacheConfig cfg of
@@ -110,7 +115,7 @@ cache ky actn = do
             Just cr -> return cr
             Nothing -> do
                 ar <- actn
-                liftIO $ set (cacheFlags cc ky)
+                liftIO $ IO.set (cacheFlags cc ky)
                     (cacheExpiry cc) ky ar conn
                 return ar
 
@@ -120,8 +125,8 @@ getRight (Right a) = Just a
 {-# INLINE getRight #-}
 
 cacheMaybe :: (MonadIO m, Has Memcached exts)
-           => Key -> ActionT exts prms m (Maybe Value)
-           -> ActionT exts prms m (Maybe Value)
+           => Memcached.Key -> ActionT exts prms m (Maybe Memcached.Value)
+           -> ActionT exts prms m (Maybe Memcached.Value)
 cacheMaybe ky actn = do
     Memcached conn cfg <- getExt Proxy
     case cacheConfig cfg of
@@ -130,10 +135,11 @@ cacheMaybe ky actn = do
             Just cr -> return . getRight $ Serialize.decodeLazy cr
             Nothing -> actn >>= \case
                 Nothing -> do
-                    liftIO $ set (cacheFlags cc ky)
-                        (cacheNotHitExpiry cc) ky (Serialize.encodeLazy (Nothing :: Maybe Value)) conn
+                    liftIO $ IO.set (cacheFlags cc ky)
+                        (cacheNotHitExpiry cc) ky 
+                        (Serialize.encodeLazy (Nothing :: Maybe Memcached.Value)) conn
                     return Nothing
                 Just ar -> do
-                    liftIO $ set (cacheFlags cc ky)
+                    liftIO $ IO.set (cacheFlags cc ky)
                         (cacheExpiry cc) ky (Serialize.encodeLazy $ Just ar) conn
                     return (Just ar)

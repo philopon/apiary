@@ -12,13 +12,14 @@ module Web.Apiary.Session.ClientSession
     , module Web.Apiary.Session
     ) where
 
-import Web.Apiary
+import Web.Apiary(MonadIO(..))
 import Web.Apiary.Session
 import Web.Apiary.Session.Internal
-import Web.Apiary.Cookie
-import Data.Apiary.Extension
+    (Session(Session), SessionBackend(backendMiddleware', genBackendModify))
+import Web.Apiary.Cookie(getCookies, deleteCookie, SetCookie(..), setCookie)
+import Data.Apiary.Extension(Initializer', initializer')
 
-import Control.Monad.Apiary.Action
+import Control.Monad.Apiary.Action(insertVault, lookupVault, deleteVault)
 import Control.Applicative ((<$))
 
 import Foreign.C.Types(CTime(..))
@@ -30,7 +31,7 @@ import Data.Time.Clock.POSIX(posixSecondsToUTCTime)
 import qualified Data.ByteString as S
 import qualified Data.Serialize as Serialize
 import qualified Data.Vault.Lazy as Vault
-import Data.Default.Class
+import Data.Default.Class(Default(def))
 
 import qualified Web.ClientSession as CS
 

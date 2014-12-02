@@ -1,10 +1,5 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -22,23 +17,26 @@ module Web.Apiary.Cookie
     , module Web.Cookie
     ) where
 
-import Control.Applicative
-import Control.Monad.Apiary.Action
+import Control.Applicative((<$>))
 
-import Web.Apiary.Wai
-import Web.Apiary
+import qualified Network.Wai as Wai
+
 import Web.Cookie (SetCookie(..))
 import qualified Web.Cookie as Cookie
 
-import Data.Apiary.Param
+import Control.Monad.Apiary(ApiaryT)
+import Control.Monad.Apiary.Action(ActionT, getHeaders, addHeader)
 import Control.Monad.Apiary.Filter
 
-import Data.Maybe
-import Data.Time
-import Data.Monoid
-import Data.Apiary.Compat
-import Blaze.ByteString.Builder
-import Text.Blaze.Html
+import Data.Apiary.Compat(KnownSymbol, symbolVal)
+import Data.Apiary.Dict(NotMember)
+import Data.Apiary.Param(Strategy(..))
+
+import Data.Maybe(mapMaybe)
+import Data.Time(UTCTime(UTCTime), Day(ModifiedJulianDay))
+import Data.Monoid((<>))
+import Blaze.ByteString.Builder(toByteString)
+import Text.Blaze.Html(toHtml)
 import qualified Data.ByteString as S
 import qualified Data.ByteString.Char8 as SC
 
@@ -66,11 +64,11 @@ cookie :: (Strategy w, Monad actM, NotMember k prms, KnownSymbol k)
 cookie k p = function (DocPrecondition $ toHtml (symbolVal k) <> " cookie required") $ \l r ->
     strategy p k (map (Just . snd) . filter ((SC.pack (symbolVal k) ==) . fst) $ cookie' r) l
 
-cookie' :: Request -> [(S.ByteString, S.ByteString)]
+cookie' :: Wai.Request -> [(S.ByteString, S.ByteString)]
 cookie' = 
     concatMap Cookie.parseCookies .
     mapMaybe (cond (("cookie" ==) . fst) (Just . snd) (const Nothing)) .
-    requestHeaders
+    Wai.requestHeaders
 
 getCookies :: Monad m => ActionT exts prms m [(S.ByteString, S.ByteString)]
 getCookies =
@@ -80,10 +78,11 @@ getCookies =
 
 -- | delete cookie. since 0.6.1.0.
 deleteCookie :: Monad m => S.ByteString -> ActionT exts prms m ()
-deleteCookie k = setCookie def { setCookieName    = k 
-                               , setCookieExpires = Just $ UTCTime (ModifiedJulianDay 0) 0
-                               , setCookieMaxAge  = Just 0
-                               }
+deleteCookie k = setCookie Cookie.def
+    { setCookieName    = k 
+    , setCookieExpires = Just $ UTCTime (ModifiedJulianDay 0) 0
+    , setCookieMaxAge  = Just 0
+    }
 
 -- | set raw cookie header.
 setCookie :: Monad m => SetCookie -> ActionT exts prms m ()

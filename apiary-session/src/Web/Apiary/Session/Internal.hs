@@ -7,18 +7,20 @@ module Web.Apiary.Session.Internal
     , SessionBackend(..)
     ) where
 
-import Control.Monad.Apiary.Action
-import Web.Apiary.Wai
+import Control.Monad.Apiary.Action(ActionT)
+import qualified Network.Wai as Wai
 import Data.Apiary.Extension
+    (Extension(extMiddleware, extMiddleware'), Middleware')
 
 data Session sess m = forall backend. SessionBackend backend sess m => Session
     { sessionBackend :: backend }
 
 instance Extension (Session sess m) where
+    extMiddleware  (Session back) = backendMiddleware  back
     extMiddleware' (Session back) = backendMiddleware' back
 
 class Monad m => SessionBackend backend sess m | backend -> sess, backend -> m where
-    backendMiddleware :: backend -> Middleware
+    backendMiddleware :: backend -> Wai.Middleware
     backendMiddleware _ = id
     {-# INLINE backendMiddleware #-}
 
