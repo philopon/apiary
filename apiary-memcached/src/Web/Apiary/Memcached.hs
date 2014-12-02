@@ -24,12 +24,11 @@ import Web.Apiary.Heroku
 import Control.Applicative
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Control
-import Control.Monad.Apiary.Action
 
 import Data.Default.Class
 import Data.Apiary.Extension
 import Data.Apiary.Compat
-import qualified Data.Binary as B
+import qualified Data.Serialize as Serialize
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Read as T
@@ -115,6 +114,11 @@ cache ky actn = do
                     (cacheExpiry cc) ky ar conn
                 return ar
 
+getRight :: Either l r -> Maybe r
+getRight (Left  _) = Nothing
+getRight (Right a) = Just a
+{-# INLINE getRight #-}
+
 cacheMaybe :: (MonadIO m, Has Memcached exts)
            => Key -> ActionT exts prms m (Maybe Value)
            -> ActionT exts prms m (Maybe Value)
@@ -123,13 +127,13 @@ cacheMaybe ky actn = do
     case cacheConfig cfg of
         Nothing -> actn
         Just cc -> liftIO (Maybe.get_ ky conn) >>= \case
-            Just cr -> return $ B.decode cr
+            Just cr -> return . getRight $ Serialize.decodeLazy cr
             Nothing -> actn >>= \case
                 Nothing -> do
                     liftIO $ set (cacheFlags cc ky)
-                        (cacheNotHitExpiry cc) ky (B.encode (Nothing :: Maybe Value)) conn
+                        (cacheNotHitExpiry cc) ky (Serialize.encodeLazy (Nothing :: Maybe Value)) conn
                     return Nothing
                 Just ar -> do
                     liftIO $ set (cacheFlags cc ky)
-                        (cacheExpiry cc) ky (B.encode $ Just ar) conn
+                        (cacheExpiry cc) ky (Serialize.encodeLazy $ Just ar) conn
                     return (Just ar)
