@@ -38,5 +38,5 @@ symbolVal _ = fromSing (sing :: Sing n)
 data Proxy (a :: k) = Proxy
 #endif
 
--- | Symbol Proxy for ghc-7.6.
+-- | Symbol Proxy for ghc-7.6 Template Haskell.
 data SProxy (a :: Symbol) = SProxy

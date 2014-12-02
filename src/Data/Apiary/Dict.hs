@@ -45,15 +45,15 @@ class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
 
     -- | get value of key.
     --
-    -- > ghci> get (SProxy :: SProxy "bar") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "bar") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > 0.5
     --
-    -- > ghci> get (SProxy :: SProxy "foo") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "foo") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > 12
     --
     -- ghc raise compile error when key is not exists.
     --
-    -- > ghci> get (SProxy :: SProxy "baz") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "baz") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > <interactive>:15:1:
     -- >     No instance for (Member "baz" a0 '[]) arising from a use of ‘it’
     -- >     In the first argument of ‘print’, namely ‘it’
@@ -97,33 +97,33 @@ empty = Dict H.empty
 
 -- | insert element.
 -- 
--- > ghci> :t insert (SProxy :: SProxy "foo") (12 :: Int) empty
--- > insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "foo") (12 :: Int) empty
+-- > insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- >   :: Dict '["foo" ':= Int]
 -- 
--- > ghci> :t insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
--- > insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
+-- > insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- >   :: Dict '["bar" ':= Double, "foo" ':= Int]
 --
 -- ghc raise compile error when insert duplicated key(> ghc-7.8 only).
 --
--- > ghci> :t insert (SProxy :: SProxy "foo") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "foo") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- > 
 -- > <interactive>:1:1:
 -- >     Couldn't match type ‘'True’ with ‘'False’
 -- >     Expected type: 'False
 -- >       Actual type: Member' "foo" '["foo" ':= Int]
--- >     In the expression: insert (SProxy :: SProxy "foo") (0.5 :: Double)
+-- >     In the expression: insert (Proxy :: Proxy "foo") (0.5 :: Double)
 -- >     In the expression:
--- >       insert (SProxy :: SProxy "foo") (0.5 :: Double)
--- >       $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- >       insert (Proxy :: Proxy "foo") (0.5 :: Double)
+-- >       $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 
 insert :: (KnownSymbol k, NotMember k kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
 insert p v (Dict d) = Dict (H.insert (T.pack $ symbolVal p) (unsafeCoerce v) d)
 
 -- | construct string literal proxy.
 --
--- prop> [key|foo|] == (SProxy :: SProxy "foo")
+-- prop> [key|foo|] == (Proxy :: Proxy "foo")
 --
 key :: QuasiQuoter
 key = QuasiQuoter
