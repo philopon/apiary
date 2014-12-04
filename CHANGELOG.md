@@ -1,4 +1,5 @@
 # 1.2.0
+* good bye wai-2.
 * add Web.Apiary.Develop module for develop static file.
 * *change* response body function behaviour(append to set).
 * add append* functions.
