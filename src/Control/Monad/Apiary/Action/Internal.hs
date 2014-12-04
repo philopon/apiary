@@ -534,7 +534,6 @@ file f p = do
             maybe (return ()) (addHeader "Last-Modified" . formatHTTPDate) t
             file' f p
 
-{-# WARNING devFile' "use file' in production." #-}
 devFile' :: MonadIO m => FilePath -> ActionT exts prms m ()
 devFile' f = liftIO (Files.fileExist f) >>= \e ->
     if e
@@ -542,7 +541,6 @@ devFile' f = liftIO (Files.fileExist f) >>= \e ->
     else mzero
 
 -- | send file contents as lazy bytestring response. since v1.1.4.
-{-# WARNING devFile "use file in production." #-}
 devFile :: MonadIO m => FilePath -> ActionT exts prms m ()
 devFile f = do
     mime <- mimeType <$> getConfig

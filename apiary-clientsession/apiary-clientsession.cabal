@@ -4,6 +4,8 @@ synopsis:            clientsession support for apiary web framework.
 description:
   examples:
     .
+    <https://github.com/philopon/apiary/blob/master/examples/session.hs>
+    .
     <https://github.com/philopon/apiary/blob/master/examples/auth.hs>
 license:             MIT
 license-file:        LICENSE

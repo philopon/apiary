@@ -56,7 +56,7 @@ instance Default ClientSessionConfig where
         (Just $ 7 * 24 * 60 * 60) (liftIO CS.getDefaultKey)
 
 initClientSession :: (MonadIO m, Serialize.Serialize sess)
-                  => proxy sess 
+                  => proxy sess -- ^ session type to initialize.
                   -> ClientSessionConfig
                   -> Initializer' m (Session sess m)
 initClientSession _ cfg = initializer' $ do
