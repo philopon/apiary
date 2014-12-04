@@ -1,11 +1,11 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE CPP #-}
 
 -- | compatibility module for ghc-7.8 & ghc-7.6.
 module Data.Apiary.Compat
@@ -33,9 +33,10 @@ type KnownSymbol (n :: Symbol) = SingRep n String
 
 symbolVal :: forall n proxy. KnownSymbol n => proxy n -> String
 symbolVal _ = fromSing (sing :: Sing n)
+{-# INLINE symbolVal #-}
 
-data Proxy a = Proxy
+data Proxy (a :: k) = Proxy
 #endif
 
--- | Symbol Proxy for ghc-7.6.
+-- | Symbol Proxy for ghc-7.6 Template Haskell.
 data SProxy (a :: Symbol) = SProxy

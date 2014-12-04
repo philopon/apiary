@@ -34,7 +34,7 @@ main = runApiaryWith (run 3000) (initLogger def  +> initPersistPool (withSqliteP
 
         -- logging.
         logging "root accessed.\n"
-        mapM_ (\a -> showing a >> char '\n' ) =<< param [key|query|]
+        mapM_ (\a -> appendShowing a >> appendChar '\n' ) =<< param [key|query|]
 
     -- /:Int : numberd counter
     [capture|/i::Int|] $ do
@@ -46,7 +46,7 @@ main = runApiaryWith (run 3000) (initLogger def  +> initPersistPool (withSqliteP
             -- execute persistent
             c <- runSql $ count [NumberNumber ==. i]
             showing c
-            char '\n'
+            appendChar '\n'
 
         -- POST: increment counter.
         method POST . action $ do

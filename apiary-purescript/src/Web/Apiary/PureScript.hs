@@ -1,6 +1,5 @@
-{-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE Rank2Types #-}
 
 module Web.Apiary.PureScript
     ( I.PureScriptConfig(..)
@@ -8,11 +7,11 @@ module Web.Apiary.PureScript
     , pureScript
     ) where
 
-import Web.Apiary
+import Web.Apiary(MonadIO(..))
+import Control.Monad.Apiary.Action(ActionT)
 import qualified Web.Apiary.PureScript.Internal as I
-import Data.Apiary.Extension
-import Data.Apiary.Compat
-import Control.Monad.Apiary.Action
+import Data.Apiary.Extension(Initializer', initializer', Has, getExt)
+import Data.Apiary.Compat(Proxy(..))
 
 initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
 initPureScript = initializer' . I.makePureScript

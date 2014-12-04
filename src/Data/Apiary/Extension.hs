@@ -1,12 +1,11 @@
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 
 module Data.Apiary.Extension
     ( Has(getExtension)
-    , MonadHas(..)
+    , MonadExts(..), getExt
+    , Middleware'
     , Extension(..)
     , Extensions
     , noExtension
@@ -20,10 +19,13 @@ module Data.Apiary.Extension
     , (+>)
     ) where
 
-import Data.Apiary.Extension.Internal
+import Control.Monad(liftM)
+import Data.Apiary.Extension.Internal(Has, getExtension, Initializer(Initializer))
+import Control.Monad.Apiary.Action.Internal
+    (MonadExts(getExts), Extension(..), Extensions(AddExtension), Middleware')
 
-class MonadHas e m where
-    getExt :: proxy e -> m e
+getExt :: (MonadExts es m, Has e es) => proxy e -> m e
+getExt p = getExtension p `liftM` getExts
 
 type Initializer' m a = forall i. Initializer m i (a ': i)
 

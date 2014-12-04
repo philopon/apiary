@@ -17,7 +17,7 @@ main = runHerokuWith run (M.initHerokuMongoDB def) def $ do
         log_ <- M.access $ do
             M.insert_ "log" ["type" M.=: ("webrq" :: String),  "time" M.=: time]
             M.find (M.select [] "log") >>= M.rest
-        mapM_ (\l -> showing l >> char '\n') log_
+        mapM_ (\l -> appendShowing l >> char '\n') log_
 
     [capture|/flush|] . action $ M.access $ M.delete (M.select [] "log")
 

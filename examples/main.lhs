@@ -75,7 +75,7 @@ when execute 'stop' action, send current status and drop after actions.
 >         contentType "text/plain"
 >         bytes "stop the handler!\n"
 >         when (odd i) $ stop
->         bytes "didn't stop handler...\n"
+>         appendBytes "didn't stop handler...\n"
 >
 
 filters can freely nesting.
@@ -86,7 +86,7 @@ filters can freely nesting.
 >             (greet, first, last_) <- [params|greet, first, last|]
 >             contentType "text/plain"
 >             lazyBytes greet >> bytes "!! "
->             lazyBytes first >> char ' ' >> lazyBytes last_
+>             appendLazyBytes first >> appendChar ' ' >> appendLazyBytes last_
 
 $ curl localhost:3000
 Hello World.

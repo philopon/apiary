@@ -80,7 +80,7 @@
 >                 logging "html page is accessed.\n"
 >                 bytes "<h1>"
 >                 helloAction
->                 bytes "</h1>"
+>                 appendBytes "</h1>"
 > 
 >     [capture|/api|] . document "api documentation" . action $ do
 >         logging "api documentation page is accessed.\n"
@@ -110,6 +110,6 @@
 
 
 
->     bytes "Hello, "
->     bytes f
->     maybe (return ()) (\a -> bytes " " >> bytes a) l
+>     appendBytes "Hello, "
+>     appendBytes f
+>     maybe (return ()) (\a -> appendChar ' ' >> appendBytes a) l

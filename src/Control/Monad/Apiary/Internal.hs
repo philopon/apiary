@@ -1,40 +1,39 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE ImpredicativeTypes #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ImpredicativeTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DataKinds #-}
 
 module Control.Monad.Apiary.Internal where
 
-import Network.Wai
+import qualified Network.Wai as Wai
 
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans
+import Control.Applicative(Applicative(..), (<$>))
+import Control.Monad(liftM, MonadPlus(..))
+import Control.Monad.Trans(MonadIO(liftIO), MonadTrans(lift))
 import Control.Monad.Trans.Control
-import Control.Monad.Base
+    ( MonadTransControl(..), MonadBaseControl(..)
+    , ComposeSt, defaultLiftBaseWith, defaultRestoreM
+    )
+import Control.Monad.Base(MonadBase(..))
 import Control.Monad.Apiary.Action.Internal
+    (ActionT, ApiaryConfig, getRequest
+    , modifyState, actionFetches, Extensions(NoExtension)
+    , execActionT, hoistActionT, applyDict, rootPattern
+    )
 
-import Data.List
 import qualified Data.Apiary.Dict as D
-import Data.Apiary.Extension
-import Data.Apiary.Extension.Internal
-import Data.Apiary.Document.Internal
-import Data.Monoid hiding (All)
-import Text.Blaze.Html
+import Data.Apiary.Method(Method, renderMethod)
+import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
+import Data.Apiary.Extension.Internal(Initializer(..), allMiddleware, allMiddleware')
+import Data.Apiary.Document.Internal(Doc(..), docsToDocuments)
+import Data.Monoid(Monoid(..), (<>))
+
+import Data.List(foldl')
+import Text.Blaze.Html(Html)
 import qualified Data.Text as T
 import qualified Data.ByteString as S
-import Data.Apiary.Method
 import qualified Data.HashMap.Strict as H
 
 data Router exts actM = Router
@@ -43,6 +42,8 @@ data Router exts actM = Router
     , restMatch  :: Maybe (PathMethod exts actM)
     , pathMethod :: PathMethod exts actM
     }
+
+type ActionT' exts actM a = ActionT exts '[] actM a
 
 data PathMethod exts actM = PathMethod
     { methodMap :: H.HashMap S.ByteString (ActionT' exts actM ())
@@ -100,7 +101,7 @@ initialEnv conf = ApiaryEnv (return D.empty) Nothing id conf id
 data ApiaryWriter exts actM = ApiaryWriter
     { writerRouter :: Router exts actM -> Router exts actM
     , writerDoc    :: [Doc] -> [Doc]
-    , writerMw     :: Middleware
+    , writerMw     :: Wai.Middleware
     }
 
 instance Monoid (ApiaryWriter exts actM) where
@@ -121,18 +122,18 @@ apiaryT :: Monad m
 apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a, w) -> cont a w
 
 routerToAction :: Monad actM => Router exts actM -> ActionT' exts actM ()
-routerToAction router = getRequest' >>= go
+routerToAction router = getRequest >>= go
   where
-    go req = loop id router (pathInfo req)
+    go req = loop id router (Wai.pathInfo req)
       where
-        method = requestMethod req
+        method = Wai.requestMethod req
 
         pmAction nxt (PathMethod mm am) =
             let a = maybe nxt id am
             in maybe a (`mplus` a) $ H.lookup method mm
 
         loop fch (Router _ _ anp pm) [] = do
-            modifyState' (\s -> s { actionFetches = fch [] } )
+            modifyState (\s -> s { actionFetches = fch [] } )
             pmAction (maybe mzero (pmAction mzero) anp) pm 
 
         loop fch (Router c mbcp anp _) (p:ps) = case mbcp of
@@ -140,7 +141,7 @@ routerToAction router = getRequest' >>= go
             Just cp -> cld $ loop (fch . (p:)) cp ps `mplus` ana
           where
             ana = do
-                modifyState' (\s -> s {actionFetches = fch $ p:ps} ) 
+                modifyState (\s -> s {actionFetches = fch $ p:ps} ) 
                 maybe mzero (pmAction mzero) anp
             cld nxt = case H.lookup p c of
                 Nothing -> nxt
@@ -149,7 +150,7 @@ routerToAction router = getRequest' >>= go
 -- | run Apiary monad.
 runApiaryTWith :: (Monad actM, Monad m)
                => (forall b. actM b -> IO b)
-               -> (Application -> m a)
+               -> (Wai.Application -> m a)
                -> Initializer m '[] exts
                -> ApiaryConfig
                -> ApiaryT exts '[] actM m ()
@@ -159,11 +160,12 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
     let doc = docsToDocuments $ writerDoc wtr []
         rtr = writerRouter wtr emptyRouter
         mw  = allMiddleware exts . writerMw wtr
-        app = mw $ execActionT' conf exts doc (hoistActionT' runAct $ routerToAction rtr)
+        mw' = allMiddleware' exts
+        app = mw $ execActionT conf exts doc (mw' $ hoistActionT runAct $ routerToAction rtr)
     run $! app
 
 runApiaryWith :: Monad m
-              => (Application -> m a)
+              => (Wai.Application -> m a)
               -> Initializer m '[] exts
               -> ApiaryConfig
               -> ApiaryT exts '[] IO m ()
@@ -171,7 +173,7 @@ runApiaryWith :: Monad m
 runApiaryWith = runApiaryTWith id
 
 runApiary :: Monad m
-          => (Application -> m a)
+          => (Wai.Application -> m a)
           -> ApiaryConfig
           -> ApiaryT '[] '[] IO m ()
           -> m a
@@ -220,9 +222,9 @@ instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts 
     liftBaseWith = defaultLiftBaseWith StMApiary'
     restoreM     = defaultRestoreM   unStMApiary'
 
-instance (Has e exts, Monad actM) => MonadHas e (ApiaryT exts prms actM m) where
-    getExt p = getExtension p . envExts <$> getApiaryEnv
-    {-# INLINE getExt #-}
+instance Monad actM => MonadExts exts (ApiaryT exts prms actM m) where
+    getExts = envExts <$> getApiaryEnv
+    {-# INLINE getExts #-}
 
 --------------------------------------------------------------------------------
 
@@ -275,7 +277,7 @@ action a = do
         id
 
 -- | add middleware.
-middleware :: Monad actM => Middleware -> ApiaryT exts prms actM m ()
+middleware :: Monad actM => Wai.Middleware -> ApiaryT exts prms actM m ()
 middleware mw = addRoute (ApiaryWriter id id mw)
 
 --------------------------------------------------------------------------------

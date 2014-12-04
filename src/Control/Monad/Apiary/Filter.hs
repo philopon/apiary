@@ -1,16 +1,10 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
 
 module Control.Monad.Apiary.Filter (
     -- * http method
@@ -48,30 +42,38 @@ module Control.Monad.Apiary.Filter (
     , Doc(..)
     ) where
 
-import Network.Wai as Wai
+import qualified Network.Wai as Wai
 import Network.Wai.Parse (parseContentType, parseHttpAccept)
-import qualified Network.HTTP.Types as Http
+import qualified Network.HTTP.Types as HTTP
 
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans
+import Control.Applicative((<$>))
+import Control.Monad(mzero)
+import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
+    (getParams, getQueryParams, getRequestBody, getRequest, ContentType, contentType)
 import Control.Monad.Apiary.Filter.Internal
-import Control.Monad.Apiary.Filter.Internal.Capture.TH
-import Control.Monad.Apiary.Internal
+    ( function, function', function_
+    , Doc(DocMethod, DocPrecondition, DocRoot, DocQuery, DocAccept))
+import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
+import Control.Monad.Apiary.Internal(ApiaryT, focus', focus, PathElem(RootPath))
 import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 
-import Text.Blaze.Html
+import Text.Blaze.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC
-import qualified Data.Text          as T
-import qualified Data.CaseInsensitive as CI
-import Data.Monoid
-import Data.Apiary.Compat
-import Data.Apiary.Dict
+import qualified Data.Text             as T
+import qualified Data.CaseInsensitive  as CI
+import Data.Monoid((<>))
+import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, Proxy(..), SProxy(..))
+import Data.Apiary.Dict(NotMember, Elem((:=)))
+import qualified Data.Apiary.Dict as Dict
 
 import Data.Apiary.Param
-import Data.Apiary.Method
+    ( ReqParam, StrategyRep(..), QueryRep(NoValue)
+    , Strategy(..), reqParamRep, reqParams
+    , pFirst, pOne, pOption, pOptional, pMany, pSome
+    )
+import Data.Apiary.Method(Method)
 
 -- | filter by HTTP method. since 0.1.0.0.
 --
@@ -84,23 +86,23 @@ method m = focus' (DocMethod m) (Just m) id getParams
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-ssl = function_ (DocPrecondition "SSL required") isSecure
+ssl = function_ (DocPrecondition "SSL required") Wai.isSecure
 
 -- | http version filter. since 0.5.0.0.
-httpVersion :: Monad actM => Http.HttpVersion -> Html -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+httpVersion :: Monad actM => HTTP.HttpVersion -> Html -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 httpVersion v h = function_ (DocPrecondition h) $ (v ==) . Wai.httpVersion
 
 -- | http/0.9 only accepted fiter. since 0.5.0.0.
 http09 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-http09 = Control.Monad.Apiary.Filter.httpVersion Http.http09 "HTTP/0.9 only"
+http09 = Control.Monad.Apiary.Filter.httpVersion HTTP.http09 "HTTP/0.9 only"
 
 -- | http/1.0 only accepted fiter. since 0.5.0.0.
 http10 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-http10 = Control.Monad.Apiary.Filter.httpVersion Http.http10 "HTTP/1.0 only"
+http10 = Control.Monad.Apiary.Filter.httpVersion HTTP.http10 "HTTP/1.0 only"
 
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
 http11 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-http11 = Control.Monad.Apiary.Filter.httpVersion Http.http11 "HTTP/1.1 only"
+http11 = Control.Monad.Apiary.Filter.httpVersion HTTP.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
@@ -209,7 +211,7 @@ switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") No
     qs      <- getQueryParams
     (ps,fs) <- getRequestBody
     let n = maybe False id . fmap (maybe True id) . lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy Bool) qs ps fs
-    insert k n <$> getParams
+    Dict.insert k n <$> getParams
 
 --------------------------------------------------------------------------------
 
@@ -217,21 +219,21 @@ switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") No
 header :: (KnownSymbol k, Monad actM, NotMember k prms)
        => proxy k -> ApiaryT exts (k := SC.ByteString ': prms) actM m () -> ApiaryT exts prms actM m ()
 header k = focus' (DocPrecondition $ "has header: " <> toHtml (symbolVal k)) Nothing id $ do
-    n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . requestHeaders =<< getRequest
-    insert k n <$> getParams
+    n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
+    Dict.insert k n <$> getParams
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: (KnownSymbol k, Monad actM)
          => proxy k -> SC.ByteString -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 eqHeader k v = focus' (DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)) Nothing id $ do
-    v' <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . requestHeaders =<< getRequest
+    v' <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     if v == v' then getParams else mzero
 
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 accept ect = focus (DocAccept ect) $
-    (lookup "Accept" . requestHeaders <$> getRequest) >>= \case
+    (lookup "Accept" . Wai.requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero
         Just ac -> 
             let ex@(et, _) = parseContentType ect

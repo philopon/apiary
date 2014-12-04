@@ -1,9 +1,4 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -19,28 +14,33 @@ module Web.Apiary.Logger
     -- * initialize
     , initLogger
     -- * action
-    , Logging(..)
+    , logging
     -- * wrapper
     , LogWrapper, logWrapper, runLogWrapper
     ) where
 
-import System.Log.FastLogger
+import qualified System.Log.FastLogger as FL
 
-import Control.Applicative
-import Control.Monad.Base
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
-import Control.Monad.Logger
-import Control.Monad.Trans.Reader
+import Control.Applicative(Applicative)
+import Control.Monad.Base(MonadBase)
+import Control.Monad.IO.Class(MonadIO(liftIO))
+import Control.Monad.Trans.Class(MonadTrans(lift))
+import Control.Monad.Logger(MonadLogger(..), defaultLogStr)
+import Control.Monad.Trans.Reader(ReaderT(..), ask)
 import Control.Monad.Trans.Control
-import Control.Exception.Lifted
+    ( MonadTransControl(..), MonadBaseControl(..)
+    , defaultLiftWith, defaultRestoreT
+    , ComposeSt, defaultLiftBaseWith, defaultRestoreM
+    )
+import Control.Exception.Lifted(bracket)
 
-import Data.Default.Class
+import Data.Default.Class(Default(..))
 
-import Control.Monad.Apiary
-import Control.Monad.Apiary.Action
-import Data.Apiary.Compat
+import Data.Apiary.Compat(Proxy(..))
 import Data.Apiary.Extension
+     ( Has, Initializer', initializerBracket'
+     , Extensions, Extension, MonadExts(getExts), getExt
+     )
 
 data LogDest
     = LogFile FilePath
@@ -49,27 +49,27 @@ data LogDest
     | NoLog
 
 data LogConfig = LogConfig
-    { bufferSize :: BufSize
+    { bufferSize :: FL.BufSize
     , logDest    :: LogDest
     }
 
 instance Default LogConfig where
-    def = LogConfig defaultBufSize LogStderr
+    def = LogConfig FL.defaultBufSize LogStderr
 
 -- | logger extension data type.
 data Logger = Logger
-    { pushLog  :: LogStr -> IO ()
+    { pushLog  :: FL.LogStr -> IO ()
     , closeLog :: IO ()
     }
 instance Extension Logger
 
-newLogger :: BufSize -> LogDest -> IO Logger
-newLogger s (LogFile p) = newFileLoggerSet s p >>= \l -> 
-    return $ Logger (pushLogStr l) (flushLogStr l)
-newLogger s LogStdout = newStdoutLoggerSet s >>= \l -> 
-    return $ Logger (pushLogStr l) (flushLogStr l)
-newLogger s LogStderr = newStderrLoggerSet s >>= \l -> 
-    return $ Logger (pushLogStr l) (flushLogStr l)
+newLogger :: FL.BufSize -> LogDest -> IO Logger
+newLogger s (LogFile p) = FL.newFileLoggerSet s p >>= \l -> 
+    return $ Logger (FL.pushLogStr l) (FL.flushLogStr l)
+newLogger s LogStdout = FL.newStdoutLoggerSet s >>= \l -> 
+    return $ Logger (FL.pushLogStr l) (FL.flushLogStr l)
+newLogger s LogStderr = FL.newStderrLoggerSet s >>= \l -> 
+    return $ Logger (FL.pushLogStr l) (FL.flushLogStr l)
 newLogger _ NoLog = return $ Logger (\_ -> return ()) (return ())
 
 -- | logger initializer.
@@ -79,29 +79,11 @@ initLogger LogConfig{..} = initializerBracket' $ bracket
     (liftIO . closeLog)
 
 -- | push log.
-class Logging m where
-    logging :: LogStr -> m ()
+logging :: (Has Logger es, MonadExts es m, MonadIO m) => FL.LogStr -> m ()
+logging m = getExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
 
-instance (Has Logger exts, MonadIO m) => Logging (ActionT exts prms m) where
-    logging m = getExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
-
-instance (Has Logger exts, MonadIO m, Monad actM) => Logging (ApiaryT exts prms actM m) where
-    logging m = apiaryExt (Proxy :: Proxy Logger) >>= \l -> liftIO $ pushLog l m
-
-instance (Has Logger exts, MonadIO m) => Logging (LogWrapper exts m) where
-    logging m = LogWrapper ask >>= \e -> liftIO $ pushLog (getExtension (Proxy :: Proxy Logger) e) m
-
-monadLoggerLog' :: (Logging m, ToLogStr msg) => Loc -> LogSource -> LogLevel -> msg -> m ()
-monadLoggerLog' loc src lv msg = logging $ defaultLogStr loc src lv (toLogStr msg)
-
-instance (Has Logger exts, MonadIO m) => MonadLogger (ActionT exts prms m) where
-    monadLoggerLog = monadLoggerLog'
-
-instance (Has Logger exts, MonadIO m, Monad actM) => MonadLogger (ApiaryT exts prms actM m) where
-    monadLoggerLog = monadLoggerLog'
-
-instance (Has Logger exts, MonadIO m) => MonadLogger (LogWrapper exts m) where
-    monadLoggerLog = monadLoggerLog'
+instance (Has Logger es, MonadExts es m, MonadIO m) => MonadLogger m where
+    monadLoggerLog loc src lv msg = logging $ defaultLogStr loc src lv (FL.toLogStr msg)
 
 -- | wrapper to use as MonadLogger using Logger Extenson.
 newtype LogWrapper exts m a =
@@ -124,3 +106,6 @@ instance MonadBaseControl b m => MonadBaseControl b (LogWrapper exts m) where
     newtype StM (LogWrapper exts m) a = StMLogWrapper { unStMLogWrapper :: ComposeSt (LogWrapper exts) m a }
     liftBaseWith = defaultLiftBaseWith StMLogWrapper
     restoreM     = defaultRestoreM     unStMLogWrapper
+
+instance Monad m => MonadExts exts (LogWrapper exts m) where
+    getExts = LogWrapper ask

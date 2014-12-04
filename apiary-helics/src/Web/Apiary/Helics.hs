@@ -1,9 +1,8 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.Helics
     ( Helics
@@ -35,20 +34,24 @@ module Web.Apiary.Helics
     , H.DatastoreSegment(..)
     ) where
 
-import Control.Concurrent
-import Control.Applicative
-import Control.Monad.Apiary.Action
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Control
+import Control.Concurrent(ThreadId, forkIO)
+import Control.Applicative((<$>))
+import Control.Monad.Apiary.Action(ActionT, getRequest)
+import Control.Monad.IO.Class(MonadIO(liftIO))
+import Control.Monad.Trans.Control(MonadBaseControl, control)
 
-import Network.Wai
+import qualified Network.Wai as Wai
 import qualified Network.Helics as H
 import qualified Network.Helics.Wai.Safe as Safe
 
-import Data.Apiary.Compat
+import Data.Apiary.Compat(Proxy(..))
 import Data.Apiary.Extension
-import Web.Apiary.Heroku
-import Data.Default.Class
+    ( Has, Extension(extMiddleware)
+    , Initializer', initializerBracket'
+    , Initializer, initializerBracket, getExt
+    )
+import Web.Apiary.Heroku(Heroku, getHerokuEnv)
+import Data.Default.Class(Default(..))
 import qualified Data.Vault.Lazy as V
 import qualified Data.ByteString as S
 import qualified Data.Text.Encoding as T
@@ -69,7 +72,7 @@ data HelicsConfig = HelicsConfig
     , statusCallback     :: Maybe (H.StatusCode -> IO ())
 
     , useDummyMiddleware :: Bool
-    , transactionName    :: Request -> S.ByteString
+    , transactionName    :: Wai.Request -> S.ByteString
 
     , samplerFrequency   :: Int
     }
@@ -81,7 +84,7 @@ instance Default HelicsConfig where
         , language           = H.language def
         , languageVersion    = H.languageVersion def
         , statusCallback     = H.statusCallback def
-        , transactionName    = rawPathInfo
+        , transactionName    = Wai.rawPathInfo
         , useDummyMiddleware = False
         , samplerFrequency   = 20
         }
@@ -125,7 +128,7 @@ transactionId :: (Has Helics exts, Monad m)
 transactionId = do
     Helics key _ _ <- getExt Proxy
     maybe (error "apiary-helics: vault value not found.") id .
-        V.lookup key . vault <$> getRequest
+        V.lookup key . Wai.vault <$> getRequest
 
 addAttribute :: (MonadIO m, Has Helics exts)
              => S.ByteString -> S.ByteString -> ActionT exts prms m ()

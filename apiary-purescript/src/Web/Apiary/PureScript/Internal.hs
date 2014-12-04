@@ -1,29 +1,30 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Web.Apiary.PureScript.Internal where
 
-import System.FilePath
+import System.FilePath(takeDirectory, (</>))
 import qualified System.FilePath.Glob as G
 import qualified System.IO.UTF8 as U
 
-import Language.Haskell.TH
+import qualified Language.Haskell.TH as TH
 import qualified Language.PureScript as P
 
-import Control.Exception
-import Control.Applicative
+import Control.Monad.Apiary.Action(ActionT, contentType, string, bytes)
+import Control.Exception(Exception, throwIO, try)
+import Control.Applicative((<$>))
 
-import Web.Apiary
+import Web.Apiary(MonadIO(..))
+import Data.Apiary.Extension(Extension)
 
-import Data.Default.Class
-import Data.IORef
-import Data.Typeable
-import Data.Apiary.Extension
+import Data.Default.Class(Default(def))
+import Data.IORef(IORef, newIORef, readIORef, atomicModifyIORef')
+import Data.Typeable(Typeable)
 import qualified Data.HashMap.Strict as H
 import qualified Text.Parsec.Error as P
 
@@ -36,7 +37,7 @@ data PureScriptException
 instance Exception PureScriptException
 
 purescriptDatadir :: FilePath
-purescriptDatadir = takeDirectory $(stringE =<< runIO Path.getDataDir) </> "purescript-" ++ VERSION_purescript
+purescriptDatadir = takeDirectory $(TH.stringE =<< TH.runIO Path.getDataDir) </> "purescript-" ++ VERSION_purescript
 
 defaultPatterns :: [G.Pattern]
 defaultPatterns = map G.compile 

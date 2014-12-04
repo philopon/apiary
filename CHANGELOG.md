@@ -1,3 +1,17 @@
+# 1.2.0
+* add Web.Apiary.Develop module for develop static file.
+* *change* response body function behaviour(append to set).
+* add append* functions.
+* remove MonadHas class. add MonadExt class.
+* add action vault for extension.
+* change binary package to cereal package.
+
+## apiary-websockets
+* fix actionWithWebSockets don't exec action.
+
+## apiary-session/apiary-clientsession/apiary-authenticate
+* new session system.
+
 # 1.1.4
 * enhance API documentation.
 * add MonadHas class.

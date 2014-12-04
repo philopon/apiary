@@ -1,31 +1,29 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DataKinds #-}
 
 module Control.Monad.Apiary.Filter.Internal.Capture where
 
-import Control.Applicative
-import Control.Monad
+import Control.Applicative((<$>), (<$))
+import Control.Monad(liftM, mzero)
 import Control.Monad.Apiary.Action.Internal
+    (getParams, actionFetches, getState, modifyState)
 import Control.Monad.Apiary.Internal
+    (ApiaryT, focus', PathElem(Exact, FetchPath, RestPath, EndPath))
 import Control.Monad.Apiary.Filter.Internal
+    (Doc(DocPath, DocFetch, DocAny, DocRest))
 
-import Data.Apiary.Compat
-import Data.Apiary.Param
-import Data.Apiary.Dict
+import Data.Apiary.Compat(KnownSymbol, symbolVal, Proxy(..))
+import Data.Apiary.Param(Path, pathRep, readPathAs)
+import Data.Apiary.Dict(Elem((:=)))
+import qualified Data.Apiary.Dict as Dict
 
 import qualified Data.Text as T
-import Text.Blaze.Html
+import Text.Blaze.Html(Html)
 
 -- | check first path and drill down. since 0.11.0.
 path :: Monad actM => T.Text -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
@@ -36,18 +34,18 @@ endPath :: (Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM
 endPath = focus' id Nothing (EndPath:) getParams
 
 -- | get first path and drill down. since 0.11.0.
-fetch' :: (NotMember k prms, KnownSymbol k, Path p, Monad actM) => proxy k -> proxy' p -> Maybe Html
+fetch' :: (Dict.NotMember k prms, KnownSymbol k, Path p, Monad actM) => proxy k -> proxy' p -> Maybe Html
        -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
 fetch' k p h = focus' (DocFetch (T.pack $ symbolVal k) (pathRep p) h) Nothing (FetchPath:) $ liftM actionFetches getState >>= \case
     []   -> mzero
     f:fs -> case readPathAs p f of
         Just r  -> do
             modifyState (\s -> s {actionFetches = fs})
-            insert k r <$> getParams
+            Dict.insert k r <$> getParams
         Nothing -> mzero
 
 
-fetch :: forall proxy k p exts prms actM m. (NotMember k prms, KnownSymbol k, Path p, Monad actM)
+fetch :: forall proxy k p exts prms actM m. (Dict.NotMember k prms, KnownSymbol k, Path p, Monad actM)
       => proxy (k := p) -> Maybe Html
       -> ApiaryT exts (k := p ': prms) actM m () -> ApiaryT exts prms actM m ()
 fetch _ h = fetch' k p h
@@ -58,8 +56,8 @@ fetch _ h = fetch' k p h
 anyPath :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
 anyPath = focus' DocAny Nothing (RestPath:) getParams
 
-restPath :: (NotMember k prms, KnownSymbol k, Monad m, Monad actM)
+restPath :: (Dict.NotMember k prms, KnownSymbol k, Monad m, Monad actM)
          => proxy k -> Maybe Html -> ApiaryT exts (k := [T.Text] ': prms) actM m () -> ApiaryT exts prms actM m ()
 restPath k h = focus' (DocRest (T.pack $ symbolVal k) h) Nothing (RestPath:) $ getParams >>= \l -> liftM actionFetches getState >>= \case
-    [] -> return $ insert k [] l
-    fs -> insert k fs l <$ modifyState (\s -> s {actionFetches = []})
+    [] -> return $ Dict.insert k [] l
+    fs -> Dict.insert k fs l <$ modifyState (\s -> s {actionFetches = []})

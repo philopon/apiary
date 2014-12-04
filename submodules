@@ -2,6 +2,7 @@ apiary-logger
 apiary-persistent
 apiary-websockets
 apiary-cookie
+apiary-session
 apiary-clientsession
 apiary-authenticate
 apiary-eventsource

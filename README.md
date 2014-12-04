@@ -24,7 +24,7 @@ cabal install apiary warp
 
 [Demo](examples/readme.lhs)
 ---
-```lhs
+```.lhs
 > {-# LANGUAGE OverloadedStrings #-}
 > {-# LANGUAGE ConstraintKinds #-}
 > {-# LANGUAGE TypeOperators #-}
@@ -107,7 +107,7 @@ cabal install apiary warp
 >                 logging "html page is accessed.\n"
 >                 bytes "<h1>"
 >                 helloAction
->                 bytes "</h1>"
+>                 appendBytes "</h1>"
 > 
 >     [capture|/api|] . document "api documentation" . action $ do
 >         logging "api documentation page is accessed.\n"
@@ -137,9 +137,9 @@ cabal install apiary warp
 
 
 
->     bytes "Hello, "
->     bytes f
->     maybe (return ()) (\a -> bytes " " >> bytes a) l
+>     appendBytes "Hello, "
+>     appendBytes f
+>     maybe (return ()) (\a -> appendChar ' ' >> appendBytes a) l
 ```
 
 learn more
@@ -147,3 +147,4 @@ learn more
 * [Hackage](https://hackage.haskell.org/package/apiary)
 * [examples](examples/)
 * [best-haskell](https://github.com/philopon/best-haskell)
+* [find-hackage](https://github.com/philopon/find-hackage)

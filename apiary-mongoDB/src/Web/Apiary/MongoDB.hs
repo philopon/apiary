@@ -1,10 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE DataKinds #-}
 
 module Web.Apiary.MongoDB
     ( MongoDB, MongoDBConfig(..), MongoQuery
@@ -19,27 +18,27 @@ module Web.Apiary.MongoDB
     , module Database.MongoDB.Admin
     ) where
 
-import Control.Arrow
-import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans.Maybe
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Control
-import Control.Monad.Trans.Reader
-import Control.Exception.Lifted
-import Control.Monad.Apiary.Action
-import Control.Monad.Apiary
+import Control.Arrow(first)
+import Control.Applicative((<|>))
+import Control.Monad(unless)
+import Control.Monad.Trans.Maybe(MaybeT(MaybeT, runMaybeT))
+import Control.Monad.IO.Class(MonadIO(liftIO))
+import Control.Monad.Trans.Control(MonadBaseControl)
+import Control.Exception.Lifted(bracket, throwIO)
 
-import Web.Apiary
-import Web.Apiary.Heroku
+import Web.Apiary.Heroku(Heroku, getHerokuEnv')
 
 import qualified Database.MongoDB as MongoDB
 
-import Data.Default.Class
-import Data.Time(NominalDiffTime)
-import Data.Pool
-import Data.Apiary.Compat
+import Data.Apiary.Compat(Proxy(Proxy))
 import Data.Apiary.Extension
+     (Has, Initializer', initializerBracket'
+     , Initializer, initializerBracket
+     , Extension, getExtension, MonadExts, getExt
+     )
+import Data.Default.Class(Default(def))
+import Data.Time(NominalDiffTime)
+import qualified Data.Pool as Pool
 import qualified Data.Text as T
 import qualified Data.Text.Read as T
 
@@ -50,7 +49,7 @@ import Database.MongoDB.Admin
 
 type MongoQuery = MongoDB.Query
 
-data MongoDB = MongoDB (Pool Pipe) MongoDBConfig
+data MongoDB = MongoDB (Pool.Pool Pipe) MongoDBConfig
 instance Extension MongoDB
 
 data MongoDBConfig = MongoDBConfig
@@ -69,9 +68,9 @@ instance Default MongoDBConfig where
 initMongoDB' :: (MonadBaseControl IO m, MonadIO m)
              => MongoDBConfig -> (MongoDB -> m a) -> m a
 initMongoDB' conf@MongoDBConfig{..} m =
-    bracket (liftIO bra) (liftIO . destroyAllResources) (\a -> m (MongoDB a conf))
+    bracket (liftIO bra) (liftIO . Pool.destroyAllResources) (\a -> m (MongoDB a conf))
   where
-    bra = createPool (MongoDB.connect' mongoDBTimeout mongoDBHost)
+    bra = Pool.createPool (MongoDB.connect' mongoDBTimeout mongoDBHost)
         MongoDB.close 1 connectionIdleTime numConnection
 
 initMongoDB :: (MonadIO m, MonadBaseControl IO m)
@@ -112,21 +111,17 @@ initHerokuMongoDB conf = initializerBracket $ \exts m -> do
 -- | query using 'MongoDBConfig' settings.
 --
 -- if you want to access other db, other accessmode, please use 'useDb' or 'accessMode'.
-class MongoAccess m where
-    access :: Action m a -> m a
+access :: (MonadExts es m, Has MongoDB es, MonadBaseControl IO m, MonadIO m)
+       => Action m a -> m a
+access m = getExt (Proxy :: Proxy MongoDB) >>= flip access' m
 
-accessImpl :: (MonadBaseControl IO m, MonadIO m) => Action m a -> MongoDB -> m a
-accessImpl m (MongoDB mongo conf) = withResource mongo $ \p ->
+
+access' :: (MonadBaseControl IO m, MonadIO m)
+        => MongoDB -> Action m a -> m a
+access' (MongoDB mongo conf) m = Pool.withResource mongo $ \p ->
     MongoDB.access p (mongoDBAccessMode conf) (mongoDBDatabase conf) $
     maybe (return True) (uncurry auth) (mongoDBAuth conf)
     >>= flip unless (throwIO $ ConnectionFailure $ userError "auth failed.")
     >> m
 
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m) => MongoAccess (ActionT exts prms m) where
-    access m = getExt (Proxy :: Proxy MongoDB) >>= accessImpl m
 
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m, Monad actM) => MongoAccess (ApiaryT exts prms actM m) where
-    access m = apiaryExt (Proxy :: Proxy MongoDB) >>= accessImpl m
-
-instance (Has MongoDB exts, MonadBaseControl IO m, MonadIO m) => MongoAccess (ReaderT (Extensions exts) m) where
-    access m = ask >>= accessImpl m . getExtension (Proxy :: Proxy MongoDB)

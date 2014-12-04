@@ -1,18 +1,14 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 -- | type sefe dictionaly.
 module Data.Apiary.Dict
@@ -29,33 +25,35 @@ module Data.Apiary.Dict
     , Members
     ) where
 
-import Data.Apiary.Compat
+import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, SProxy(..))
 
-import Language.Haskell.TH
-import Language.Haskell.TH.Quote
-import GHC.Exts
+import qualified Language.Haskell.TH as TH
+import Language.Haskell.TH.Quote(QuasiQuoter(..))
+
+import qualified Data.HashMap.Strict as H
+import qualified Data.Text as T
+
+import GHC.Exts(Any, Constraint)
+import Unsafe.Coerce
 
 -- | (kind) Dict element.
 data Elem = forall a. Symbol := a
 
-data Dict (ks :: [Elem]) where
-    Empty :: Dict '[]
-    Insert :: proxy (k :: Symbol) -> v -> Dict ks -> Dict (k := v ': ks)
-
+newtype Dict (ks :: [Elem]) = Dict (H.HashMap T.Text Any)
 
 class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
 
     -- | get value of key.
     --
-    -- > ghci> get (SProxy :: SProxy "bar") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "bar") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > 0.5
     --
-    -- > ghci> get (SProxy :: SProxy "foo") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "foo") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > 12
     --
     -- ghc raise compile error when key is not exists.
     --
-    -- > ghci> get (SProxy :: SProxy "baz") $ insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+    -- > ghci> get (Proxy :: Proxy "baz") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
     -- > <interactive>:15:1:
     -- >     No instance for (Member "baz" a0 '[]) arising from a use of ‘it’
     -- >     In the first argument of ‘print’, namely ‘it’
@@ -63,11 +61,14 @@ class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
 
     get :: proxy k -> Dict kvs -> v
 
-instance Member k v (k := v ': kvs) where
-    get _ (Insert _ v _) = v
+getImpl :: KnownSymbol k => proxy k -> Dict any -> b
+getImpl p (Dict d) = maybe (error "Dict: no value.") unsafeCoerce $ H.lookup (T.pack $ symbolVal p) d
 
-instance Member k v kvs => Member k v (k' := v' ': kvs) where
-    get p (Insert _ _ d) = get p d
+instance KnownSymbol k => Member k v (k := v ': kvs) where
+    get = getImpl
+
+instance (KnownSymbol k, Member k v kvs) => Member k v (k' := v' ': kvs) where
+    get = getImpl
 
 -- | type family version Member for NotMember constraint.
 #if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ >= 708
@@ -92,42 +93,42 @@ type instance Members (k := v ': kvs) prms = (Member k v prms, Members kvs prms)
 
 -- | empty Dict.
 empty :: Dict '[]
-empty = Empty
+empty = Dict H.empty
 
 -- | insert element.
 -- 
--- > ghci> :t insert (SProxy :: SProxy "foo") (12 :: Int) empty
--- > insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "foo") (12 :: Int) empty
+-- > insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- >   :: Dict '["foo" ':= Int]
 -- 
--- > ghci> :t insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
--- > insert (SProxy :: SProxy "bar") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
+-- > insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- >   :: Dict '["bar" ':= Double, "foo" ':= Int]
 --
 -- ghc raise compile error when insert duplicated key(> ghc-7.8 only).
 --
--- > ghci> :t insert (SProxy :: SProxy "foo") (0.5 :: Double) $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- > ghci> :t insert (Proxy :: Proxy "foo") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 -- > 
 -- > <interactive>:1:1:
 -- >     Couldn't match type ‘'True’ with ‘'False’
 -- >     Expected type: 'False
 -- >       Actual type: Member' "foo" '["foo" ':= Int]
--- >     In the expression: insert (SProxy :: SProxy "foo") (0.5 :: Double)
+-- >     In the expression: insert (Proxy :: Proxy "foo") (0.5 :: Double)
 -- >     In the expression:
--- >       insert (SProxy :: SProxy "foo") (0.5 :: Double)
--- >       $ insert (SProxy :: SProxy "foo") (12 :: Int) empty
+-- >       insert (Proxy :: Proxy "foo") (0.5 :: Double)
+-- >       $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
 
-insert :: NotMember k kvs => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
-insert = Insert
+insert :: (KnownSymbol k, NotMember k kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
+insert p v (Dict d) = Dict (H.insert (T.pack $ symbolVal p) (unsafeCoerce v) d)
 
 -- | construct string literal proxy.
 --
--- prop> [key|foo|] == (SProxy :: SProxy "foo")
+-- prop> [key|foo|] == (Proxy :: Proxy "foo")
 --
 key :: QuasiQuoter
 key = QuasiQuoter
-    { quoteExp  = \s -> [| SProxy :: SProxy $(litT $ strTyLit s) |]
+    { quoteExp  = \s -> [| SProxy :: SProxy $(TH.litT $ TH.strTyLit s) |]
     , quotePat  = error "key qq only exp or type."
-    , quoteType = \s -> [t| SProxy $(litT $ strTyLit s) |]
+    , quoteType = \s -> [t| SProxy $(TH.litT $ TH.strTyLit s) |]
     , quoteDec  = error "key qq only exp or type."
     }

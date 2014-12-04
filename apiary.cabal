@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.1.4
+version:             1.2.0
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -40,7 +40,7 @@ description:
   .
     * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.1.4/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.2.0/examples/>
   .
   live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
@@ -63,14 +63,10 @@ extra-source-files:  static/api-documentation.min.js
                    , CHANGELOG.md
 cabal-version:       >=1.10
 
-flag wai3
-  description: use wai-3.0
-  default: True
-
 library
   exposed-modules:     Web.Apiary
+                       Web.Apiary.Develop
                        Web.Apiary.Heroku
-                       Web.Apiary.Wai
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
@@ -110,6 +106,7 @@ library
                      , blaze-html           >=0.7   && <0.8
                      , blaze-markup         >=0.6   && <0.7
                      , case-insensitive     >=1.1   && <1.3
+                     , vault                >=0.3   && <0.4
 
                      , data-default-class   >=0.0   && <0.1
                      , unordered-containers >=0.2   && <0.3
@@ -119,15 +116,10 @@ library
                      , unix-compat          >=0.4   && <0.5
                      , http-date            >=0.0   && <0.1
 
-  if flag(wai3)
-    build-depends:     wai                  >=3.0   && <3.1
+                     , wai                  >=3.0   && <3.1
                      , wai-extra            >=3.0   && <3.1
-    cpp-options:       -DWAI3
-  else
-    build-depends:     wai                  >=2.1   && <2.2
-                     , wai-extra            >=2.1   && <2.2
-                     , conduit              >=1.1   && <1.2
 
+  default-extensions:  OverlappingInstances
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
   ghc-prof-options:    -O2 -Wall -auto-all
@@ -146,12 +138,8 @@ test-suite test-framework
                      , bytestring           >=0.10  && <0.11
                      , http-types           >=0.8   && <0.9
                      , HUnit                >=1.2   && <1.3
-  if flag(wai3)
-    build-depends:     wai                  >=3.0   && <3.1
+                     , wai                  >=3.0   && <3.1
                      , wai-extra            >=3.0   && <3.1
-  else
-    build-depends:     wai                  >=2.1   && <2.2
-                     , wai-test             >=2.0   && <2.1
 
   hs-source-dirs:      test
   ghc-options:         -O2 -Wall -fno-warn-missing-signatures
