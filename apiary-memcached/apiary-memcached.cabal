@@ -1,5 +1,5 @@
 name:                apiary-memcached
-version:             1.2.0
+version:             1.2.1
 synopsis:            memcached client for apiary web framework.
 -- description:
 license:             MIT
