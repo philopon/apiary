@@ -20,7 +20,7 @@ module Web.Apiary.Memcached
 import Web.Apiary(MonadIO(..))
 import Web.Apiary.Heroku(Heroku, getHerokuEnv')
 
-import Control.Applicative((<$>), (<*>), (<|>))
+import Control.Applicative((<$>), (<$), (<*>), (<|>))
 import Control.Monad.Trans.Maybe(MaybeT(MaybeT, runMaybeT))
 import Control.Monad.Trans.Control(MonadBaseControl, control)
 import Control.Monad.Apiary.Action(ActionT)
@@ -31,10 +31,10 @@ import Data.Apiary.Extension
     , Initializer, initializerBracket, getExtension, getExt
     )
 import Data.Apiary.Compat(Proxy(Proxy))
-import qualified Data.Serialize as Serialize
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Read as T
+import qualified Data.ByteString.Lazy as L
 
 import qualified Database.Memcached.Binary.IO as Memcached
 import qualified Database.Memcached.Binary.IO as IO
@@ -119,11 +119,6 @@ cache ky actn = do
                     (cacheExpiry cc) ky ar conn
                 return ar
 
-getRight :: Either l r -> Maybe r
-getRight (Left  _) = Nothing
-getRight (Right a) = Just a
-{-# INLINE getRight #-}
-
 cacheMaybe :: (MonadIO m, Has Memcached exts)
            => Memcached.Key -> ActionT exts prms m (Maybe Memcached.Value)
            -> ActionT exts prms m (Maybe Memcached.Value)
@@ -132,14 +127,12 @@ cacheMaybe ky actn = do
     case cacheConfig cfg of
         Nothing -> actn
         Just cc -> liftIO (Maybe.get_ ky conn) >>= \case
-            Just cr -> return . getRight $ Serialize.decodeLazy cr
-            Nothing -> actn >>= \case
-                Nothing -> do
-                    liftIO $ IO.set (cacheFlags cc ky)
-                        (cacheNotHitExpiry cc) ky 
-                        (Serialize.encodeLazy (Nothing :: Maybe Memcached.Value)) conn
-                    return Nothing
-                Just ar -> do
-                    liftIO $ IO.set (cacheFlags cc ky)
-                        (cacheExpiry cc) ky (Serialize.encodeLazy $ Just ar) conn
-                    return (Just ar)
+            Just cr -> case L.uncons cr of
+                Just (0, _) -> return Nothing
+                Just (1, s) -> return (Just s)
+                _           -> actStore cc conn
+            Nothing -> actStore cc conn
+  where
+    actStore cc conn = actn >>= liftIO . \case
+        Nothing -> Nothing <$ IO.set (cacheFlags cc ky) (cacheNotHitExpiry cc) ky "\0" conn
+        Just ar -> Just ar <$ IO.set (cacheFlags cc ky) (cacheExpiry cc) ky (1 `L.cons` ar) conn
