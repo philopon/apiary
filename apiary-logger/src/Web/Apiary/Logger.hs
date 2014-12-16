@@ -1,11 +1,12 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE CPP #-}
 
 module Web.Apiary.Logger
     ( Logger
@@ -98,14 +99,26 @@ runLogWrapper :: Extensions exts -> LogWrapper exts m a -> m a
 runLogWrapper e = flip runReaderT e . unLogWrapper
 
 instance MonadTransControl (LogWrapper exts) where
+#if MIN_VERSION_monad_control(1,0,0)
+    type StT (LogWrapper exts) a = StT (ReaderT (Extensions exts)) a
+    liftWith = defaultLiftWith LogWrapper unLogWrapper
+    restoreT = defaultRestoreT LogWrapper
+#else
     newtype StT (LogWrapper exts) a = StLogWrapper { unStLogWrapper :: StT (ReaderT (Extensions exts)) a }
     liftWith = defaultLiftWith LogWrapper unLogWrapper StLogWrapper
     restoreT = defaultRestoreT LogWrapper unStLogWrapper
+#endif
 
 instance MonadBaseControl b m => MonadBaseControl b (LogWrapper exts m) where
+#if MIN_VERSION_monad_control(1,0,0)
+    type StM (LogWrapper exts m) a = ComposeSt (LogWrapper exts) m a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
+#else
     newtype StM (LogWrapper exts m) a = StMLogWrapper { unStMLogWrapper :: ComposeSt (LogWrapper exts) m a }
     liftBaseWith = defaultLiftBaseWith StMLogWrapper
     restoreM     = defaultRestoreM     unStMLogWrapper
+#endif
 
 instance Monad m => MonadExts exts (LogWrapper exts m) where
     getExts = LogWrapper ask

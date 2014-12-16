@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Internal where
 
@@ -211,16 +212,28 @@ instance (Monad actM, MonadBase b m) => MonadBase b (ApiaryT exts prms actM m) w
     liftBase m = ApiaryT $ \_ c -> liftBase m >>= \a -> c a mempty
 
 instance Monad actM => MonadTransControl (ApiaryT exts prms actM) where
-    newtype StT (ApiaryT exts prms actM) a = StTApiary' { unStTApiary' :: (a, ApiaryWriter exts actM) }
+#if MIN_VERSION_monad_control(1,0,0)
+    type StT (ApiaryT exts prms actM) a = (a, ApiaryWriter exts actM)
+    liftWith f = apiaryT $ \env -> liftM (\a -> (a, mempty)) (f $ \t -> unApiaryT t env (\a w -> return (a,w)))
+    restoreT = apiaryT . const
+#else
+    newtype StT (ApiaryT exts prms actM) a = StTApiary { unStTApiary :: (a, ApiaryWriter exts actM) }
     liftWith f = apiaryT $ \env ->
         liftM (\a -> (a, mempty)) 
-        (f $ \t -> liftM StTApiary' $ unApiaryT t env (\a w -> return (a,w)))
-    restoreT m = apiaryT $ \_ -> liftM unStTApiary' m
+        (f $ \t -> liftM StTApiary $ unApiaryT t env (\a w -> return (a,w)))
+    restoreT m = apiaryT $ \_ -> liftM unStTApiary m
+#endif
 
 instance (Monad actM, MonadBaseControl b m) => MonadBaseControl b (ApiaryT exts prms actM m) where
-    newtype StM (ApiaryT exts prms actM m) a = StMApiary' { unStMApiary' :: ComposeSt (ApiaryT exts prms actM) m a }
-    liftBaseWith = defaultLiftBaseWith StMApiary'
-    restoreM     = defaultRestoreM   unStMApiary'
+#if MIN_VERSION_monad_control(1,0,0)
+    type StM (ApiaryT exts prms actM m) a = ComposeSt (ApiaryT exts prms actM) m a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
+#else
+    newtype StM (ApiaryT exts prms actM m) a = StMApiary { unStMApiary :: ComposeSt (ApiaryT exts prms actM) m a }
+    liftBaseWith = defaultLiftBaseWith StMApiary
+    restoreM     = defaultRestoreM   unStMApiary
+#endif
 
 instance Monad actM => MonadExts exts (ApiaryT exts prms actM m) where
     getExts = envExts <$> getApiaryEnv

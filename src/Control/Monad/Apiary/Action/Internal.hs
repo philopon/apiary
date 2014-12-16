@@ -13,6 +13,7 @@
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE CPP #-}
 
 module Control.Monad.Apiary.Action.Internal where
 
@@ -283,16 +284,29 @@ instance Monad m => MonadPlus (ActionT exts prms m) where
 instance MonadBase b m => MonadBase b (ActionT exts prms m) where
     liftBase = liftBaseDefault
 
+-- `MIN_VERSION_base(major1,major2,minor)
 instance MonadTransControl (ActionT exts prms) where
+#if MIN_VERSION_monad_control(1,0,0)
+    type StT (ActionT exts prms) a = Action a
+    liftWith f = actionT $ \prms e !s -> liftM (\a -> Continue s a) (f $ \t -> runActionT t prms e s)
+    restoreT m = actionT $ \_ _ _ -> m
+#else
     newtype StT (ActionT exts prms) a = StActionT { unStActionT :: Action a }
     liftWith f = actionT $ \prms e !s -> 
         liftM (\a -> Continue s a) (f $ \t -> liftM StActionT $ runActionT t prms e s)
     restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
+#endif
 
 instance MonadBaseControl b m => MonadBaseControl b (ActionT exts prms m) where
+#if MIN_VERSION_monad_control(1,0,0)
+    type StM (ActionT exts prms m) a = ComposeSt (ActionT exts prms) m a
+    liftBaseWith = defaultLiftBaseWith
+    restoreM     = defaultRestoreM
+#else
     newtype StM (ActionT exts prms m) a = StMActionT { unStMActionT :: ComposeSt (ActionT exts prms) m a }
     liftBaseWith = defaultLiftBaseWith StMActionT
     restoreM     = defaultRestoreM unStMActionT
+#endif
 
 instance MonadReader r m => MonadReader r (ActionT exts prms m) where
     ask     = lift ask
