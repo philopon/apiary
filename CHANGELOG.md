@@ -1,3 +1,9 @@
+# 1.2.1
+* reduce dependencies.
+* relax version restriction of monad-control.
+* move pure capture function.
+* export hoistActionT, focus', noExtension.
+
 # 1.2.0
 * good bye wai-2.
 * add Web.Apiary.Develop module for develop static file.
