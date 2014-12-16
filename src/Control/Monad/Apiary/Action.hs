@@ -1,5 +1,6 @@
 module Control.Monad.Apiary.Action 
     ( ActionT
+    , hoistActionT
     -- * stop action
     , stop
 

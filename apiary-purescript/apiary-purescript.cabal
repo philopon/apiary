@@ -1,5 +1,5 @@
 name:                apiary-purescript
-version:             1.2.0
+version:             1.2.1
 synopsis:            purescript compiler for apiary web framework.
 description:
   example: <https://github.com/philopon/apiary/blob/master/examples/pureScript.hs>

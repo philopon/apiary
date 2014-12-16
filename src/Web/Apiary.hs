@@ -7,7 +7,7 @@ module Web.Apiary
 
     -- | Method(..)
     , module Data.Apiary.Method
-    -- | Has, MonadHas, Extensions, Initializer, Initializer', (+>)
+    -- | Has, MonadHas, Extensions, Initializer, Initializer', (+>), noExtension
     , module Data.Apiary.Extension
     -- | key, Member, Members, NotMember, Elem((:=))
     , module Data.Apiary.Dict
@@ -63,6 +63,7 @@ import Control.Monad.Apiary.Action
     , redirect, redirectPermanently, redirectTemporary
     , defaultDocumentationAction
     , DefaultDocumentConfig(..)
+    , hoistActionT
     )
 
 import Control.Monad.Apiary.Filter
@@ -87,7 +88,7 @@ import Data.Apiary.Param
     )
 
 import Data.Apiary.Method(Method(..))
-import Data.Apiary.Extension(Has, MonadExts(..), getExt, Extensions, Initializer, Initializer', (+>))
+import Data.Apiary.Extension(Has, MonadExts(..), getExt, Extensions, Initializer, Initializer', (+>), noExtension)
 import Data.Apiary.Dict(key, Member, Members, NotMember, Elem((:=)))
 
 import Network.HTTP.Types.Status hiding (mkStatus)

@@ -32,13 +32,8 @@ module Control.Monad.Apiary.Filter (
     , QueryKey(..)
     , query
     , Control.Monad.Apiary.Filter.httpVersion
-    , Capture.path
-    , Capture.endPath
-    , Capture.fetch
-    , Capture.restPath
-    , Capture.anyPath
 
-    , function, function', function_, focus
+    , function, function', function_, focus, focus'
     , Doc(..)
     ) where
 
@@ -57,7 +52,6 @@ import Control.Monad.Apiary.Filter.Internal
     , Doc(DocMethod, DocPrecondition, DocRoot, DocQuery, DocAccept))
 import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
 import Control.Monad.Apiary.Internal(ApiaryT, focus', focus, PathElem(RootPath))
-import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
 
 import Text.Blaze.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC

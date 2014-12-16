@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.2.0
+version:             1.2.1
 synopsis:            Simple and type safe web framework that can be automatically generate API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -70,6 +70,7 @@ library
 
                        Control.Monad.Apiary
                        Control.Monad.Apiary.Filter
+                       Control.Monad.Apiary.Filter.Capture
                        Control.Monad.Apiary.Action
 
                        Data.Apiary.Extension

@@ -15,7 +15,77 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE CPP #-}
 
-module Control.Monad.Apiary.Action.Internal where
+module Control.Monad.Apiary.Action.Internal
+    ( ActionT
+
+    , stop
+
+    , param
+    , params
+
+    , status
+
+    , addHeader, setHeaders, modifyHeader
+    , contentType
+
+    , reset
+    , builder
+    , bytes, lazyBytes
+    , text,  lazyText
+    , showing
+    , string, char
+    , appendBuilder
+    , appendBytes, appendLazyBytes
+    , appendText, appendLazyText
+    , appendShowing
+    , appendString, appendChar
+    , file
+    , file'
+
+    , redirect, redirectPermanently, redirectTemporary
+
+    , defaultDocumentationAction
+    , DefaultDocumentConfig(..)
+
+    , hoistActionT
+    , ContentType
+    , stopWith
+
+    , getRequest
+    , getHeaders
+    , getParams
+    , getQueryParams
+    , getReqBodyParams
+    , getReqBodyFiles
+
+    , devFile
+    , devFile'
+    , stream
+    , rawResponse
+
+    , lookupVault
+    , modifyVault
+    , insertVault
+    , adjustVault
+    , deleteVault
+
+    , redirectWith
+
+    -- internal
+    , ApiaryConfig(..)
+    , getState
+    , modifyState
+    , getRequestBody
+    , actionFetches
+    , execActionT
+    , applyDict
+
+    , MonadExts(..)
+    , Extensions(..)
+    , Extension(..)
+    , Middleware'
+    ) where
+
 
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote(QuasiQuoter(..))
