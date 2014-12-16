@@ -6,7 +6,30 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP #-}
 
-module Control.Monad.Apiary.Internal where
+module Control.Monad.Apiary.Internal
+    ( ApiaryT
+
+    , runApiaryTWith
+    , runApiaryWith
+    , runApiary
+    , ApiaryConfig(..)
+
+    , action
+
+    , middleware
+    , group
+    , document
+    , precondition
+    , noDoc
+
+    , apiaryConfig
+    , apiaryExt
+
+    -- internal
+    , focus, focus'
+    , PathElem(..)
+    ) where
+
 
 import qualified Network.Wai as Wai
 

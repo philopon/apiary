@@ -6,7 +6,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DataKinds #-}
 
-module Control.Monad.Apiary.Filter.Internal.Capture where
+module Control.Monad.Apiary.Filter.Internal.Capture
+    ( path, endPath, fetch, fetch', anyPath, restPath ) where
 
 import Control.Applicative((<$>), (<$))
 import Control.Monad(liftM, mzero)

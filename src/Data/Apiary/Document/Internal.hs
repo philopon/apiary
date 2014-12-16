@@ -2,7 +2,15 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Data.Apiary.Document.Internal where
+module Data.Apiary.Document.Internal
+    ( Doc(..)
+    , Documents(..)
+    , PathDoc(..)
+    , QueryDoc(..)
+    , MethodDoc(..)
+    , Route(..)
+    , docsToDocuments
+    ) where
 
 import Control.Applicative((<$>))
 

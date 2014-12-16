@@ -32,11 +32,6 @@ module Control.Monad.Apiary.Filter (
     , QueryKey(..)
     , query
     , Control.Monad.Apiary.Filter.httpVersion
-    , Capture.path
-    , Capture.endPath
-    , Capture.fetch
-    , Capture.restPath
-    , Capture.anyPath
 
     , function, function', function_, focus
     , Doc(..)

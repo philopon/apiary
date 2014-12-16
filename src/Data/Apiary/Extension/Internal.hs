@@ -7,7 +7,12 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE CPP #-}
 
-module Data.Apiary.Extension.Internal where
+module Data.Apiary.Extension.Internal
+    ( Initializer(..)
+    , Has(..)
+    , allMiddleware'
+    , allMiddleware
+    ) where
 
 #if __GLASGOW_HASKELL__ >= 708
 import qualified Control.Category as Cat
