@@ -1,7 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Data.Apiary.Method where
+module Data.Apiary.Method
+    ( Method(..)
+    , renderMethod
+    , dispatchMethod
+    , parseMethod
+    ) where
 
 import Data.Hashable(Hashable(..))
 import Data.String(IsString(..))

@@ -1,5 +1,6 @@
 module Control.Monad.Apiary.Action 
     ( ActionT
+    , hoistActionT
     -- * stop action
     , stop
 
@@ -36,7 +37,6 @@ module Control.Monad.Apiary.Action
     , DefaultDocumentConfig(..)
 
     -- * not export from Web.Apiary
-    , hoistActionT
     , ContentType
     , stopWith
     -- ** getter

@@ -33,7 +33,7 @@ module Control.Monad.Apiary.Filter (
     , query
     , Control.Monad.Apiary.Filter.httpVersion
 
-    , function, function', function_, focus
+    , function, function', function_, focus, focus'
     , Doc(..)
     ) where
 
