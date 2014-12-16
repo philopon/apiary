@@ -11,7 +11,8 @@ for pkg in . `cat submodules`; do
   echo $pkg
   cd $dir/$pkg
   cabal clean
-  file=`cabal sdist | awk '{print $4}'`
+  file=`cabal sdist | awk '{LL = $4}END{print LL}'`
+  sleep 10
   cabal upload $file
   cd ..
 done
