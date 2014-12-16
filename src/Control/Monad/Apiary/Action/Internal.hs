@@ -114,7 +114,7 @@ import qualified Data.Apiary.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
 import Data.Apiary.Compat(SProxy(..))
 import Data.Apiary.Document(Documents)
-import Data.Apiary.Document.Html(defaultDocumentToHtml, DefaultDocumentConfig)
+import Data.Apiary.Document.Html(defaultDocumentToHtml, DefaultDocumentConfig(..))
 import Data.Default.Class(Default(..))
 
 import Blaze.ByteString.Builder(Builder)

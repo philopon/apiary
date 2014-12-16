@@ -64,5 +64,3 @@ module Control.Monad.Apiary.Action
 
 import Control.Monad.Apiary.Action.Internal
 import Network.Wai
-import Data.Apiary.Document.Html
-
