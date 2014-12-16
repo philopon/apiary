@@ -80,7 +80,8 @@ library
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
 
-  other-modules:       Data.Apiary.Document.Internal
+  other-modules:       Network.Wai.Parse
+                       Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Filter.Internal
@@ -117,7 +118,7 @@ library
                      , http-date            >=0.0   && <0.1
 
                      , wai                  >=3.0   && <3.1
-                     , wai-extra            >=3.0   && <3.1
+                     , stringsearch         >=0.3   && <0.4
 
   default-extensions:  OverlappingInstances
   hs-source-dirs:      src
