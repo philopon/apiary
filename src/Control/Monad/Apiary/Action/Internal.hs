@@ -57,6 +57,8 @@ module Control.Monad.Apiary.Action.Internal
     , getQueryParams
     , getReqBodyParams
     , getReqBodyFiles
+    , RequestBody(..)
+    , getReqBody
 
     , devFile
     , devFile'
@@ -75,7 +77,6 @@ module Control.Monad.Apiary.Action.Internal
     , ApiaryConfig(..)
     , getState
     , modifyState
-    , getRequestBody
     , actionFetches
     , execActionT
     , applyDict
@@ -191,13 +192,20 @@ toResponse ActionState{..} = case actionResponse of
 
 --------------------------------------------------------------------------------
 
+data RequestBody
+    = Unknown S.ByteString -- ^ raw body
+    | UrlEncoded [Param] [File]
+    | Multipart
+        {-#UNPACK#-}!S.ByteString -- ^ boundary
+        [Param] [File]
+
 data ActionState = ActionState
     { actionResponse    :: ResponseBody
     , actionStatus      :: HTTP.Status
     , actionHeaders     :: HTTP.ResponseHeaders
     , actionVault       :: V.Vault
     , actionContentType :: S.ByteString
-    , actionReqBody     :: Maybe ([Param], [File])
+    , actionReqBody     :: Maybe RequestBody
     , actionFetches     :: [T.Text]
     }
 
@@ -435,14 +443,23 @@ params = QuasiQuoter
 getDocuments :: Monad m => ActionT exts prms m Documents
 getDocuments = liftM actionDocuments getEnv
 
-getRequestBody :: MonadIO m => ActionT exts prms m ([Param], [File])
-getRequestBody = ActionT $ \_ e s c -> case actionReqBody s of
-    Just b  -> c b s
+-- | parse request body and return it. since 1.2.2.
+getReqBody :: MonadIO m => ActionT exts prms m RequestBody
+getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
+    Just  b -> c b s
     Nothing -> do
-        (p,f) <- liftIO $ P.parseRequestBody P.lbsBackEnd (actionRequest e)
-        let b = (p, map convFile f)
+        let req  = actionRequest e
+            body = Wai.requestBody req
+        b <- liftIO $ case P.getRequestBodyType req of
+            Nothing                  -> Unknown `liftM` body
+            Just typ@P.UrlEncoded    -> sink UrlEncoded typ body
+            Just typ@(P.Multipart b) -> sink (Multipart b) typ body
         c b s { actionReqBody = Just b }
   where
+    sink con typ body = do
+        (p, f) <- P.sinkRequestBody P.lbsBackEnd typ body
+        return $ con p (map convFile f)
+
     convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
 
 getQueryParams :: Monad m => ActionT exts prms m HTTP.Query
@@ -450,11 +467,17 @@ getQueryParams = Wai.queryString <$> getRequest
 
 -- | parse request body and return params. since 1.0.0.
 getReqBodyParams :: MonadIO m => ActionT exts prms m [Param]
-getReqBodyParams = fst <$> getRequestBody
+getReqBodyParams = getReqBody >>= return . \case
+    Unknown _       -> []
+    UrlEncoded  p _ -> p
+    Multipart _ p _ -> p
 
 -- | parse request body and return files. since 0.9.0.0.
 getReqBodyFiles :: MonadIO m => ActionT exts prms m [File]
-getReqBodyFiles = snd <$> getRequestBody
+getReqBodyFiles = getReqBody >>= return . \case
+    Unknown _       -> []
+    UrlEncoded  _ f -> f
+    Multipart _ _ f -> f
 
 -- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT exts prms m HTTP.RequestHeaders
