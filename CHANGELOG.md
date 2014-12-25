@@ -1,3 +1,6 @@
+# 1.2.2
+* export getReqBody.
+
 # 1.2.1
 * reduce dependencies.
 * relax version restriction of monad-control.
