@@ -77,6 +77,7 @@ module Control.Monad.Apiary.Action.Internal
     , ApiaryConfig(..)
     , getState
     , modifyState
+    , getRequestBody
     , actionFetches
     , execActionT
     , applyDict
@@ -464,6 +465,12 @@ getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
 
 getQueryParams :: Monad m => ActionT exts prms m HTTP.Query
 getQueryParams = Wai.queryString <$> getRequest
+
+getRequestBody :: MonadIO m => ActionT exts prms m ([Param], [File])
+getRequestBody = getReqBody >>= return . \case
+    Unknown _       -> ([], [])
+    UrlEncoded  p f -> (p, f)
+    Multipart _ p f -> (p, f)
 
 -- | parse request body and return params. since 1.0.0.
 getReqBodyParams :: MonadIO m => ActionT exts prms m [Param]
