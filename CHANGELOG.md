@@ -1,3 +1,6 @@
+# 1.2.3
+* fix haddock documentation.
+
 # 1.2.2
 * export getReqBody.
 
