@@ -197,8 +197,9 @@ data RequestBody
     = Unknown S.ByteString -- ^ raw body
     | UrlEncoded [Param] [File]
     | Multipart
-        {-#UNPACK#-}!S.ByteString -- ^ boundary
-        [Param] [File]
+        {-#UNPACK#-}!S.ByteString
+        [Param]
+        [File] -- ^ boundary params files
 
 data ActionState = ActionState
     { actionResponse    :: ResponseBody
