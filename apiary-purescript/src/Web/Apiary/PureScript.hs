@@ -14,7 +14,7 @@ import Data.Apiary.Extension(Initializer', initializer', Has, getExt)
 import Data.Apiary.Compat(Proxy(..))
 
 initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
-initPureScript = initializer' . I.makePureScript
+initPureScript = initializer' . liftIO . I.makePureScript
 
 pureScript :: (Has I.PureScript exts, MonadIO m) => FilePath -> ActionT exts prms m ()
 pureScript m = getExt (Proxy :: Proxy I.PureScript) >>= flip I.pureScript m
