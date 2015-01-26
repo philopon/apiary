@@ -78,7 +78,6 @@ module Control.Monad.Apiary.Action.Internal
     , getState
     , modifyState
     , getRequestBody
-    , actionFetches
     , execActionT
     , applyDict
 
@@ -208,7 +207,6 @@ data ActionState = ActionState
     , actionVault       :: V.Vault
     , actionContentType :: S.ByteString
     , actionReqBody     :: Maybe RequestBody
-    , actionFetches     :: [T.Text]
     }
 
 initialState :: ApiaryConfig -> ActionState
@@ -219,7 +217,6 @@ initialState conf = ActionState
     , actionVault       = V.empty
     , actionContentType = defaultContentType conf
     , actionReqBody     = Nothing
-    , actionFetches     = []
     }
 {-# INLINE initialState #-}
 
