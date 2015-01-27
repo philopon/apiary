@@ -28,6 +28,8 @@ module Control.Monad.Apiary.Internal
     , apiaryExt
 
     -- internal
+    , Filter
+    , Filter'
     , focus
     ) where
 
@@ -56,6 +58,13 @@ import Data.Monoid(Monoid(..), (<>))
 
 import Text.Blaze.Html(Html)
 import qualified Data.Text as T
+
+-- | routing filter
+type Filter exts actM m inp out =
+    ApiaryT exts out actM m () -> ApiaryT exts inp actM m ()
+
+-- | routing filter(without modify parameter dictionary)
+type Filter' exts actM m = forall prms. Filter exts actM m prms prms
 
 type ActionT' exts actM = ActionT exts '[] actM
 
@@ -211,7 +220,7 @@ focus :: Monad actM
       => (Doc -> Doc)
       -> Maybe Method
       -> (R.Path prms' (ActionT exts '[] actM) -> R.Path prms (ActionT exts '[] actM))
-      -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
+      -> Filter exts actM m prms prms'
 focus d meth pth m = ApiaryT $ \ApiaryEnv{..} cont -> unApiaryT m ApiaryEnv
     { envMethod = maybe envMethod Just meth
     , envPath   = envPath . pth
@@ -237,27 +246,27 @@ middleware mw = addRoute (ApiaryWriter id id mw)
 
 --------------------------------------------------------------------------------
 
-insDoc :: (Doc -> Doc) -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+insDoc :: (Doc -> Doc) -> Filter' exts actM m
 insDoc d m = ApiaryT $ \env cont -> unApiaryT m env
     { envDoc = envDoc env . d } cont
 
 -- | API document group. since 0.12.0.0.
 --
 -- only top level group recognized.
-group :: T.Text -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+group :: T.Text -> Filter' exts actM m
 group = insDoc . DocGroup
 
 -- | add API document. since 0.12.0.0.
 --
 -- It use only filters prior document,
 -- so you should be placed document directly in front of action.
-document :: T.Text -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+document :: T.Text -> Filter' exts actM m
 document = insDoc . Document
 
 -- | add user defined precondition. since 0.13.0.
-precondition :: Html -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+precondition :: Html -> Filter' exts actM m
 precondition = insDoc . DocPrecondition
 
 -- | ignore next document.
-noDoc :: ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+noDoc :: Filter' exts actM m
 noDoc = insDoc DocDropNext

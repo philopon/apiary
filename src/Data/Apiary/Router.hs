@@ -6,11 +6,27 @@
 {-# LANGUAGE GADTs #-}
 
 module Data.Apiary.Router
-    ( Path, root, exact, leaf
-    , raw, fetch, end, any, rest
+    ( -- * Path 
+      Path
+      -- ** Path constructors
+    , root
+      -- *** children
+    , exact
+      -- *** action
+    , leaf
+      -- *** get parameter
+    , raw
+    , fetch
+    , end
+    , any
+    , rest
+
+    -- * Router
     , Router
     , empty
     , add, (+|)
+
+    -- * execute
     , execute
     ) where
 
@@ -31,7 +47,11 @@ data Params d m where
 
 -- | routing path.
 --
+-- example:
+--
+-- @
 -- root $ exact "foo" $ fetch (Proxy :: Proxy "key") Just $ leaf Nothing (\d -> print (D.get (Proxy :: Proxy "key") d))
+-- @
 data Path d m where
     Exact :: T.Text -> Path d m -> Path d m
 

@@ -16,15 +16,22 @@
 {-# LANGUAGE CPP #-}
 
 module Data.Apiary.Dict
-    ( empty, add
-    , KV(..), HasKeyResult(..)
-    , HasKey, type (</), type (<:)
-    , Dict
-    , Member, Members, get
+    ( -- * dictionary
+      Dict
+    , KV(..)
+    , empty
+
+      -- * insert
+    , type (</)
+    , add
+
+      -- * get
+    , Member
+    , get
+
+      -- * convenient
+    , Members
     , key
-#if __GLASGOW_HASKELL__ > 707
-    , Ix
-#endif
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -49,6 +56,7 @@ data KV v = Symbol := v
 
 newtype Dict (kvs :: [KV *]) = Dict (V.Vector Any)
 
+-- | result type for pretty printing type error.
 data HasKeyResult
     = AlreadyExists Symbol
     | Dictionary
@@ -63,9 +71,10 @@ type family HasKey (k :: Symbol) (kvs :: [KV *]) :: HasKeyResult
 type instance HasKey k kvs = AlreadyExists k
 #endif
 
+-- | 'not elem key' constraint(ghc >= 7.8)
 type k </ v = HasKey k v ~ AlreadyExists k
-type k <: v = HasKey k v ~ Dictionary
 
+-- | add key value pair to dictionary.
 add :: (k </ kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
 add _ v (Dict d) = Dict (unsafeCoerce v `V.cons` d)
 
@@ -78,13 +87,15 @@ getImpl :: forall proxy k kvs v. KnownNat (Ix k kvs) => proxy (k :: Symbol) -> D
 getImpl _ (Dict d) = unsafeCoerce $ d V.! fromIntegral (natVal (Proxy :: Proxy (Ix k kvs)))
 
 class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
-    get :: proxy k -> Dict kvs -> v
+    get' :: proxy k -> Dict kvs -> v
 
 instance Member k v (k := v ': kvs) where
-    get = getImpl
+    get' = getImpl
 
 instance (Member k v kvs, KnownNat (Ix k (k' := v' ': kvs))) => Member k v (k' := v' ': kvs) where
-    get = getImpl
+    get' = getImpl
+
+get = get'
 #else
 class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
     get' :: Int -> proxy k -> Dict kvs -> v
@@ -95,9 +106,11 @@ instance Member k v (k := v ': kvs) where
 instance Member k v kvs => Member k v (k' := v' ': kvs) where
     get' !i k d = get' (i + 1) k (unsafeCoerce d :: Dict kvs)
 
-get :: Member k v kvs => proxy k -> Dict kvs -> v
 get = get' 0
 #endif
+
+-- | get key from dictionary
+get :: Member k v kvs => proxy k -> Dict kvs -> v
 
 -- | type family to constraint multi kvs.
 --

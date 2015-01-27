@@ -4,11 +4,13 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DataKinds #-}
 
 module Control.Monad.Apiary.Filter (
+    Filter, Filter'
     -- * http method
-      method
+    , method
     -- * http version
     , http09, http10, http11
     -- * path matcher
@@ -57,7 +59,7 @@ import Control.Monad.Apiary.Filter.Internal
     )
 
 import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
-import Control.Monad.Apiary.Internal(ApiaryT, focus)
+import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 
 import Text.Blaze.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC
@@ -82,31 +84,31 @@ import Data.Apiary.Method(Method)
 -- method GET      -- stdmethod
 -- method \"HOGE\" -- non standard method
 -- @
-method :: Monad actM => Method -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+method :: Monad actM => Method -> Filter' exts actM m
 method m = focus (DocMethod m) (Just m) id
 
 -- | filter by ssl accessed. since 0.1.0.0.
-ssl :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+ssl :: Monad actM => Filter' exts actM m
 ssl = function_ (DocPrecondition "SSL required") Wai.isSecure
 
 -- | http version filter. since 0.5.0.0.
-httpVersion :: Monad actM => HTTP.HttpVersion -> Html -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+httpVersion :: Monad actM => HTTP.HttpVersion -> Html -> Filter' exts actM m
 httpVersion v h = function_ (DocPrecondition h) $ (v ==) . Wai.httpVersion
 
 -- | http/0.9 only accepted fiter. since 0.5.0.0.
-http09 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+http09 :: Monad actM => Filter' exts actM m
 http09 = Control.Monad.Apiary.Filter.httpVersion HTTP.http09 "HTTP/0.9 only"
 
 -- | http/1.0 only accepted fiter. since 0.5.0.0.
-http10 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+http10 :: Monad actM => Filter' exts actM m
 http10 = Control.Monad.Apiary.Filter.httpVersion HTTP.http10 "HTTP/1.0 only"
 
 -- | http/1.1 only accepted fiter. since 0.5.0.0.
-http11 :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+http11 :: Monad actM => Filter' exts actM m
 http11 = Control.Monad.Apiary.Filter.httpVersion HTTP.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
-root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+root :: (Monad m, Monad actM) => Filter' exts actM m
 root = focus DocRoot Nothing $ R.raw "ROOT" $ \d r -> do
     roots <- rootPattern <$> getConfig
     case r of
@@ -139,7 +141,7 @@ instance HasDesc SProxy where
 
 --     type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]
 query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, KnownSymbol k, ReqParam v, HasDesc query, Strategy strategy)
-      => query k -> strategy v -> ApiaryT exts (SNext strategy k v prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> strategy v -> Filter exts actM m prms (SNext strategy k v prms)
 query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
     qs      <- getQueryParams
     (ps,fs) <- getRequestBody
@@ -156,7 +158,7 @@ query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
 -- [key|key|] =: pInt
 -- @
 (=:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-     => query k -> proxy v -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
+     => query k -> proxy v -> Filter exts actM m prms (k := v ': prms)
 k =: v = query k (pFirst v)
 
 -- | get one matched paramerer. since 0.5.0.0.
@@ -167,7 +169,7 @@ k =: v = query k (pFirst v)
 -- [key|key|] =!: pInt
 -- @
 (=!:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> proxy v -> Filter exts actM m prms (k := v ': prms)
 k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
@@ -178,8 +180,7 @@ k =!: t = query k (pOne t)
 -- [key|key|] =?: pInt
 -- @
 (=?:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v
-      -> ApiaryT exts (k := Maybe v ': prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> proxy v -> Filter exts actM m prms (k := Maybe v ': prms)
 k =?: t = query k (pOption t)
 
 -- | get optional first paramerer with default. since 0.16.0.
@@ -190,8 +191,7 @@ k =?: t = query k (pOption t)
 -- [key|key|] =!?: (0 :: Int)
 -- @
 (=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, ReqParam v, KnownSymbol k, k </ prms)
-       => query k -> v
-       -> ApiaryT exts (k := v ': prms) actM m () -> ApiaryT exts prms actM m ()
+       => query k -> v -> Filter exts actM m prms (k := v ': prms)
 k =?!: v = query k (pOptional v)
 
 -- | get many paramerer. since 0.5.0.0.
@@ -200,8 +200,7 @@ k =?!: v = query k (pOptional v)
 -- [key|key|] =*: pInt
 -- @
 (=*:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v
-      -> ApiaryT exts (k := [v] ': prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> proxy v -> Filter exts actM m prms (k := [v] ': prms)
 k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
@@ -210,13 +209,12 @@ k =*: t = query k (pMany t)
 -- [key|key|] =+: pInt
 -- @
 (=+:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v
-      -> ApiaryT exts (k := [v] ': prms) actM m () -> ApiaryT exts prms actM m ()
+      => query k -> proxy v -> Filter exts actM m prms (k := [v] ': prms)
 k =+: t = query k (pSome t)
 
 -- | get existance of key only query parameter. since v0.17.0.
 switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
-            => proxy k -> ApiaryT exts (k := Bool ': prms) actM m () -> ApiaryT exts prms actM m ()
+            => proxy k -> Filter exts actM m prms (k := Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
     qs      <- getQueryParams
     (ps,fs) <- getRequestBody
@@ -229,7 +227,7 @@ switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: (KnownSymbol k, Monad actM, k </ prms)
-       => proxy k -> ApiaryT exts (k := SC.ByteString ': prms) actM m () -> ApiaryT exts prms actM m ()
+       => proxy k -> Filter exts actM m prms (k := SC.ByteString ': prms)
 header k = focus doc Nothing $ R.raw "header" $ \d t -> do
     n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     return (Dict.add k n d, t)
@@ -238,7 +236,7 @@ header k = focus doc Nothing $ R.raw "header" $ \d t -> do
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: (KnownSymbol k, Monad actM)
-         => proxy k -> SC.ByteString -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+         => proxy k -> SC.ByteString -> Filter' exts actM m
 eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
     v' <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     if v == v' then return (d,t) else mzero
@@ -246,7 +244,7 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
     doc = DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
-accept :: Monad actM => ContentType -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+accept :: Monad actM => ContentType -> Filter' exts actM m
 accept ect = focus (DocAccept ect) Nothing $ R.raw "accept" $ \d t ->
     (lookup "Accept" . Wai.requestHeaders <$> getRequest) >>= \case
         Nothing -> mzero

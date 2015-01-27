@@ -91,7 +91,7 @@ import Data.Apiary.Param
 
 import Data.Apiary.Method(Method(..))
 import Data.Apiary.Extension(Has, MonadExts(..), getExt, Extensions, Initializer, Initializer', (+>), noExtension)
-import Data.Apiary.Dict (key, Members, type (<:), type (</), KV((:=)))
+import Data.Apiary.Dict (key, Members, type (</), KV((:=)))
 
 import Network.HTTP.Types.Status hiding (mkStatus)
 import Data.Default.Class(def)
