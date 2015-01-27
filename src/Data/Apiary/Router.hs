@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-} -- for ghc-7.6
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeOperators #-}
