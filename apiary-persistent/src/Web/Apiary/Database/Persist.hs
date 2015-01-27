@@ -32,9 +32,8 @@ import Web.Apiary.Logger(LogWrapper, runLogWrapper)
 import qualified Database.Persist.Sql as Sql
 
 import Web.Apiary(Html)
-import Control.Monad.Apiary(ApiaryT)
 import Control.Monad.Apiary.Action(ActionT, applyDict)
-import Control.Monad.Apiary.Filter(focus, Doc(DocPrecondition))
+import Control.Monad.Apiary.Filter(focus, Filter, Doc(DocPrecondition))
 import qualified Data.Apiary.Dict as Dict
 import qualified Data.Apiary.Router as R
 import Data.Apiary.Compat(Proxy(..), KnownSymbol)
@@ -123,7 +122,7 @@ sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, k Dict.</ prm
     -> proxy k
     -> Sql.SqlPersistT (ActionT exts prms actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
-    -> ApiaryT exts (k Dict.:= b ': prms) actM m () -> ApiaryT exts prms actM m ()
+    -> Filter exts actM m prms (k Dict.:= b ': prms)
 sql doc k q p = focus (maybe id DocPrecondition doc) Nothing $ R.raw "sql" $ \d t ->
     fmap p (runSql $ hoistReaderT (applyDict d) q) >>= \case
         Nothing -> mzero

@@ -16,9 +16,8 @@ module Web.Apiary.Session
 
 import Control.Monad(mzero)
 
-import Control.Monad.Apiary(ApiaryT)
 import Control.Monad.Apiary.Action(ActionT)
-import Control.Monad.Apiary.Filter(focus, Doc(DocPrecondition))
+import Control.Monad.Apiary.Filter(focus, Filter, Doc(DocPrecondition))
 
 import Web.Apiary.Session.Internal
     (Session(Session), backendGet, backendSet, backendDelete)
@@ -50,8 +49,7 @@ deleteSession _ = do
 -- | filter by has session or not.
 session' :: (Has (Session sess actM) exts, KnownSymbol key, Monad actM, key Dict.</ kvs)
          => kProxy key -> sProxy sess
-         -> ApiaryT exts (key Dict.:= sess ': kvs) actM m ()
-         -> ApiaryT exts kvs actM m ()
+         -> Filter exts actM m kvs (key Dict.:= sess ': kvs)
 session' ky p = focus (DocPrecondition "session cookie required.") Nothing $ R.raw "session" $ \d t ->
     getSession p >>= \case
         Nothing -> mzero
@@ -64,6 +62,5 @@ session' ky p = focus (DocPrecondition "session cookie required.") Nothing $ R.r
 -- @
 session :: (Has (Session sess actM) exts, Monad actM, "session" Dict.</ kvs)
         => proxy sess
-        -> ApiaryT exts ("session" Dict.:= sess ': kvs) actM m ()
-        -> ApiaryT exts kvs actM m ()
+        -> Filter exts actM m kvs ("session" Dict.:= sess ': kvs)
 session = session' (Proxy :: Proxy "session")

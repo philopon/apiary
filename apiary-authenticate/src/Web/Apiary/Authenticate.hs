@@ -28,6 +28,7 @@ import Network.HTTP.Client.TLS(tlsManagerSettings)
 import Web.Apiary.Session
 import Control.Monad
 import Control.Monad.Trans.Control
+import Control.Monad.Apiary.Filter(Filter)
 
 import qualified Data.Text as T
 import qualified Data.ByteString as S
@@ -61,14 +62,12 @@ authHandler = getExt (Proxy :: Proxy I.Auth) >>= I.authHandler
 
 authorized' :: (Has (Session I.OpenId actM) exts, KnownSymbol key, Monad actM, key Dict.</ kvs)
             => proxy key
-            -> ApiaryT exts (key := I.OpenId ': kvs) actM m ()
-            -> ApiaryT exts kvs actM m ()
+            -> Filter exts actM m kvs (key := I.OpenId ': kvs)
 authorized' ky = session' ky (Proxy :: Proxy I.OpenId)
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
 authorized :: (Has (Session I.OpenId actM) exts, Monad actM, "auth" Dict.</ kvs)
-           => ApiaryT exts ("auth" := I.OpenId ': kvs) actM m ()
-           -> ApiaryT exts kvs actM m ()
+           => Filter exts actM m kvs ("auth" := I.OpenId ': kvs)
 authorized = authorized' (Proxy :: Proxy "auth")
 
 authConfig :: (Has I.Auth exts, Monad m) => ActionT exts prms m I.AuthConfig

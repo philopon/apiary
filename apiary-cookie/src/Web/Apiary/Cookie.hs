@@ -25,7 +25,6 @@ import qualified Network.Wai as Wai
 import Web.Cookie (SetCookie(..))
 import qualified Web.Cookie as Cookie
 
-import Control.Monad.Apiary(ApiaryT)
 import Control.Monad.Apiary.Action(ActionT, getHeaders, addHeader)
 import Control.Monad.Apiary.Filter
 
@@ -60,8 +59,7 @@ cond p t f a = if p a then t a else f a
 cookie :: (Strategy w, Monad actM, k </ prms, KnownSymbol k)
        => proxy k
        -> w S.ByteString
-       -> ApiaryT exts (SNext w k S.ByteString prms) actM m ()
-       -> ApiaryT exts prms actM m ()
+       -> Filter exts actM m prms (SNext w k S.ByteString prms)
 cookie k p = function (DocPrecondition $ toHtml (symbolVal k) <> " cookie required") $ \l r ->
     strategy p k (map (Just . snd) . filter ((SC.pack (symbolVal k) ==) . fst) $ cookie' r) l
 
