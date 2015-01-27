@@ -12,9 +12,10 @@
 module Web.Apiary.Authenticate.Internal where
 
 import Control.Applicative((<$>), (<*>))
+import Control.Monad(mzero)
 import Control.Monad.Trans.Resource(runResourceT)
 import Control.Monad.Apiary(ApiaryT, action)
-import Control.Monad.Apiary.Filter(function, method)
+import Control.Monad.Apiary.Filter(focus)
 import Control.Monad.Apiary.Action(ActionT, getRequest, redirect)
 
 import qualified Network.Wai as Wai
@@ -28,11 +29,11 @@ import Web.Apiary.Session(Session, deleteSession, setSession)
 import Data.Apiary.Extension(Has, Extension)
 import Data.Apiary.Compat(Proxy(Proxy), Typeable)
 import Data.Apiary.Method(Method(GET))
+import qualified Data.Apiary.Router as R
 
 import qualified Data.Serialize as Serialize
 import Data.Data (Data)
 import Data.Maybe(mapMaybe)
-import Data.List(isPrefixOf)
 import Data.Default.Class(Default(..))
 
 import Blaze.ByteString.Builder(toByteString)
@@ -74,12 +75,15 @@ authHandler :: (Monad m, MonadIO actM, Has (Session OpenId actM) exts)
             => Auth -> ApiaryT exts prms actM m ()
 authHandler Auth{..} = retH >> mapM_ (uncurry go) (providers config)
   where
-    pfxPath p = function id (\d r -> if p `isPrefixOf` Wai.pathInfo r then Just d else Nothing)
+    pfxPath p = focus id (Just GET) $ R.raw "" $ \d t -> do
+        if t == p
+        then return (d, [])
+        else mzero
 
-    retH = pfxPath (authPrefix config ++ authReturnToPath config) . method GET . action $
+    retH = pfxPath (authPrefix config ++ authReturnToPath config) . action $
         returnAction manager (authSuccessPage config)
 
-    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . method GET . action $
+    go name Provider{..} = pfxPath (authPrefix config ++ [name]) . action $
         authAction manager providerUrl returnTo realm parameters
 
     returnTo = T.decodeUtf8 $ T.encodeUtf8 (authUrl config) `S.append`
