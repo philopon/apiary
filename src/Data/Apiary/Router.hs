@@ -15,9 +15,9 @@ module Data.Apiary.Router
 
 import Prelude hiding(any)
 import Control.Monad(MonadPlus(..))
-import GHC.TypeLits(KnownSymbol, symbolVal)
 import qualified Network.HTTP.Types as HTTP
 
+import Data.Apiary.Compat(KnownSymbol, symbolVal)
 import qualified Data.Apiary.Dict as D
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
