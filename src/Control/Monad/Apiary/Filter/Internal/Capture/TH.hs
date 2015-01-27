@@ -11,7 +11,7 @@ import Control.Applicative((<$>))
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
-import qualified Control.Monad.Apiary.Filter.Internal.Capture as Capture
+import qualified Control.Monad.Apiary.Filter.Capture as Capture
 
 import qualified Data.Text as T
 import Data.String(IsString(..))
@@ -44,7 +44,7 @@ description s = case break (`elem` "([") s of
         (_, _)         -> fail "capture: syntax error." 
 
 mkCap :: [String] -> TH.ExpQ
-mkCap [] = [|Capture.endPath|]
+mkCap [] = [|id|]
 mkCap (('*':'*':[]):as) = [|Capture.anyPath . $(mkCap as) |]
 mkCap (('*':'*':tS):as) = do
     (k, d) <- description tS

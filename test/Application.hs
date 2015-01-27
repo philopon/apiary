@@ -63,7 +63,7 @@ helloWorldApp = runApp $ action $ do
 helloWorldAllTest :: Test
 helloWorldAllTest = testGroup "helloWorld" $ map ($ helloWorldApp)
     [ testReq "GET /"    . assertPlain200 "hello"
-    , testReq "GET /foo" . assertPlain200 "hello"
+    , testReq "GET /foo" . assert404
     , testReq "POST /"   . assertPlain200 "hello"
     ]
 
@@ -78,7 +78,7 @@ methodFilterTest :: Test
 methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
     [ testReq "GET /"    . assertPlain200 "GET"
     , testReq "POST /"   . assertPlain200 "POST"
-    , testReq "GET /foo" . assertPlain200 "GET"
+    , testReq "GET /foo" . assert404
     , testReq "DELETE /" . assert404
     ]
 

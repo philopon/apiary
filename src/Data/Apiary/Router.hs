@@ -4,18 +4,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 
-{-# LANGUAGE OverloadedStrings #-}
-
 module Data.Apiary.Router
     ( Path, root, exact, leaf
-    , raw, fetch
+    , raw, fetch, end, any, rest
     , Router
     , empty
     , add, (+|)
     , execute
-    , test
     ) where
 
+import Prelude hiding(any)
 import Control.Monad(MonadPlus(..))
 import GHC.TypeLits(KnownSymbol, symbolVal)
 import qualified Network.HTTP.Types as HTTP
@@ -23,11 +21,6 @@ import qualified Network.HTTP.Types as HTTP
 import qualified Data.Apiary.Dict as D
 import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
-
-
-import Data.Proxy
-import Control.Monad.Trans
-import Control.Monad.Trans.Maybe
 
 data Params d m where
     FCons :: (D.Dict d -> [T.Text] -> m (D.Dict d', [T.Text]))
@@ -68,6 +61,23 @@ fetch p f = Param (':' : symbolVal p) go
         Nothing -> mzero
         Just v  -> return (D.insert p v d, ts)
 
+end :: MonadPlus m => Path d m -> Path d m
+end = Param "/" go
+  where
+    go d [] = return (d, [])
+    go _ _  = mzero
+
+any :: Monad m => Path d m -> Path d m
+any = Param "**" go
+  where
+    go d _ = return (d, [])
+
+rest :: (KnownSymbol k, Monad m, D.NotMember k d)
+     => proxy k -> Path (k D.:= [T.Text] ': d) m -> Path d m
+rest k = Param (':': symbolVal k ++ "**") go
+  where
+    go d r = return (D.insert k r d, [])
+
 -- | action
 leaf :: Maybe HTTP.Method -- ^ if Nothing, any method allowed.
      -> (D.Dict d -> m ()) -> Path d m
@@ -81,14 +91,18 @@ instance Show (Path d m) where
 -- | router
 data Router d m where
     Router ::
-        { children  :: !(H.HashMap T.Text (Router d m))
-        , params    :: !(Params d m)
-        , methods   :: !(H.HashMap HTTP.Method (D.Dict d -> m ()))
-        , anyMethod :: !(D.Dict d -> m ())
+        { params    :: Params d m
+        , children  :: H.HashMap T.Text (Router d m)
+        , methods   :: H.HashMap HTTP.Method (D.Dict d -> m ())
+        , anyMethod :: D.Dict d -> m ()
         } -> Router d m
 
 emptyRouter :: MonadPlus m => Router d m
-emptyRouter = Router H.empty FNil H.empty (const mzero)
+emptyRouter = Router { params    = FNil
+                     , children  = H.empty
+                     , methods   = H.empty
+                     , anyMethod = const mzero
+                     }
 
 -- | empty router
 empty :: MonadPlus m => Router '[] m
@@ -99,8 +113,12 @@ add' (Exact p n) r =
     let c = H.lookupDefault emptyRouter p (children r)
     in r { children = H.insert p (add' n c) (children r) }
 
-add' (Param _ f n) Router{..} =
-    Router children (FCons f (add' n emptyRouter) params) methods anyMethod
+add' (Param _ f n) Router{..} = Router
+    { params    = FCons f (add' n emptyRouter) params
+    , children  = children
+    , methods   = methods
+    , anyMethod = anyMethod
+    }
 
 add' (Leaf (Just m) n) r = 
     let c = case H.lookup m (methods r) of
@@ -126,12 +144,12 @@ execute :: MonadPlus m => Router '[] m -> HTTP.Method -> [T.Text] -> m ()
 execute = execute' D.empty
 
 execute' :: MonadPlus m => D.Dict d -> Router d m -> HTTP.Method -> [T.Text] -> m ()
-execute' d Router{params, methods, anyMethod} m [] =
-    fetching d m [] params `mplus` case H.lookup m methods of
+execute' d Router{params, methods, anyMethod} m [] = fetching d m [] params `mplus`
+    case H.lookup m methods of
         Nothing -> anyMethod d
         Just f  -> f d
 
-execute' d Router{params, children} m pps@(p:ps) = fetching d m pps params `mplus` child
+execute' d Router{params, children} m pps@(p:ps) = child `mplus` fetching d m pps params
   where
     child = case H.lookup p children of
         Nothing -> mzero
@@ -145,15 +163,3 @@ fetching d m pps = loop
         do (d', pps') <- f d pps
            execute' d' r m pps'
         `mplus` loop o
-
-test :: Router '[] (MaybeT IO)
-test = e +| d +| c +| b +| a +| empty
-  where
-    a = leaf Nothing (\_ -> liftIO $ putStrLn "A" :: MaybeT IO ())
-    b = exact "foo" $ leaf Nothing (\_ -> liftIO $ putStrLn "B" :: MaybeT IO ())
-    c = fetch (Proxy :: Proxy "neko") (\i -> if i == "ok" then Just (12::Int) else Nothing) 
-        $ leaf Nothing (\dict -> liftIO $ putStrLn ("C:" ++ show (D.get (Proxy :: Proxy "neko") dict)) :: MaybeT IO ())
-    d = exact "get" $ leaf (Just "GET") (\_ -> liftIO $ putStrLn "D" :: MaybeT IO ())
-    e = exact "dic"
-        $ raw "dict" (\dict p -> liftIO (putStrLn "add dict") >> return (D.insert (Proxy :: Proxy "d") (32::Int) dict, p)) 
-        $ leaf (Just "GET") (\dict -> liftIO $ putStrLn ("E:" ++ show (D.get (Proxy :: Proxy "d") dict)) :: MaybeT IO ())

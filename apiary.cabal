@@ -87,7 +87,6 @@ library
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal
-                       Control.Monad.Apiary.Filter.Internal.Capture
                        Control.Monad.Apiary.Filter.Internal.Capture.TH
                        Data.Apiary.Router
   build-depends:       base                 >=4.6   && <4.8

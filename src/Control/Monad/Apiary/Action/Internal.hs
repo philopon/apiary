@@ -75,6 +75,7 @@ module Control.Monad.Apiary.Action.Internal
 
     -- internal
     , ApiaryConfig(..)
+    , getConfig
     , getState
     , modifyState
     , getRequestBody

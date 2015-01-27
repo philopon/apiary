@@ -46,12 +46,18 @@ import Control.Monad(mzero)
 import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
-    (getParams, getQueryParams, getRequestBody, getRequest, ContentType, contentType)
+    ( getParams, getQueryParams, getRequestBody
+    , getRequest, ContentType, contentType
+    , getConfig, ApiaryConfig(..)
+    )
+
 import Control.Monad.Apiary.Filter.Internal
     ( function, function', function_
-    , Doc(DocMethod, DocPrecondition, DocRoot, DocQuery, DocAccept))
+    , Doc(DocMethod, DocPrecondition, DocRoot, DocQuery, DocAccept)
+    )
+
 import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
-import Control.Monad.Apiary.Internal(ApiaryT, focus', focus, PathElem(RootPath))
+import Control.Monad.Apiary.Internal(ApiaryT, focus', focus)
 
 import Text.Blaze.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC
@@ -61,6 +67,7 @@ import Data.Monoid((<>))
 import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, Proxy(..), SProxy(..))
 import Data.Apiary.Dict(NotMember, Elem((:=)))
 import qualified Data.Apiary.Dict as Dict
+import qualified Data.Apiary.Router as R
 
 import Data.Apiary.Param
     ( ReqParam, StrategyRep(..), QueryRep(NoValue)
@@ -76,7 +83,7 @@ import Data.Apiary.Method(Method)
 -- method \"HOGE\" -- non standard method
 -- @
 method :: Monad actM => Method -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-method m = focus' (DocMethod m) (Just m) id getParams
+method m = focus' (DocMethod m) (Just m) id
 
 -- | filter by ssl accessed. since 0.1.0.0.
 ssl :: Monad actM => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
@@ -100,7 +107,12 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HTTP.http11 "HTTP/1.1 only"
 
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: (Monad m, Monad actM) => ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-root = focus' DocRoot Nothing (RootPath:) getParams
+root = focus' DocRoot Nothing $ R.raw "ROOT" $ \d r -> do
+    roots <- rootPattern <$> getConfig
+    case r of
+        [] -> return (d, [])
+        [p] | p `elem` roots -> return (d, [])
+        _  -> mzero
 
 --------------------------------------------------------------------------------
 
@@ -212,16 +224,22 @@ switchQuery k = focus (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") No
 -- | filter by header and get first. since 0.6.0.0.
 header :: (KnownSymbol k, Monad actM, NotMember k prms)
        => proxy k -> ApiaryT exts (k := SC.ByteString ': prms) actM m () -> ApiaryT exts prms actM m ()
-header k = focus' (DocPrecondition $ "has header: " <> toHtml (symbolVal k)) Nothing id $ do
+header k = focus' (DocPrecondition $ "has header: " <> toHtml (symbolVal k)) Nothing undefined
+{-
+id $ do
     n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     Dict.insert k n <$> getParams
+    -}
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: (KnownSymbol k, Monad actM)
          => proxy k -> SC.ByteString -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
-eqHeader k v = focus' (DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)) Nothing id $ do
+eqHeader k v = focus' (DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)) Nothing undefined
+{-
+id $ do
     v' <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     if v == v' then getParams else mzero
+    -}
 
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
