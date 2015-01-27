@@ -52,14 +52,14 @@ raw :: String -> (D.Dict d -> [T.Text] -> m (D.Dict d', [T.Text]))
     -> Path d' m -> Path d m
 raw = Param
 
-fetch :: (MonadPlus m, KnownSymbol k, D.NotMember k d)
+fetch :: (MonadPlus m, KnownSymbol k, k D.</ d)
       => proxy k -> (T.Text -> Maybe v) -> Path (k D.:= v ': d) m -> Path d m
 fetch p f = Param (':' : symbolVal p) go
   where
     go _ [] = mzero
     go d (t:ts) = case f t of
         Nothing -> mzero
-        Just v  -> return (D.insert p v d, ts)
+        Just v  -> return (D.add p v d, ts)
 
 end :: MonadPlus m => Path d m -> Path d m
 end = Param "/" go
@@ -72,11 +72,11 @@ any = Param "**" go
   where
     go d _ = return (d, [])
 
-rest :: (KnownSymbol k, Monad m, D.NotMember k d)
+rest :: (KnownSymbol k, Monad m, k D.</ d)
      => proxy k -> Path (k D.:= [T.Text] ': d) m -> Path d m
 rest k = Param (':': symbolVal k ++ "**") go
   where
-    go d r = return (D.insert k r d, [])
+    go d r = return (D.add k r d, [])
 
 -- | action
 leaf :: Maybe HTTP.Method -- ^ if Nothing, any method allowed.

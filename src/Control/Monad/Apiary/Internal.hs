@@ -28,7 +28,7 @@ module Control.Monad.Apiary.Internal
     , apiaryExt
 
     -- internal
-    , focus, focus'
+    , focus
     ) where
 
 import qualified Network.Wai as Wai
@@ -47,7 +47,6 @@ import Control.Monad.Apiary.Action.Internal
     , execActionT, hoistActionT, applyDict, rootPattern
     )
 
-import qualified Data.Apiary.Dict as D
 import qualified Data.Apiary.Router as R
 import Data.Apiary.Method(Method, renderMethod)
 import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
@@ -207,20 +206,13 @@ apiaryConfig = liftM envConfig getApiaryEnv
 addRoute :: Monad actM => ApiaryWriter exts actM -> ApiaryT exts prms actM m ()
 addRoute r = ApiaryT $ \_ cont -> cont () r
 
--- | filter by action. since 0.6.1.0.
+-- | filter by action. since 1.3.0.
 focus :: Monad actM
       => (Doc -> Doc)
-      -> ActionT exts prms actM (D.Dict prms')
+      -> Maybe Method
+      -> (R.Path prms' (ActionT' exts actM) -> R.Path prms (ActionT' exts actM))
       -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
-focus doc a = focus' doc Nothing $ R.raw "focus" $ \d t ->
-    applyDict d a >>= \d' -> return (d', t)
-
-focus' :: Monad actM
-       => (Doc -> Doc)
-       -> Maybe Method
-       -> (R.Path prms' (ActionT' exts actM) -> R.Path prms (ActionT' exts actM))
-       -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
-focus' d meth pth m = ApiaryT $ \ApiaryEnv{..} cont -> unApiaryT m ApiaryEnv
+focus d meth pth m = ApiaryT $ \ApiaryEnv{..} cont -> unApiaryT m ApiaryEnv
     { envMethod = maybe envMethod Just meth
     , envPath   = envPath . pth
     , envDoc    = envDoc  . d
