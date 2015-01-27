@@ -22,6 +22,9 @@ module Data.Apiary.Dict
     , Dict
     , Member, Members, get
     , key
+#if __GLASGOW_HASKELL__ > 707
+    , Ix
+#endif
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -30,10 +33,12 @@ import Language.Haskell.TH.Quote(QuasiQuoter(..))
 import GHC.Exts(Any, Constraint)
 
 import qualified Data.Vector as V
+
 import Data.Apiary.Compat
-     (Proxy(..), SProxy(..), Symbol
-    , Nat, KnownNat, natVal, type (+)
-    )
+
+#if __GLASGOW_HASKELL__ > 707
+import GHC.TypeLits
+#endif
 
 import Unsafe.Coerce
 

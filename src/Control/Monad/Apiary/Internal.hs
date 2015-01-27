@@ -210,7 +210,7 @@ addRoute r = ApiaryT $ \_ cont -> cont () r
 focus :: Monad actM
       => (Doc -> Doc)
       -> Maybe Method
-      -> (R.Path prms' (ActionT' exts actM) -> R.Path prms (ActionT' exts actM))
+      -> (R.Path prms' (ActionT exts '[] actM) -> R.Path prms (ActionT exts '[] actM))
       -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
 focus d meth pth m = ApiaryT $ \ApiaryEnv{..} cont -> unApiaryT m ApiaryEnv
     { envMethod = maybe envMethod Just meth

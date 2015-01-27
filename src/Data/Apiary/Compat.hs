@@ -14,9 +14,6 @@ module Data.Apiary.Compat
       Symbol, KnownSymbol, symbolVal
     , SProxy(..)
 
-      -- * type level natural literal
-    , Nat, KnownNat, natVal, type (+)
-
     -- * Data.Typeables
     , module Data.Typeable
 #if !MIN_VERSION_base(4,7,0)
@@ -40,12 +37,6 @@ symbolVal _ = fromSing (sing :: Sing n)
 {-# INLINE symbolVal #-}
 
 data Proxy (a :: k) = Proxy
-
-type KnownNat (n :: Nat) = SingRep n Integer
-
-natVal :: forall n proxy. KnownNat n => proxy n -> Integer
-natVal _ = fromSing (sing :: Sing n)
-{-# INLINE natVal #-}
 #endif
 
 -- | Symbol Proxy for ghc-7.6 Template Haskell.
