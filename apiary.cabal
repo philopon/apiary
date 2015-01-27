@@ -80,6 +80,7 @@ library
                        Data.Apiary.Compat
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
+                       Data.Apiary.Router
 
   other-modules:       Network.Wai.Parse
                        Data.Apiary.Document.Internal
@@ -88,7 +89,6 @@ library
                        Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal
                        Control.Monad.Apiary.Filter.Internal.Capture.TH
-                       Data.Apiary.Router
   build-depends:       base                 >=4.6   && <4.8
                      , template-haskell     >=2.8   && <2.10
 

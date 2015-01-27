@@ -59,14 +59,14 @@ authHandler :: (Monad m, MonadIO actM, Has I.Auth exts, Has (Session I.OpenId ac
             => ApiaryT exts prms actM m ()
 authHandler = getExt (Proxy :: Proxy I.Auth) >>= I.authHandler 
 
-authorized' :: (Has (Session I.OpenId actM) exts, KnownSymbol key, Monad actM, Dict.NotMember key kvs)
+authorized' :: (Has (Session I.OpenId actM) exts, KnownSymbol key, Monad actM, key Dict.</ kvs)
             => proxy key
             -> ApiaryT exts (key := I.OpenId ': kvs) actM m ()
             -> ApiaryT exts kvs actM m ()
 authorized' ky = session' ky (Proxy :: Proxy I.OpenId)
 
 -- | filter which check whether logged in or not, and get id. since 0.7.0.0.
-authorized :: (Has (Session I.OpenId actM) exts, Monad actM, Dict.NotMember "auth" kvs)
+authorized :: (Has (Session I.OpenId actM) exts, Monad actM, "auth" Dict.</ kvs)
            => ApiaryT exts ("auth" := I.OpenId ': kvs) actM m ()
            -> ApiaryT exts kvs actM m ()
 authorized = authorized' (Proxy :: Proxy "auth")

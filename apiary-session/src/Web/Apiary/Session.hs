@@ -17,7 +17,7 @@ module Web.Apiary.Session
 import Control.Monad(mzero)
 
 import Control.Monad.Apiary(ApiaryT)
-import Control.Monad.Apiary.Action(ActionT, getParams)
+import Control.Monad.Apiary.Action(ActionT)
 import Control.Monad.Apiary.Filter(focus, Doc(DocPrecondition))
 
 import Web.Apiary.Session.Internal
@@ -26,6 +26,7 @@ import Web.Apiary.Session.Internal
 import Data.Apiary.Extension(Has, getExt)
 import Data.Apiary.Compat(Proxy(Proxy), KnownSymbol)
 import qualified Data.Apiary.Dict as Dict
+import qualified Data.Apiary.Router as R
 
 -- | get session provided type.
 getSession :: (Has (Session sess m) exts, Monad m) => proxy sess -> ActionT exts prms m (Maybe sess)
@@ -47,22 +48,21 @@ deleteSession _ = do
     backendDelete b
 
 -- | filter by has session or not.
-session' :: (Has (Session sess actM) exts, KnownSymbol key, Monad actM, Dict.NotMember key kvs)
+session' :: (Has (Session sess actM) exts, KnownSymbol key, Monad actM, key Dict.</ kvs)
          => kProxy key -> sProxy sess
          -> ApiaryT exts (key Dict.:= sess ': kvs) actM m ()
          -> ApiaryT exts kvs actM m ()
-session' ky p = focus (DocPrecondition "session cookie required.") $ do
-    dict <- getParams
+session' ky p = focus (DocPrecondition "session cookie required.") Nothing $ R.raw "session" $ \d t ->
     getSession p >>= \case
         Nothing -> mzero
-        Just s  -> return $ Dict.insert ky s dict
+        Just s  -> return (Dict.add ky s d, t)
 
 -- | filter by has session or not. use \"session\" dict key.
 --
 -- @
 -- session = session' (Proxy :: Proxy "session")
 -- @
-session :: (Has (Session sess actM) exts, Monad actM, Dict.NotMember "session" kvs)
+session :: (Has (Session sess actM) exts, Monad actM, "session" Dict.</ kvs)
         => proxy sess
         -> ApiaryT exts ("session" Dict.:= sess ': kvs) actM m ()
         -> ApiaryT exts kvs actM m ()

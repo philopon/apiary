@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Web.Apiary.Cookie 
@@ -29,7 +30,7 @@ import Control.Monad.Apiary.Action(ActionT, getHeaders, addHeader)
 import Control.Monad.Apiary.Filter
 
 import Data.Apiary.Compat(KnownSymbol, symbolVal)
-import Data.Apiary.Dict(NotMember)
+import Data.Apiary.Dict(type (</))
 import Data.Apiary.Param(Strategy(..))
 
 import Data.Maybe(mapMaybe)
@@ -56,7 +57,7 @@ cond p t f a = if p a then t a else f a
 -- cookie [key|baz|] (pMany (pMaybe pString))  -- get zero or more baz cookies. allows cookie decrypt failure.
 -- cookie [key|baz|] (Proxy :: Proxy (LimitSome [int|100|] ByteString)) -- get raw cookies up to 100 entries.
 -- @
-cookie :: (Strategy w, Monad actM, NotMember k prms, KnownSymbol k)
+cookie :: (Strategy w, Monad actM, k </ prms, KnownSymbol k)
        => proxy k
        -> w S.ByteString
        -> ApiaryT exts (SNext w k S.ByteString prms) actM m ()
