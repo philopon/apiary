@@ -190,7 +190,10 @@ readBSDouble = readBS SL.readDouble
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
-instance Query Bool    where readQuery = fmap jsToBool; qTypeRep = typeRep
+instance Query Bool    where
+    readQuery (Just b) = Just $ jsToBool b
+    readQuery Nothing  = Just True
+    qTypeRep = typeRep
 
 instance Query Int     where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
 instance Query Int8    where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
