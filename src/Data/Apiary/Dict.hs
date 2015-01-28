@@ -100,7 +100,7 @@ class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
     get' :: Int -> proxy k -> Dict kvs -> v
 
 instance Member k v (k := v ': kvs) where
-    get' !i _ (Dict d) = unsafeCoerce $ d V.! i
+    get' !i _ (Dict d) = unsafeCoerce $ d `index` i
 
 instance Member k v kvs => Member k v (k' := v' ': kvs) where
     get' !i k d = get' (i + 1) k (unsafeCoerce d :: Dict kvs)
