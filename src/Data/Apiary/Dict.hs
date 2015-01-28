@@ -39,8 +39,6 @@ import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
 import GHC.Exts(Any, Constraint)
 
-import qualified Data.Vector as V
-
 import Data.Apiary.Compat
 
 #if __GLASGOW_HASKELL__ > 707
@@ -49,12 +47,33 @@ import GHC.TypeLits
 
 import Unsafe.Coerce
 
-empty :: Dict '[]
-empty = Dict V.empty
+data Dir = L | R
+
+data Tree
+    = Branch !Dir !Any !Tree !Tree
+    | Tip
+
+cons :: Any -> Tree -> Tree
+cons v Tip = Branch L v Tip Tip
+cons v (Branch _ a Tip Tip) = Branch R v (Branch L a Tip Tip) Tip
+cons v (Branch _ a l   Tip) = Branch L v l (Branch L a Tip Tip)
+cons v (Branch L a l   r)   = Branch R v (cons a l) r
+cons v (Branch R a l   r)   = Branch L v l (cons a r)
+
+index :: Tree -> Int -> Any
+index Tip _ = error "out of range"
+index (Branch _ v _ _) 0 = v
+index (Branch L _ l r) i | even i    = index l (i `quot` 2 - 1)
+                         | otherwise = index r (i `quot` 2)
+index (Branch R _ l r) i | even i    = index r (i `quot` 2 - 1)
+                         | otherwise = index l (i `quot` 2)
 
 data KV v = Symbol := v
 
-newtype Dict (kvs :: [KV *]) = Dict (V.Vector Any)
+newtype Dict (kvs :: [KV *]) = Dict Tree
+
+empty :: Dict '[]
+empty = Dict Tip
 
 -- | result type for pretty printing type error.
 data HasKeyResult
@@ -76,7 +95,7 @@ type k </ v = HasKey k v ~ AlreadyExists k
 
 -- | add key value pair to dictionary.
 add :: (k </ kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
-add _ v (Dict d) = Dict (unsafeCoerce v `V.cons` d)
+add _ v (Dict d) = Dict (unsafeCoerce v `cons` d)
 
 #if __GLASGOW_HASKELL__ > 707
 type family Ix (k :: Symbol) (kvs :: [KV *]) :: Nat where
@@ -84,7 +103,7 @@ type family Ix (k :: Symbol) (kvs :: [KV *]) :: Nat where
   Ix k (k' := v ': kvs) = 1 + Ix k kvs
 
 getImpl :: forall proxy k kvs v. KnownNat (Ix k kvs) => proxy (k :: Symbol) -> Dict kvs -> v
-getImpl _ (Dict d) = unsafeCoerce $ d V.! fromIntegral (natVal (Proxy :: Proxy (Ix k kvs)))
+getImpl _ (Dict d) = unsafeCoerce $ d `index` fromIntegral (natVal (Proxy :: Proxy (Ix k kvs)))
 
 class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
     get' :: proxy k -> Dict kvs -> v
