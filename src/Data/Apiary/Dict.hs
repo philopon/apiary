@@ -37,36 +37,16 @@ module Data.Apiary.Dict
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
-import GHC.Exts(Any, Constraint)
+import GHC.Exts(Constraint)
 
 import Data.Apiary.Compat
+import Data.Apiary.Tree
 
 #if __GLASGOW_HASKELL__ > 707
 import GHC.TypeLits
 #endif
 
 import Unsafe.Coerce
-
-data Dir = L | R
-
-data Tree
-    = Branch !Dir !Any !Tree !Tree
-    | Tip
-
-cons :: Any -> Tree -> Tree
-cons v Tip = Branch L v Tip Tip
-cons v (Branch _ a Tip Tip) = Branch R v (Branch L a Tip Tip) Tip
-cons v (Branch _ a l   Tip) = Branch L v l (Branch L a Tip Tip)
-cons v (Branch L a l   r)   = Branch R v (cons a l) r
-cons v (Branch R a l   r)   = Branch L v l (cons a r)
-
-index :: Tree -> Int -> Any
-index Tip _ = error "out of range"
-index (Branch _ v _ _) 0 = v
-index (Branch L _ l r) i | even i    = index l (i `quot` 2 - 1)
-                         | otherwise = index r (i `quot` 2)
-index (Branch R _ l r) i | even i    = index r (i `quot` 2 - 1)
-                         | otherwise = index l (i `quot` 2)
 
 data KV v = Symbol := v
 

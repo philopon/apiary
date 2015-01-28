@@ -81,6 +81,7 @@ library
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
                        Data.Apiary.Router
+                       Data.Apiary.Tree
 
   other-modules:       Network.Wai.Parse
                        Data.Apiary.Document.Internal
@@ -132,10 +133,12 @@ test-suite test-framework
   other-modules:       Application
                      , Method
   type:                exitcode-stdio-1.0
-  build-depends:       base                 >=4.6   && <4.8
-                     , mtl                  >=2.1   && <2.3
-                     , test-framework       >=0.8   && <0.9
-                     , test-framework-hunit >=0.3   && <0.4
+  build-depends:       base                      >=4.6   && <4.8
+                     , mtl                       >=2.1   && <2.3
+                     , QuickCheck                >=1.2   && <1.3
+                     , test-framework            >=0.8   && <0.9
+                     , test-framework-hunit      >=0.3   && <0.4
+                     , test-framework-quickcheck >=0.3   && <0.4
                      , apiary
                      , bytestring           >=0.10  && <0.11
                      , http-types           >=0.8   && <0.9

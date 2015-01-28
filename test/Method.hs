@@ -46,5 +46,4 @@ methodTests = testGroup "Method"
         assertNS "POSTa"
         assertNS "DELET"
         assertNS "CONNECt"
-
     ]
