@@ -29,7 +29,7 @@ import Web.Apiary.Session(Session, deleteSession, setSession)
 import Data.Apiary.Extension(Has, Extension)
 import Data.Apiary.Compat(Proxy(Proxy), Typeable)
 import Data.Apiary.Method(Method(GET))
-import qualified Data.Apiary.Router as R
+import qualified Network.Routing as R
 
 import qualified Data.Serialize as Serialize
 import Data.Data (Data)

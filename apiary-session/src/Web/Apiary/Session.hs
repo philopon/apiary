@@ -24,8 +24,8 @@ import Web.Apiary.Session.Internal
 
 import Data.Apiary.Extension(Has, getExt)
 import Data.Apiary.Compat(Proxy(Proxy), KnownSymbol)
-import qualified Data.Apiary.Dict as Dict
-import qualified Data.Apiary.Router as R
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 
 -- | get session provided type.
 getSession :: (Has (Session sess m) exts, Monad m) => proxy sess -> ActionT exts prms m (Maybe sess)

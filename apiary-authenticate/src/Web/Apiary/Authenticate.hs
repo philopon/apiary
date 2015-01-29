@@ -23,6 +23,7 @@ module Web.Apiary.Authenticate
 
 import Web.Apiary
 import qualified Web.Apiary.Authenticate.Internal as I
+import qualified Network.Routing.Dict as Dict
 import qualified Network.HTTP.Client as Client
 import Network.HTTP.Client.TLS(tlsManagerSettings)
 import Web.Apiary.Session
@@ -35,7 +36,6 @@ import qualified Data.ByteString as S
 
 import Data.Apiary.Compat
 import Data.Apiary.Extension
-import qualified Data.Apiary.Dict as Dict
 
 pOpenId :: Proxy I.OpenId
 pOpenId = Proxy

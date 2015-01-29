@@ -20,6 +20,7 @@ module Web.Apiary.Cookie
 
 import Control.Applicative((<$>))
 
+import Network.Routing.Dict(type (</))
 import qualified Network.Wai as Wai
 
 import Web.Cookie (SetCookie(..))
@@ -29,7 +30,6 @@ import Control.Monad.Apiary.Action(ActionT, getHeaders, addHeader)
 import Control.Monad.Apiary.Filter
 
 import Data.Apiary.Compat(KnownSymbol, symbolVal)
-import Data.Apiary.Dict(type (</))
 import Data.Apiary.Param(Strategy(..))
 
 import Data.Maybe(mapMaybe)

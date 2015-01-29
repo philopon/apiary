@@ -27,6 +27,7 @@ library
                      , time               >=1.4  && <1.6
                      , blaze-builder      >=0.3  && <0.4
                      , blaze-html         >=0.7  && <0.8
+                     , web-routing        >=0.1  && <0.2
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
