@@ -116,6 +116,7 @@ executable background
   build-depends:       base
                      , apiary         >=1.2
                      , apiary-mongoDB >=1.2
+                     , transformers
                      , warp
                      , time
                      , lifted-base
