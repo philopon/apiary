@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Method where
+module Method(test) where
 
-import Test.Framework
-import Test.Framework.Providers.HUnit
-import Test.HUnit hiding (Test)
+import Test.Framework(Test, testGroup)
+import Test.Framework.Providers.HUnit(testCase)
+import Test.HUnit(assertBool)
 
 import Data.Apiary.Method
 import qualified Data.ByteString as S
@@ -21,8 +21,8 @@ stdMethods =
     , "PATCH"
     ]
 
-methodTests :: Test
-methodTests = testGroup "Method"
+test :: Test
+test = testGroup "Method"
     [ testCase "renderMethod . parseMethod == id" $
         mapM_ (\s -> 
             let s' = (renderMethod . parseMethod) s
