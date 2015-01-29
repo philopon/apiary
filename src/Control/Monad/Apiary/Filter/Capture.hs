@@ -17,9 +17,9 @@ import Control.Monad.Apiary.Filter.Internal
 
 import Data.Apiary.Compat(KnownSymbol, symbolVal, Proxy(..))
 import Data.Apiary.Param(Path, pathRep, readPathAs)
-import Data.Apiary.Dict(KV((:=)))
-import qualified Data.Apiary.Dict as Dict
-import qualified Data.Apiary.Router as R
+import Network.Routing.Dict(KV((:=)))
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 
 import qualified Data.Text as T
 import Text.Blaze.Html(Html)

@@ -112,7 +112,7 @@ import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as P
 
 import Data.Monoid(Monoid(..), (<>))
-import qualified Data.Apiary.Dict as Dict
+import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
 import Data.Apiary.Compat(SProxy(..))
 import Data.Apiary.Document(Documents)

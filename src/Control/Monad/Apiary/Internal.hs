@@ -49,7 +49,7 @@ import Control.Monad.Apiary.Action.Internal
     , execActionT, hoistActionT, applyDict, rootPattern
     )
 
-import qualified Data.Apiary.Router as R
+import qualified Network.Routing as R
 import Data.Apiary.Method(Method, renderMethod)
 import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
 import Data.Apiary.Extension.Internal(Initializer(..), allMiddleware, allMiddleware')
@@ -70,7 +70,7 @@ type ActionT' exts actM = ActionT exts '[] actM
 
 data ApiaryEnv exts prms actM = ApiaryEnv
     { envMethod :: Maybe Method
-    , envPath   :: R.Path prms (ActionT' exts actM) -> R.Path '[] (ActionT' exts actM)
+    , envPath   :: R.Path prms (ActionT' exts actM) () -> R.Path '[] (ActionT' exts actM) ()
     , envConfig :: ApiaryConfig
     , envDoc    :: Doc -> Doc
     , envExts   :: Extensions exts
@@ -80,7 +80,7 @@ initialEnv :: Monad actM => ApiaryConfig -> Extensions exts -> ApiaryEnv exts '[
 initialEnv conf = ApiaryEnv Nothing id conf id
 
 data ApiaryWriter exts actM = ApiaryWriter
-    { writerRouter :: R.Router '[] (ActionT' exts actM) -> R.Router '[] (ActionT' exts actM)
+    { writerRouter :: R.Router '[] (ActionT' exts actM) () -> R.Router '[] (ActionT' exts actM) ()
     , writerDoc    :: [Doc] -> [Doc]
     , writerMw     :: Wai.Middleware
     }
@@ -102,7 +102,7 @@ apiaryT :: Monad m
         -> ApiaryT exts prms actM m a
 apiaryT f = ApiaryT $ \rdr cont -> f rdr >>= \(a, w) -> cont a w
 
-routerToAction :: Monad actM => R.Router '[] (ActionT' exts actM) -> ActionT' exts actM ()
+routerToAction :: Monad actM => R.Router '[] (ActionT' exts actM) () -> ActionT' exts actM ()
 routerToAction router = do
     req <- getRequest
     R.execute router (Wai.requestMethod req) (Wai.pathInfo req)
@@ -219,7 +219,7 @@ addRoute r = ApiaryT $ \_ cont -> cont () r
 focus :: Monad actM
       => (Doc -> Doc)
       -> Maybe Method
-      -> (R.Path prms' (ActionT exts '[] actM) -> R.Path prms (ActionT exts '[] actM))
+      -> (R.Path prms' (ActionT exts '[] actM) () -> R.Path prms (ActionT exts '[] actM) ())
       -> Filter exts actM m prms prms'
 focus d meth pth m = ApiaryT $ \ApiaryEnv{..} cont -> unApiaryT m ApiaryEnv
     { envMethod = maybe envMethod Just meth
@@ -234,7 +234,7 @@ action :: Monad actM => ActionT exts prms actM () -> ApiaryT exts prms actM m ()
 action a = do
     env <- getApiaryEnv
     let meth = renderMethod <$> envMethod env
-        path = envPath env (R.leaf meth $ flip applyDict a)
+        path = envPath env (R.action meth $ flip applyDict a)
     addRoute $ ApiaryWriter
         (R.add path)
         (envDoc env Action:)

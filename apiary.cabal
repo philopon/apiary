@@ -75,15 +75,13 @@ library
 
                        Data.Apiary.Extension
                        Data.Apiary.Param
-                       Data.Apiary.Dict
                        Data.Apiary.Method
                        Data.Apiary.Compat
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
-                       Data.Apiary.Router
-                       Data.Apiary.Tree
 
-  other-modules:       Network.Wai.Parse
+  other-modules:       Web.Apiary.TH
+                       Network.Wai.Parse
                        Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
                        Control.Monad.Apiary.Internal
@@ -121,6 +119,7 @@ library
 
                      , wai                  >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
+                     , web-routing          >=0.1   && <0.2
 
   default-extensions:  OverlappingInstances
   hs-source-dirs:      src

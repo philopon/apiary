@@ -57,8 +57,8 @@ import qualified Network.HTTP.Types as HTTP
 import Data.Int(Int8, Int16, Int32, Int64)
 import Data.Word(Word, Word8, Word16, Word32, Word64)
 import Data.Maybe(isJust, catMaybes)
-import Data.Apiary.Dict(KV((:=)), type (</), Dict)
-import qualified Data.Apiary.Dict as Dict
+import Network.Routing.Dict(KV((:=)), type (</), Dict)
+import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Compat
     ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
     , Symbol, KnownSymbol

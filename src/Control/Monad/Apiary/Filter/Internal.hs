@@ -17,9 +17,9 @@ import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 import Control.Monad.Apiary.Action(getRequest)
 
 import Data.Apiary.Compat(KnownSymbol)
-import Data.Apiary.Dict(Dict, type (</), KV((:=)))
-import qualified Data.Apiary.Dict as Dict
-import qualified Data.Apiary.Router as R
+import Network.Routing.Dict(Dict, type (</), KV((:=)))
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 import Data.Apiary.Document.Internal(Doc(..))
 
 -- | low level filter function.

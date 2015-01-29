@@ -67,9 +67,9 @@ import qualified Data.Text             as T
 import qualified Data.CaseInsensitive  as CI
 import Data.Monoid((<>))
 import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, Proxy(..), SProxy(..))
-import Data.Apiary.Dict(type (</), KV((:=)))
-import qualified Data.Apiary.Dict as Dict
-import qualified Data.Apiary.Router as R
+import Network.Routing.Dict(type (</), KV((:=)))
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 
 import Data.Apiary.Param
     ( ReqParam, StrategyRep(..), QueryRep(NoValue)
