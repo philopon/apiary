@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
@@ -25,7 +26,7 @@ import qualified Data.Pool as Pool
 import Control.Monad(void, mzero)
 import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad.Logger(NoLoggingT(runNoLoggingT))
-import Control.Monad.Trans.Reader(ReaderT(..), runReaderT)
+import Control.Monad.Trans.Reader(ReaderT(..), runReaderT, ask)
 import Control.Monad.Trans.Control(MonadBaseControl)
 import Web.Apiary.Logger(LogWrapper, runLogWrapper)
 
@@ -115,6 +116,9 @@ runSql' a persist = case persist of
 
 instance (Has Persist es, MonadExts es m, MonadBaseControl IO m) => RunSQL m where
     runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
+
+instance (MonadBaseControl IO m) => RunSQL (ReaderT Persist m) where
+    runSql a = ask >>= runSql' a
 
 -- | filter by sql query. since 0.9.0.0.
 sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, k Dict.</ prms)
