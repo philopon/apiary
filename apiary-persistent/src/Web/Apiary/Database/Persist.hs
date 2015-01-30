@@ -17,7 +17,7 @@ module Web.Apiary.Database.Persist
     -- ** low level
     , initPersist', initPersistPool'
     -- * query
-    , runSql
+    , RunSQL(runSql)
     -- * filter
     , sql
     ) where
