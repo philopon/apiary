@@ -124,11 +124,11 @@ instance (MonadBaseControl IO m) => RunSQL (ReaderT Persist m) where
 sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, k Dict.</ prms)
     => Maybe Html -- ^ documentation.
     -> proxy k
-    -> Sql.SqlPersistT (ActionT exts prms actM) a
+    -> Sql.SqlPersistT (ActionT exts '[] actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
     -> Filter exts actM m prms (k Dict.:= b ': prms)
 sql doc k q p = focus (maybe id DocPrecondition doc) Nothing $ R.raw "sql" $ \d t ->
-    fmap p (runSql $ hoistReaderT (applyDict d) q) >>= \case
+    fmap p (runSql $ hoistReaderT (applyDict Dict.emptyDict) q) >>= \case
         Nothing -> mzero
         Just a  -> return (Dict.add k a d, t)
 
