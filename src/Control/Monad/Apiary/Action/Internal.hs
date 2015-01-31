@@ -293,7 +293,7 @@ applyDict d (ActionT m) = ActionT $ const (m d)
 
 execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts '[] IO () -> Wai.Application
 execActionT config exts doc m request send = 
-    runActionT m Dict.empty (ActionEnv config request doc exts) (initialState config) >>= \case
+    runActionT m Dict.emptyDict (ActionEnv config request doc exts) (initialState config) >>= \case
         Pass         -> notFound config request send
         Stop s       -> send s
         Continue r _ -> send $ toResponse r

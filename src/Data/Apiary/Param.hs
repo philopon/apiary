@@ -57,7 +57,7 @@ import qualified Network.HTTP.Types as HTTP
 import Data.Int(Int8, Int16, Int32, Int64)
 import Data.Word(Word, Word8, Word16, Word32, Word64)
 import Data.Maybe(isJust, catMaybes)
-import Network.Routing.Dict(KV((:=)), type (</), Dict)
+import Network.Routing.Dict(KV((:=)), type (</), Store)
 import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Compat
     ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
@@ -334,7 +334,7 @@ newtype StrategyRep = StrategyRep
 
 class Strategy (w :: * -> *) where
     type SNext w (k::Symbol) a (prms :: [KV *]) :: [KV *]
-    strategy :: (KnownSymbol k, k </ prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
+    strategy :: (KnownSymbol k, k </ prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Store prms -> m (Store (SNext w k a prms))
     strategyRep :: w a -> StrategyRep
 
 data First a = First

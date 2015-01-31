@@ -236,7 +236,7 @@ action a = do
     let meth = renderMethod <$> envMethod env
         path = envPath env (R.action meth $ flip applyDict a)
     addRoute $ ApiaryWriter
-        (R.add path)
+        (R.insert path)
         (envDoc env Action:)
         id
 

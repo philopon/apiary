@@ -119,7 +119,7 @@ library
 
                      , wai                  >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
-                     , web-routing          >=0.1   && <0.2
+                     , web-routing          >=0.4   && <0.5
 
   default-extensions:  OverlappingInstances
   hs-source-dirs:      src

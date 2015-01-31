@@ -17,14 +17,14 @@ import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 import Control.Monad.Apiary.Action(getRequest)
 
 import Data.Apiary.Compat(KnownSymbol)
-import Network.Routing.Dict(Dict, type (</), KV((:=)))
+import Network.Routing.Dict(type (</), KV((:=)), Store)
 import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
 import Data.Apiary.Document.Internal(Doc(..))
 
 -- | low level filter function.
 function :: Monad actM => (Doc -> Doc)
-         -> (Dict prms -> Wai.Request -> Maybe (Dict prms'))
+         -> (Store prms -> Wai.Request -> Maybe (Store prms'))
          -> Filter exts actM m prms prms'
 function doc f = focus doc Nothing $ R.raw "function" $ \d t -> do
     req <- getRequest
