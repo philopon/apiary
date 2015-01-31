@@ -38,7 +38,7 @@ library
 
                      , resourcet            >=1.1      && <1.2
                      , blaze-builder        >=0.3      && <0.4
-                     , web-routing          >=0.1      && <0.2
+                     , web-routing
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
