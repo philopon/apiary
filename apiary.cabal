@@ -40,7 +40,7 @@ description:
   .
     * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.2.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.3.0/examples/>
   .
   live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
@@ -103,7 +103,7 @@ library
                      , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
                      , bytestring-lexing    >=0.4   && <0.5
-                     , blaze-builder        >=0.3   && <0.4
+                     , blaze-builder        >=0.3   && <0.5
                      , blaze-html           >=0.7   && <0.8
                      , blaze-markup         >=0.6   && <0.7
                      , case-insensitive     >=1.1   && <1.3
