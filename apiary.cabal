@@ -40,7 +40,7 @@ description:
   .
     * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.2.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.3.0/examples/>
   .
   live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
 
@@ -95,7 +95,7 @@ library
                      , transformers-base    >=0.4   && <0.5
                      , mtl                  >=2.1   && <2.3
                      , monad-control        >=0.3   && <1.1
-                     , exceptions           >=0.6   && <0.7
+                     , exceptions           >=0.6   && <0.9
 
                      , http-types           >=0.8   && <0.9
                      , mime-types           >=0.1   && <0.2
@@ -103,7 +103,7 @@ library
                      , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
                      , bytestring-lexing    >=0.4   && <0.5
-                     , blaze-builder        >=0.3   && <0.4
+                     , blaze-builder        >=0.3   && <0.5
                      , blaze-html           >=0.7   && <0.8
                      , blaze-markup         >=0.6   && <0.7
                      , case-insensitive     >=1.1   && <1.3
@@ -127,17 +127,16 @@ library
   ghc-prof-options:    -O2 -Wall -auto-all
   default-language:    Haskell2010
 
-test-suite test-framework
+test-suite tasty
   main-is:             main.hs
   other-modules:       Application
                      , Method
   type:                exitcode-stdio-1.0
   build-depends:       base                      >=4.6   && <4.8
                      , mtl                       >=2.1   && <2.3
-                     , QuickCheck                >=1.2   && <1.3
-                     , test-framework            >=0.8   && <0.9
-                     , test-framework-hunit      >=0.3   && <0.4
-                     , test-framework-quickcheck >=0.3   && <0.4
+                     , tasty                     >=0.10  && <0.11
+                     , tasty-hunit               >=0.9   && <0.10
+                     , tasty-quickcheck          >=0.8   && <0.9
                      , apiary
                      , bytestring           >=0.10  && <0.11
                      , http-types           >=0.8   && <0.9

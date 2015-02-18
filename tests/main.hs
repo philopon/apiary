@@ -1,11 +1,11 @@
 
-import Test.Framework
+import Test.Tasty
 
 import qualified Application
 import qualified Method
 
 main :: IO ()
-main = defaultMain
+main = defaultMain $ testGroup "/"
     [ Application.test
     , Method.test
     ]

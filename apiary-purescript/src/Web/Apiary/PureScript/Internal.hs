@@ -8,11 +8,10 @@
 module Web.Apiary.PureScript.Internal where
 
 import qualified System.FilePath.Glob as G
-import qualified System.IO.UTF8 as U
 
 import qualified Language.PureScript as P
 
-import Control.Monad.Apiary.Action(ActionT, contentType, string, bytes)
+import Control.Monad.Apiary.Action(ActionT, contentType, appendString, appendBytes, string, bytes)
 import Control.Exception(Exception, throwIO, try)
 import Control.Applicative((<$>))
 
@@ -71,7 +70,7 @@ makePureScript conf = do
 compile :: PureScriptConfig -> FilePath -> IO String
 compile opt p = do
     mods <- G.globDir (libraryPatterns opt) (libraryBaseDir opt)
-        >>= mapM (\f -> (f,) <$> U.readFile f) . (p:) . concat . fst
+        >>= mapM (\f -> (f,) <$> readFile f) . (p:) . concat . fst
     case P.parseModulesFromFiles id $ ("prelude", P.prelude) : mods of
         Left l   -> throwIO (ParseError l)
         Right ms -> case P.compile (pureScriptOptions opt) (map snd ms) (pureScriptPrefix opt) of
@@ -93,10 +92,10 @@ pureScript env p = do
     case s of
         Right r -> string r
         Left  e | development (pscConfig env) -> do
-            bytes "console.log(\""
-            string $ pr (e :: PureScriptException)
-            bytes "\")"
-                | otherwise -> bytes "console.log(\"PureScript error.\");"
+            bytes "console.error(\""
+            appendString $ pr (e :: PureScriptException)
+            appendBytes "\")"
+                | otherwise -> bytes "console.error(\"PureScript error.\");"
   where
     pr = concatMap esc . show
     esc '"'  = "\\\""

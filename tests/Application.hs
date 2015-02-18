@@ -5,8 +5,8 @@
 
 module Application(test) where
 
-import Test.Framework(Test, testGroup)
-import Test.Framework.Providers.HUnit(testCase)
+import Test.Tasty(TestTree, testGroup)
+import Test.Tasty.HUnit(testCase)
 
 import Control.Monad(when)
 import Control.Monad.Identity(Identity(..))
@@ -20,7 +20,7 @@ import qualified Network.HTTP.Types as HTTP
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString.Char8 as S
 
-testReq :: String -> (Request -> IO ()) -> Test
+testReq :: String -> (Request -> IO ()) -> TestTree
 testReq str f = 
     let (meth, other) = break (== ' ') str
         (p,  version) = break (== ' ') (tail other)
@@ -61,7 +61,7 @@ helloWorldApp = runApp $ action $ do
     contentType "text/plain"
     bytes "hello"
 
-helloWorldAllTest :: Test
+helloWorldAllTest :: TestTree
 helloWorldAllTest = testGroup "helloWorld" $ map ($ helloWorldApp)
     [ testReq "GET /"    . assertPlain200 "hello"
     , testReq "GET /foo" . assert404
@@ -75,7 +75,7 @@ methodFilterApp = runApp $ do
     method "GET" . action $ contentType "text/plain" >> bytes "GET"
     method POST  . action $ contentType "text/plain" >> bytes "POST"
 
-methodFilterTest :: Test
+methodFilterTest :: TestTree
 methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
     [ testReq "GET /"    . assertPlain200 "GET"
     , testReq "POST /"   . assertPlain200 "POST"
@@ -91,7 +91,7 @@ httpVersionApp = runApp $ do
     http10 . action $ contentType "text/plain" >> bytes "10"
     http11 . action $ contentType "text/plain" >> bytes "11"
 
-httpVersionTest :: Test
+httpVersionTest :: TestTree
 httpVersionTest = testGroup "httpVersionFilter" $ map ($ httpVersionApp)
     [ testReq "GET / HTTP/0.9" . assertPlain200 "09"
     , testReq "GET / HTTP/1.0" . assertPlain200 "10"
@@ -105,7 +105,7 @@ rootFilterApp = runApp . root . action $ do
     contentType "text/html"
     bytes "root"
 
-rootFilterTest :: Test
+rootFilterTest :: TestTree
 rootFilterTest = testGroup "rootFilter" $ map ($ rootFilterApp)
     [ testReq "GET /"           . assertHtml200 "root"
     , testReq "POST /"          . assertHtml200 "root"
@@ -120,7 +120,7 @@ restFilterApp = runApp $ do
     [capture|/test/**rest|] . action $ contentType "text/plain" >> param [key|rest|] >>= showing
     [capture|/test/neko|] . action $ contentType "text/plain" >> bytes "nyan"
 
-restFilterTest :: Test
+restFilterTest :: TestTree
 restFilterTest = testGroup "rest capture" $ map ($ restFilterApp)
     [ testReq "GET /" . assert404
     , testReq "GET /test" . assertPlain200 "[]"
@@ -139,7 +139,7 @@ captureApp = runApp $ do
     [capture|/bar/s::L.ByteString/i::Int|] . action $ contentType "text/plain" >> param [key|s|] >>= lazyBytes >> appendChar ' ' >> param [key|i|] >>= appendShowing
     [capture|/s::L.ByteString|] . action $ contentType "text/plain" >> bytes "fall " >> param [key|s|] >>= appendLazyBytes
 
-captureTest :: Test
+captureTest :: TestTree
 captureTest = testGroup "capture" $ map ($ captureApp)
     [ testReq "GET /foo"  . assertPlain200 "foo"
     , testReq "GET /12"   . assertPlain200 "Int 12"
@@ -164,7 +164,7 @@ queryOptionalApp = runApp $ do
     ([key|foo|] =?!: ("bar" :: String))            . action $ contentType "text/plain" >> bytes "foo String " >> param [key|foo|] >>= appendShowing
     ([key|foo|] =?!: (Just "baz" :: Maybe String)) . action $ contentType "text/plain" >> bytes "foo Maybe String " >> param [key|foo|] >>= appendShowing
 
-queryFirstTest :: Test
+queryFirstTest :: TestTree
 queryFirstTest = testGroup "First" $ map ($ queryApp (=:) (=:) (=:))
     [ testReq "GET /" . assert404
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
@@ -175,7 +175,7 @@ queryFirstTest = testGroup "First" $ map ($ queryApp (=:) (=:) (=:))
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int 12"
     ]
 
-queryOneTest :: Test
+queryOneTest :: TestTree
 queryOneTest = testGroup "One" $ map ($ queryApp (=!:) (=!:) (=!:))
     [ testReq "GET /" . assert404
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
@@ -186,7 +186,7 @@ queryOneTest = testGroup "One" $ map ($ queryApp (=!:) (=!:) (=!:))
     , testReq "GET /?foo=12&foo=b" . assert404
     ]
 
-queryOptionTest :: Test
+queryOptionTest :: TestTree
 queryOptionTest = testGroup "Option" $ map ($ queryApp (=?:) (=?:) (=?:))
     [ testReq "GET /" . assertPlain200 "foo Int Nothing"
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String Just Nothing"
@@ -197,7 +197,7 @@ queryOptionTest = testGroup "Option" $ map ($ queryApp (=?:) (=?:) (=?:))
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int Just 12"
     ]
 
-queryOptionalTest :: Test
+queryOptionalTest :: TestTree
 queryOptionalTest = testGroup "Optional" $ map ($ queryOptionalApp)
     [ testReq "GET /" . assertPlain200 "foo Int 5"
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String Nothing"
@@ -208,7 +208,7 @@ queryOptionalTest = testGroup "Optional" $ map ($ queryOptionalApp)
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo Int 12"
     ]
 
-queryManyTest :: Test
+queryManyTest :: TestTree
 queryManyTest = testGroup "Many" $ map ($ queryApp (=*:) (=*:) (=*:))
     [ testReq "GET /" . assertPlain200 "foo Int []"
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String [Nothing]"
@@ -219,7 +219,7 @@ queryManyTest = testGroup "Many" $ map ($ queryApp (=*:) (=*:) (=*:))
     , testReq "GET /?foo=12&foo=b" . assertPlain200 "foo String [\"12\",\"b\"]"
     ]
 
-querySomeTest :: Test
+querySomeTest :: TestTree
 querySomeTest = testGroup "Some" $ map ($ queryApp (=+:) (=+:) (=+:))
     [ testReq "GET /" . assert404
     , testReq "GET /?foo" . assertPlain200 "foo Maybe String [Nothing]"
@@ -237,7 +237,7 @@ switchQueryApp = runApp $ do
         param [key|foo|] >>= showing
         param [key|bar|] >>= appendShowing
 
-switchQueryTest :: Test
+switchQueryTest :: TestTree
 switchQueryTest = testGroup "switch" $ map ($ switchQueryApp)
     [ testReq "GET /"                    . assertPlain200 "FalseFalse"
     , testReq "GET /?foo"                . assertPlain200 "TrueFalse"
@@ -249,7 +249,7 @@ switchQueryTest = testGroup "switch" $ map ($ switchQueryApp)
     , testReq "GET /?foo=1&bar=0"        . assertPlain200 "TrueFalse"
     ]
 
-queryTest :: Test
+queryTest :: TestTree
 queryTest = testGroup "query"
     [ queryFirstTest
     , queryOneTest
@@ -271,7 +271,7 @@ stopApp = runApp $ do
         when (i == 2) stop
         appendBytes "after stop"
 
-stopTest :: Test
+stopTest :: TestTree
 stopTest = testGroup "stop" $ map ($ stopApp)
     [ testReq "GET /a/0" . assertPlain200 "even\nafter stop"
     , testReq "GET /a/1" . assertPlain200 "one\nodd\nafter stop"
@@ -288,7 +288,7 @@ acceptApp = runApp $ [capture|/|] $ do
     accept "text/html"        . action $ bytes "html"
     action                             $ bytes "other"
 
-acceptTest :: Test
+acceptTest :: TestTree
 acceptTest = testGroup "accept" $ map ($ acceptApp)
     [ testReq "GET / application/json" . (\a r -> assertJson200 "json"     a $ addA "application/json" r)
     , testReq "GET / text/html"        . (\a r -> assertHtml200 "html"     a $ addA "text/html"     r)
@@ -314,7 +314,7 @@ multipleFilter1App = runApp $ do
 
     method DELETE . action   $ contentType "text/plain" >> bytes "DELETE ANY"
 
-multipleFilter1Test :: Test
+multipleFilter1Test :: TestTree
 multipleFilter1Test = testGroup "multiple test1: root, method"
     [ testReq "GET /index.html" $ assertPlain200 "GET /"      multipleFilter1App
     , testReq "POST /"          $ assertHtml200 "POST /"      multipleFilter1App
@@ -324,7 +324,7 @@ multipleFilter1Test = testGroup "multiple test1: root, method"
 
 --------------------------------------------------------------------------------
 
-test :: Test
+test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
     , methodFilterTest
