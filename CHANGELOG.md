@@ -1,3 +1,21 @@
+# 1.3.0
+* new router(web-routing package)
+* new dictionary
+
+    insert -\> add
+    NotMember -\> (\</)  etc...
+
+* add Filter,Filter' type
+* remove focus'
+
+    focus' -\> focus
+    focus  -\> [delete]
+
+* change boolean query behaviour
+
+    old: ?key == fail
+    new: ?key == true
+
 # 1.2.3
 * fix haddock documentation.
 
