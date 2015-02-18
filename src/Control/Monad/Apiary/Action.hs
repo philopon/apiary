@@ -39,6 +39,7 @@ module Control.Monad.Apiary.Action
     -- * not export from Web.Apiary
     , ContentType
     , stopWith
+    , applyDict
     -- ** getter
     , getRequest
     , getHeaders

@@ -17,7 +17,7 @@ import Control.Monad(mzero, mplus)
 import Control.Monad.Apiary(ApiaryT, action)
 import Control.Monad.Apiary.Action(ActionT, getRequest, getParams, stopWith)
 
-import qualified Data.Apiary.Dict as Dict
+import qualified Network.Routing.Dict as Dict
 import qualified Network.Wai.Handler.WebSockets as WS
 import qualified Network.WebSockets as WS
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeOperators #-}
@@ -16,7 +17,7 @@ module Web.Apiary.Database.Persist
     -- ** low level
     , initPersist', initPersistPool'
     -- * query
-    , runSql
+    , RunSQL(runSql)
     -- * filter
     , sql
     ) where
@@ -25,17 +26,17 @@ import qualified Data.Pool as Pool
 import Control.Monad(void, mzero)
 import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad.Logger(NoLoggingT(runNoLoggingT))
-import Control.Monad.Trans.Reader(runReaderT)
+import Control.Monad.Trans.Reader(ReaderT(..), runReaderT, ask)
 import Control.Monad.Trans.Control(MonadBaseControl)
 import Web.Apiary.Logger(LogWrapper, runLogWrapper)
 
 import qualified Database.Persist.Sql as Sql
 
 import Web.Apiary(Html)
-import Control.Monad.Apiary(ApiaryT)
-import Control.Monad.Apiary.Action(ActionT, getParams)
-import Control.Monad.Apiary.Filter(focus, Doc(DocPrecondition))
-import qualified Data.Apiary.Dict as Dict
+import Control.Monad.Apiary.Action(ActionT, applyDict)
+import Control.Monad.Apiary.Filter(focus, Filter, Doc(DocPrecondition))
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 import Data.Apiary.Compat(Proxy(..), KnownSymbol)
 import Data.Apiary.Extension
     (Has, Initializer, initializer, Extensions, Extension, MonadExts, getExt)
@@ -116,14 +117,21 @@ runSql' a persist = case persist of
 instance (Has Persist es, MonadExts es m, MonadBaseControl IO m) => RunSQL m where
     runSql a = getExt (Proxy :: Proxy Persist) >>= runSql' a
 
+instance (MonadBaseControl IO m) => RunSQL (ReaderT Persist m) where
+    runSql a = ask >>= runSql' a
+
 -- | filter by sql query. since 0.9.0.0.
-sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, Dict.NotMember k prms)
+sql :: (KnownSymbol k, Has Persist exts, MonadBaseControl IO actM, k Dict.</ prms)
     => Maybe Html -- ^ documentation.
     -> proxy k
-    -> Sql.SqlPersistT (ActionT exts prms actM) a
+    -> Sql.SqlPersistT (ActionT exts '[] actM) a
     -> (a -> Maybe b) -- ^ result check function. Nothing: fail filter, Just a: success filter and add parameter.
-    -> ApiaryT exts (k Dict.:= b ': prms) actM m () -> ApiaryT exts prms actM m ()
-sql doc k q p = focus (maybe id DocPrecondition doc) $ do
-    fmap p (runSql q) >>= \case
+    -> Filter exts actM m prms (k Dict.:= b ': prms)
+sql doc k q p = focus (maybe id DocPrecondition doc) Nothing $ R.raw "sql" $ \d t ->
+    fmap p (runSql $ hoistReaderT (applyDict Dict.emptyDict) q) >>= \case
         Nothing -> mzero
-        Just a  -> Dict.insert k a `fmap` getParams
+        Just a  -> return (Dict.add k a d, t)
+
+hoistReaderT :: (forall b. m b -> n b) -> ReaderT r m a -> ReaderT r n a
+hoistReaderT f m = ReaderT $ \b -> f (runReaderT m b)
+{-# INLINE hoistReaderT #-}
