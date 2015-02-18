@@ -6,7 +6,7 @@ import Web.Apiary
 import Web.Apiary.WebSockets
 import Network.Wai.Handler.Warp
 import qualified Data.Text as T
-import Data.Apiary.Dict
+import Network.Routing.Dict(get)
 import Control.Concurrent
 import Language.Haskell.TH
 import System.FilePath

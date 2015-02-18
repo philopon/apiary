@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 
@@ -12,28 +13,31 @@ module Control.Monad.Apiary.Filter.Internal
 import qualified Network.Wai as Wai
 
 import Control.Monad(mzero)
-import Control.Monad.Apiary.Internal(ApiaryT, focus)
-import Control.Monad.Apiary.Action(getParams, getRequest)
+import Control.Monad.Apiary.Internal(Filter, Filter', focus)
+import Control.Monad.Apiary.Action(getRequest)
 
 import Data.Apiary.Compat(KnownSymbol)
-import Data.Apiary.Dict(Dict, NotMember, Elem((:=)))
-import qualified Data.Apiary.Dict as Dict
+import Network.Routing.Dict(type (</), KV((:=)), Store)
+import qualified Network.Routing.Dict as Dict
+import qualified Network.Routing as R
 import Data.Apiary.Document.Internal(Doc(..))
 
 -- | low level filter function.
 function :: Monad actM => (Doc -> Doc)
-         -> (Dict prms -> Wai.Request -> Maybe (Dict prms'))
-         -> ApiaryT exts prms' actM m () -> ApiaryT exts prms actM m ()
-function d f = focus d $ getParams >>= \p -> getRequest >>= \r -> case f p r of
-    Nothing -> mzero
-    Just c' -> return c'
+         -> (Store prms -> Wai.Request -> Maybe (Store prms'))
+         -> Filter exts actM m prms prms'
+function doc f = focus doc Nothing $ R.raw "function" $ \d t -> do
+    req <- getRequest
+    case f d req of
+        Nothing -> mzero
+        Just c' -> return (c', t)
 
 -- | filter and append argument.
-function' :: (KnownSymbol key, Monad actM, NotMember key prms) => (Doc -> Doc) -> (Wai.Request -> Maybe (proxy key, prm))
-          -> ApiaryT exts (key := prm ': prms) actM m () -> ApiaryT exts prms actM m ()
-function' d f = function d $ \c r -> f r >>= \(k, p) -> return $ Dict.insert k p c
+function' :: (KnownSymbol key, Monad actM, key </ prms) => (Doc -> Doc) -> (Wai.Request -> Maybe (proxy key, prm))
+          -> Filter exts actM m prms (key := prm ': prms)
+function' d f = function d $ \c r -> f r >>= \(k, p) -> return $ Dict.add k p c
 
 -- | filter only(not modify arguments).
 function_ :: Monad actM => (Doc -> Doc) -> (Wai.Request -> Bool) 
-          -> ApiaryT exts prms actM m () -> ApiaryT exts prms actM m ()
+          -> Filter' exts actM m
 function_ d f = function d $ \c r -> if f r then Just c else Nothing

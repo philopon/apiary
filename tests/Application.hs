@@ -3,17 +3,18 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# LANGUAGE DataKinds #-}
 
-module Application where
+module Application(test) where
 
-import Test.Framework
-import Test.Framework.Providers.HUnit
+import Test.Framework(Test, testGroup)
+import Test.Framework.Providers.HUnit(testCase)
 
-import Control.Monad
-import Control.Monad.Identity
+import Control.Monad(when)
+import Control.Monad.Identity(Identity(..))
 
 import Web.Apiary
-import Network.Wai
-import Network.Wai.Test
+import Network.Wai(Request)
+import qualified Network.Wai.Test as WT
+import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
 
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -23,20 +24,20 @@ testReq :: String -> (Request -> IO ()) -> Test
 testReq str f = 
     let (meth, other) = break (== ' ') str
         (p,  version) = break (== ' ') (tail other)
-    in testCase str $ f (setPath (setVersion version $ (defaultRequest { requestMethod = S.pack meth })) (S.pack p))
+    in testCase str $ f (WT.setPath (setVersion version $ (WT.defaultRequest { Wai.requestMethod = S.pack meth })) (S.pack p))
   where
     setVersion [] r = r
-    setVersion v r | v == " HTTP/1.0" = r { Network.Wai.httpVersion = HTTP.http10 }
-                   | v == " HTTP/0.9" = r { Network.Wai.httpVersion = HTTP.http09 }
-                   | otherwise        = r { Network.Wai.httpVersion = HTTP.http11 }
+    setVersion v r | v == " HTTP/1.0" = r { Wai.httpVersion = HTTP.http10 }
+                   | v == " HTTP/0.9" = r { Wai.httpVersion = HTTP.http09 }
+                   | otherwise        = r { Wai.httpVersion = HTTP.http11 }
 --------------------------------------------------------------------------------
 
 assertRequest :: Int -> (Maybe S.ByteString) -> L.ByteString -> Application -> Request -> IO ()
-assertRequest sc ct body app req = flip runSession app $ do
-    res <- request req
-    assertBody body res
-    assertStatus sc res
-    maybe (return ()) (flip assertContentType res) ct
+assertRequest sc ct body app req = flip WT.runSession app $ do
+    res <- WT.request req
+    WT.assertBody body res
+    WT.assertStatus sc res
+    maybe (return ()) (flip WT.assertContentType res) ct
 
 assertPlain200 :: L.ByteString -> Application -> Request -> IO ()
 assertPlain200 = assertRequest 200 (Just "text/plain")
@@ -63,7 +64,7 @@ helloWorldApp = runApp $ action $ do
 helloWorldAllTest :: Test
 helloWorldAllTest = testGroup "helloWorld" $ map ($ helloWorldApp)
     [ testReq "GET /"    . assertPlain200 "hello"
-    , testReq "GET /foo" . assertPlain200 "hello"
+    , testReq "GET /foo" . assert404
     , testReq "POST /"   . assertPlain200 "hello"
     ]
 
@@ -78,7 +79,7 @@ methodFilterTest :: Test
 methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
     [ testReq "GET /"    . assertPlain200 "GET"
     , testReq "POST /"   . assertPlain200 "POST"
-    , testReq "GET /foo" . assertPlain200 "GET"
+    , testReq "GET /foo" . assert404
     , testReq "DELETE /" . assert404
     ]
 
@@ -301,7 +302,7 @@ acceptTest = testGroup "accept" $ map ($ acceptApp)
     ]
   where
     addA :: S.ByteString -> Request -> Request
-    addA ct r = r {requestHeaders = ("Accept", ct) : filter (("Accept" ==) . fst) (requestHeaders r)}
+    addA ct r = r {Wai.requestHeaders = ("Accept", ct) : filter (("Accept" ==) . fst) (Wai.requestHeaders r)}
 
 --------------------------------------------------------------------------------
 
@@ -323,8 +324,8 @@ multipleFilter1Test = testGroup "multiple test1: root, method"
 
 --------------------------------------------------------------------------------
 
-applicationTests :: Test
-applicationTests = testGroup "Application"
+test :: Test
+test = testGroup "Application"
     [ helloWorldAllTest
     , methodFilterTest
     , httpVersionTest

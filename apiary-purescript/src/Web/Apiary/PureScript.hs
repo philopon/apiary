@@ -2,7 +2,8 @@
 {-# LANGUAGE Rank2Types #-}
 
 module Web.Apiary.PureScript
-    ( I.PureScriptConfig(..)
+    ( I.PureScript
+    , I.PureScriptConfig(..)
     , initPureScript
     , pureScript
     ) where

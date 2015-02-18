@@ -75,10 +75,10 @@ module Control.Monad.Apiary.Action.Internal
 
     -- internal
     , ApiaryConfig(..)
+    , getConfig
     , getState
     , modifyState
     , getRequestBody
-    , actionFetches
     , execActionT
     , applyDict
 
@@ -112,7 +112,7 @@ import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as P
 
 import Data.Monoid(Monoid(..), (<>))
-import qualified Data.Apiary.Dict as Dict
+import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
 import Data.Apiary.Compat(SProxy(..))
 import Data.Apiary.Document(Documents)
@@ -208,7 +208,6 @@ data ActionState = ActionState
     , actionVault       :: V.Vault
     , actionContentType :: S.ByteString
     , actionReqBody     :: Maybe RequestBody
-    , actionFetches     :: [T.Text]
     }
 
 initialState :: ApiaryConfig -> ActionState
@@ -219,7 +218,6 @@ initialState conf = ActionState
     , actionVault       = V.empty
     , actionContentType = defaultContentType conf
     , actionReqBody     = Nothing
-    , actionFetches     = []
     }
 {-# INLINE initialState #-}
 
@@ -295,7 +293,7 @@ applyDict d (ActionT m) = ActionT $ const (m d)
 
 execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts '[] IO () -> Wai.Application
 execActionT config exts doc m request send = 
-    runActionT m Dict.empty (ActionEnv config request doc exts) (initialState config) >>= \case
+    runActionT m Dict.emptyDict (ActionEnv config request doc exts) (initialState config) >>= \case
         Pass         -> notFound config request send
         Stop s       -> send s
         Continue r _ -> send $ toResponse r

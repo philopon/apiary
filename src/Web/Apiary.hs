@@ -1,3 +1,5 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+
 module Web.Apiary 
     ( module Control.Monad.Apiary
     , module Control.Monad.Apiary.Action
@@ -9,8 +11,9 @@ module Web.Apiary
     , module Data.Apiary.Method
     -- | Has, MonadHas, Extensions, Initializer, Initializer', (+>), noExtension
     , module Data.Apiary.Extension
-    -- | key, Member, Members, NotMember, Elem((:=))
-    , module Data.Apiary.Dict
+    -- | Member, Members, NotMember, Elem((:=))
+    , module Network.Routing.Dict
+    , key
 
     -- | hiding mkStatus
     , module Network.HTTP.Types.Status
@@ -89,7 +92,7 @@ import Data.Apiary.Param
 
 import Data.Apiary.Method(Method(..))
 import Data.Apiary.Extension(Has, MonadExts(..), getExt, Extensions, Initializer, Initializer', (+>), noExtension)
-import Data.Apiary.Dict(key, Member, Members, NotMember, Elem((:=)))
+import Network.Routing.Dict (Members, type (</), KV((:=)))
 
 import Network.HTTP.Types.Status hiding (mkStatus)
 import Data.Default.Class(def)
@@ -97,3 +100,4 @@ import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 import Network.Wai(FilePart(..), Application)
 import Text.Blaze.Html(Html)
+import Web.Apiary.TH(key)

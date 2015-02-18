@@ -1,125 +1,123 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE CPP #-}
 
--- | type sefe dictionaly.
 module Data.Apiary.Dict
-    ( Dict
+    ( -- * dictionary
+      Dict
+    , KV(..)
     , empty
-    , insert
-    , Member(get)
-    , key
 
-    -- * types
-    , Elem((:=))
-    , NotMember
-    , Member'
+      -- * insert
+    , type (</)
+    , add
+
+      -- * get
+    , Member
+    , get
+
+      -- * convenient
     , Members
+    , key
     ) where
-
-import Data.Apiary.Compat(KnownSymbol, Symbol, symbolVal, SProxy(..))
 
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
-import qualified Data.HashMap.Strict as H
-import qualified Data.Text as T
+import GHC.Exts(Constraint)
 
-import GHC.Exts(Any, Constraint)
-import Unsafe.Coerce
+import Data.Apiary.Compat
+import Data.Apiary.Tree
 
--- | (kind) Dict element.
-data Elem = forall a. Symbol := a
-
-newtype Dict (ks :: [Elem]) = Dict (H.HashMap T.Text Any)
-
-class Member (k :: Symbol) (v :: *) (kvs :: [Elem]) | k kvs -> v where
-
-    -- | get value of key.
-    --
-    -- > ghci> get (Proxy :: Proxy "bar") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
-    -- > 0.5
-    --
-    -- > ghci> get (Proxy :: Proxy "foo") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
-    -- > 12
-    --
-    -- ghc raise compile error when key is not exists.
-    --
-    -- > ghci> get (Proxy :: Proxy "baz") $ insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
-    -- > <interactive>:15:1:
-    -- >     No instance for (Member "baz" a0 '[]) arising from a use of ‘it’
-    -- >     In the first argument of ‘print’, namely ‘it’
-    -- >     In a stmt of an interactive GHCi command: print it
-
-    get :: proxy k -> Dict kvs -> v
-
-getImpl :: KnownSymbol k => proxy k -> Dict any -> b
-getImpl p (Dict d) = maybe (error "Dict: no value.") unsafeCoerce $ H.lookup (T.pack $ symbolVal p) d
-
-instance KnownSymbol k => Member k v (k := v ': kvs) where
-    get = getImpl
-
-instance (KnownSymbol k, Member k v kvs) => Member k v (k' := v' ': kvs) where
-    get = getImpl
-
--- | type family version Member for NotMember constraint.
-#if __GLASGOW_HASKELL__ && __GLASGOW_HASKELL__ >= 708
-type family Member' (k::Symbol) (kvs :: [Elem]) :: Bool where
-    Member' k  '[] = False
-    Member' k  (k := v ': kvs) = True
-    Member' k' (k := v ': kvs) = Member' k' kvs
-#else
-type family   Member' (k::Symbol) (kvs :: [Elem]) :: Bool
-type instance Member' k kvs = False
+#if __GLASGOW_HASKELL__ > 707
+import GHC.TypeLits
 #endif
 
-type NotMember k kvs = Member' k kvs ~ False
+import Unsafe.Coerce
+
+data KV v = Symbol := v
+
+newtype Dict (kvs :: [KV *]) = Dict Tree
+
+empty :: Dict '[]
+empty = Dict Tip
+
+-- | result type for pretty printing type error.
+data HasKeyResult
+    = AlreadyExists Symbol
+    | Dictionary
+
+#if __GLASGOW_HASKELL__ > 707
+type family HasKey (k :: Symbol) (kvs :: [KV *]) :: HasKeyResult where
+  HasKey k '[] = AlreadyExists k
+  HasKey k (k  := v ': kvs) = Dictionary
+  HasKey k (k' := v ': kvs) = HasKey k kvs
+#else
+type family HasKey (k :: Symbol) (kvs :: [KV *]) :: HasKeyResult
+type instance HasKey k kvs = AlreadyExists k
+#endif
+
+-- | 'not elem key' constraint(ghc >= 7.8)
+type k </ v = HasKey k v ~ AlreadyExists k
+
+-- | add key value pair to dictionary.
+add :: (k </ kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
+add _ v (Dict d) = Dict (unsafeCoerce v `cons` d)
+
+#if __GLASGOW_HASKELL__ > 707
+type family Ix (k :: Symbol) (kvs :: [KV *]) :: Nat where
+  Ix k (k  := v ': kvs) = 0
+  Ix k (k' := v ': kvs) = 1 + Ix k kvs
+
+getImpl :: forall proxy k kvs v. KnownNat (Ix k kvs) => proxy (k :: Symbol) -> Dict kvs -> v
+getImpl _ (Dict d) = unsafeCoerce $ d `index` fromIntegral (natVal (Proxy :: Proxy (Ix k kvs)))
+
+class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
+    get' :: proxy k -> Dict kvs -> v
+
+instance Member k v (k := v ': kvs) where
+    get' = getImpl
+
+instance (Member k v kvs, KnownNat (Ix k (k' := v' ': kvs))) => Member k v (k' := v' ': kvs) where
+    get' = getImpl
+
+get = get'
+#else
+class Member (k :: Symbol) (v :: *) (kvs :: [KV *]) | k kvs -> v where
+    get' :: Int -> proxy k -> Dict kvs -> v
+
+instance Member k v (k := v ': kvs) where
+    get' !i _ (Dict d) = unsafeCoerce $ d `index` i
+
+instance Member k v kvs => Member k v (k' := v' ': kvs) where
+    get' !i k d = get' (i + 1) k (unsafeCoerce d :: Dict kvs)
+
+get = get' 0
+#endif
+
+-- | get key from dictionary
+get :: Member k v kvs => proxy k -> Dict kvs -> v
 
 -- | type family to constraint multi kvs.
 --
 -- > Members ["foo" := Int, "bar" := Double] prms == (Member "foo" Int prms, Member "bar" Double prms)
 --
-type family Members (kvs :: [Elem]) (prms :: [Elem]) :: Constraint
+type family Members (kvs :: [KV *]) (prms :: [KV *]) :: Constraint
 type instance Members '[] prms = ()
 type instance Members (k := v ': kvs) prms = (Member k v prms, Members kvs prms)
-
--- | empty Dict.
-empty :: Dict '[]
-empty = Dict H.empty
-
--- | insert element.
--- 
--- > ghci> :t insert (Proxy :: Proxy "foo") (12 :: Int) empty
--- > insert (Proxy :: Proxy "foo") (12 :: Int) empty
--- >   :: Dict '["foo" ':= Int]
--- 
--- > ghci> :t insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
--- > insert (Proxy :: Proxy "bar") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
--- >   :: Dict '["bar" ':= Double, "foo" ':= Int]
---
--- ghc raise compile error when insert duplicated key(> ghc-7.8 only).
---
--- > ghci> :t insert (Proxy :: Proxy "foo") (0.5 :: Double) $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
--- > 
--- > <interactive>:1:1:
--- >     Couldn't match type ‘'True’ with ‘'False’
--- >     Expected type: 'False
--- >       Actual type: Member' "foo" '["foo" ':= Int]
--- >     In the expression: insert (Proxy :: Proxy "foo") (0.5 :: Double)
--- >     In the expression:
--- >       insert (Proxy :: Proxy "foo") (0.5 :: Double)
--- >       $ insert (Proxy :: Proxy "foo") (12 :: Int) empty
-
-insert :: (KnownSymbol k, NotMember k kvs) => proxy k -> v -> Dict kvs -> Dict (k := v ': kvs)
-insert p v (Dict d) = Dict (H.insert (T.pack $ symbolVal p) (unsafeCoerce v) d)
 
 -- | construct string literal proxy.
 --

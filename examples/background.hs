@@ -1,30 +1,24 @@
 {-# LANGUAGE OverloadedStrings, QuasiQuotes, NoMonomorphismRestriction #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TemplateHaskell, MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies, ExistentialQuantification, GeneralizedNewtypeDeriving #-}
 
 import Web.Apiary
-import Web.Apiary.Heroku
 import Network.Wai.Handler.Warp
-import qualified Web.Apiary.MongoDB as M
-import Data.Time
 import Control.Concurrent.Lifted
 
 main :: IO ()
-main = runHerokuWith run (M.initHerokuMongoDB def) def $ do
-    _ <- fork worker
+main = runApiary (run 3000) def $ do
+    mv <- liftIO $ newMVar (0 :: Int)
+    _ <- fork $ liftIO $ worker mv
     action $ do
         contentType "text/plain"
-        time <- liftIO getCurrentTime
-        log_ <- M.access $ do
-            M.insert_ "log" ["type" M.=: ("webrq" :: String),  "time" M.=: time]
-            M.find (M.select [] "log") >>= M.rest
-        mapM_ (\l -> appendShowing l >> char '\n') log_
+        i <- readMVar mv
+        showing i
 
-    [capture|/flush|] . action $ M.access $ M.delete (M.select [] "log")
-
-worker :: (Has M.MongoDB exts, Has Heroku exts) => ApiaryT exts prms IO IO ()
-worker = do
-    time <- liftIO getCurrentTime
-    M.access $
-        M.insert_ "log" ["type" M.=: ("timer" :: String),  "time" M.=: time]
-    threadDelay (600 * 10^(6::Int))
-    worker
+worker :: MVar Int -> IO ()
+worker mv = go
+  where
+    go = do
+        modifyMVar_ mv (return . succ)
+        threadDelay (10 ^ (6::Int))
+        go

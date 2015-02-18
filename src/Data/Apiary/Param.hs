@@ -57,8 +57,8 @@ import qualified Network.HTTP.Types as HTTP
 import Data.Int(Int8, Int16, Int32, Int64)
 import Data.Word(Word, Word8, Word16, Word32, Word64)
 import Data.Maybe(isJust, catMaybes)
-import Data.Apiary.Dict(Elem((:=)), NotMember, Dict)
-import qualified Data.Apiary.Dict as Dict
+import Network.Routing.Dict(KV((:=)), type (</), Store)
+import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Compat
     ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
     , Symbol, KnownSymbol
@@ -190,7 +190,10 @@ readBSDouble = readBS SL.readDouble
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
-instance Query Bool    where readQuery = fmap jsToBool; qTypeRep = typeRep
+instance Query Bool    where
+    readQuery (Just b) = Just $ jsToBool b
+    readQuery Nothing  = Just True
+    qTypeRep = typeRep
 
 instance Query Int     where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
 instance Query Int8    where readQuery = maybe Nothing readBSInt; qTypeRep = typeRep
@@ -330,51 +333,51 @@ newtype StrategyRep = StrategyRep
 
 
 class Strategy (w :: * -> *) where
-    type SNext w (k::Symbol) a (prms :: [Elem]) :: [Elem]
-    strategy :: (KnownSymbol k, NotMember k prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Dict prms -> m (Dict (SNext w k a prms))
+    type SNext w (k::Symbol) a (prms :: [KV *]) :: [KV *]
+    strategy :: (KnownSymbol k, k </ prms, MonadPlus m) => w a -> proxy' k -> [Maybe a] -> Store prms -> m (Store (SNext w k a prms))
     strategyRep :: w a -> StrategyRep
 
 data First a = First
 instance Strategy First where
     type SNext First k a ps = k := a ': ps
-    strategy _ k (Just a:_) d = return $ Dict.insert k a d
+    strategy _ k (Just a:_) d = return $ Dict.add k a d
     strategy _ _ _          _ = mzero
     strategyRep _ = StrategyRep "first"
 
 data One a = One
 instance Strategy One where
     type SNext One k a ps = k := a ': ps
-    strategy _ k [Just a] d = return $ Dict.insert k a d
+    strategy _ k [Just a] d = return $ Dict.add k a d
     strategy _ _ _        _ = mzero
     strategyRep _ = StrategyRep "one"
 
 data Many a = Many
 instance Strategy Many where
     type SNext Many k a ps = k := [a] ': ps
-    strategy _ k as d = if all isJust as then return $ Dict.insert k (catMaybes as) d else mzero
+    strategy _ k as d = if all isJust as then return $ Dict.add k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "many"
 
 data Some a = Some
 instance Strategy Some where
     type SNext Some k a ps = k := [a] ': ps
     strategy _ _ [] _ = mzero
-    strategy _ k as d = if all isJust as then return $ Dict.insert k (catMaybes as) d else mzero
+    strategy _ k as d = if all isJust as then return $ Dict.add k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "some"
 
 data Option a = Option
 instance Strategy Option where
     type SNext Option k a ps = k := Maybe a ': ps
-    strategy _ k (Just a:_)  d = return $ Dict.insert k (Just a) d
+    strategy _ k (Just a:_)  d = return $ Dict.add k (Just a) d
     strategy _ _ (Nothing:_) _ = mzero
-    strategy _ k []          d = return $ Dict.insert k Nothing d
+    strategy _ k []          d = return $ Dict.add k Nothing d
     strategyRep _ = StrategyRep "option"
 
 data Optional a = Optional T.Text a
 instance Strategy Optional where
     type SNext Optional k a ps = k := a ': ps
-    strategy _              k (Just a:_)  d = return $ Dict.insert k a d
+    strategy _              k (Just a:_)  d = return $ Dict.add k a d
     strategy _              _ (Nothing:_) _ = mzero
-    strategy (Optional _ a) k []          d = return $ Dict.insert k a d
+    strategy (Optional _ a) k []          d = return $ Dict.add k a d
     strategyRep (Optional a _) = StrategyRep $ "default:" `T.append` a
 
 pFirst :: proxy a -> First a
