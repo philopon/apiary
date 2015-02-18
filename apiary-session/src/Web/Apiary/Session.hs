@@ -23,7 +23,8 @@ import Web.Apiary.Session.Internal
     (Session(Session), backendGet, backendSet, backendDelete)
 
 import Data.Apiary.Extension(Has, getExt)
-import Data.Apiary.Compat(Proxy(Proxy), KnownSymbol)
+import Data.Proxy.Compat(Proxy(..))
+import GHC.TypeLits.Compat(KnownSymbol)
 import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
 

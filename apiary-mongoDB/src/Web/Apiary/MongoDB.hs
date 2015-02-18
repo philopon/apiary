@@ -30,7 +30,7 @@ import Web.Apiary.Heroku(Heroku, getHerokuEnv')
 
 import qualified Database.MongoDB as MongoDB
 
-import Data.Apiary.Compat(Proxy(Proxy))
+import Data.Proxy.Compat(Proxy(..))
 import Data.Apiary.Extension
      (Has, Initializer', initializerBracket'
      , Initializer, initializerBracket

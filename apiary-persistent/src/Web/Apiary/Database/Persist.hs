@@ -37,7 +37,8 @@ import Control.Monad.Apiary.Action(ActionT, applyDict)
 import Control.Monad.Apiary.Filter(focus, Filter, Doc(DocPrecondition))
 import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
-import Data.Apiary.Compat(Proxy(..), KnownSymbol)
+import Data.Proxy.Compat(Proxy(..))
+import GHC.TypeLits.Compat(KnownSymbol)
 import Data.Apiary.Extension
     (Has, Initializer, initializer, Extensions, Extension, MonadExts, getExt)
 

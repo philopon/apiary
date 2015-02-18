@@ -16,7 +16,7 @@ import Control.Monad(mzero)
 import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 import Control.Monad.Apiary.Action(getRequest)
 
-import Data.Apiary.Compat(KnownSymbol)
+import GHC.TypeLits.Compat(KnownSymbol)
 import Network.Routing.Dict(type (</), KV((:=)), Store)
 import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R

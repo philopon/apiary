@@ -37,7 +37,7 @@ import Control.Exception.Lifted(bracket)
 
 import Data.Default.Class(Default(..))
 
-import Data.Apiary.Compat(Proxy(..))
+import Data.Proxy.Compat(Proxy(..))
 import Data.Apiary.Extension
      ( Has, Initializer', initializerBracket'
      , Extensions, Extension, MonadExts(getExts), getExt

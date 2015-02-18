@@ -27,7 +27,8 @@ import Web.Apiary(MonadIO(..))
 import Web.Apiary.Session(Session, deleteSession, setSession)
 
 import Data.Apiary.Extension(Has, Extension)
-import Data.Apiary.Compat(Proxy(Proxy), Typeable)
+import Data.Proxy.Compat(Proxy(..))
+import Data.Typeable(Typeable)
 import Data.Apiary.Method(Method(GET))
 import qualified Network.Routing as R
 

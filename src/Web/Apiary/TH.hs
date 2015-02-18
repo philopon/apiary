@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Web.Apiary.TH(key) where
 
-import Data.Apiary.Compat(SProxy(..))
+import Data.Apiary.SProxy(SProxy(..))
 import Language.Haskell.TH.Quote (QuasiQuoter(..))
 import qualified Language.Haskell.TH as TH
 

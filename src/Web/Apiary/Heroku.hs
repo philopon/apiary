@@ -39,7 +39,7 @@ import Data.Apiary.Extension
     ( Has, Extension, Extensions, getExtension, noExtension
     , Initializer, Initializer', initializer', (+>)
     )
-import Data.Apiary.Compat(Proxy(..))
+import Data.Proxy.Compat(Proxy(..))
 
 data Heroku = Heroku 
     { herokuEnv    :: IORef (Maybe (H.HashMap T.Text T.Text))

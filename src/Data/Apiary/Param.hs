@@ -59,10 +59,10 @@ import Data.Word(Word, Word8, Word16, Word32, Word64)
 import Data.Maybe(isJust, catMaybes)
 import Network.Routing.Dict(KV((:=)), type (</), Store)
 import qualified Network.Routing.Dict as Dict
-import Data.Apiary.Compat
-    ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
-    , Symbol, KnownSymbol
-    )
+import Data.Typeable.Compat
+    ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..))
+
+import GHC.TypeLits.Compat(Symbol, KnownSymbol)
 
 import Data.String(IsString)
 import Data.Time.Calendar(Day, fromGregorian)

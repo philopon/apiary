@@ -44,7 +44,7 @@ import qualified Network.Wai as Wai
 import qualified Network.Helics as H
 import qualified Network.Helics.Wai.Safe as Safe
 
-import Data.Apiary.Compat(Proxy(..))
+import Data.Proxy.Compat(Proxy(..))
 import Data.Apiary.Extension
     ( Has, Extension(extMiddleware)
     , Initializer', initializerBracket'

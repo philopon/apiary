@@ -34,7 +34,7 @@ import Control.Monad.Apiary.Filter(Filter)
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 
-import Data.Apiary.Compat
+import GHC.TypeLits.Compat(KnownSymbol)
 import Data.Apiary.Extension
 
 pOpenId :: Proxy I.OpenId
