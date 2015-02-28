@@ -12,6 +12,7 @@ import qualified System.FilePath.Glob as G
 import qualified Language.PureScript as P
 
 import Control.Monad.Apiary.Action(ActionT, contentType, appendString, appendBytes, string, bytes)
+import Control.Monad.Trans.Reader(runReaderT)
 import Control.Exception(Exception, throwIO, try)
 import Control.Applicative((<$>))
 
@@ -73,7 +74,7 @@ compile opt p = do
         >>= mapM (\f -> (f,) <$> readFile f) . (p:) . concat . fst
     case P.parseModulesFromFiles id $ ("prelude", P.prelude) : mods of
         Left l   -> throwIO (ParseError l)
-        Right ms -> case P.compile (pureScriptOptions opt) (map snd ms) (pureScriptPrefix opt) of
+        Right ms -> case runReaderT (P.compile (map snd ms) (pureScriptPrefix opt)) (pureScriptOptions opt) of
             Left l         -> throwIO (CompileError l)
             Right (js,_,_) -> return js
 
