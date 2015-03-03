@@ -5,5 +5,5 @@ ghc:
 install:
   - cabal install Cabal cabal-install happy alex
   - export PATH=~/.cabal/bin:$PATH
-  - bash -eu .travis-install.sh
-script: bash -eu .travis-script.sh
+  - bash -eu scripts/install.sh
+script: bash -eu scripts/travis-script.sh
