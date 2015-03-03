@@ -76,6 +76,8 @@ import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
 
+import qualified Data.ByteString.Read as SL
+
 jsToBool :: (IsString a, Eq a) => a -> Bool
 jsToBool = flip notElem jsFalse
   where
@@ -170,20 +172,20 @@ class Query a where
     queryRep = Strict . qTypeRep
     qTypeRep  :: proxy a            -> TypeRep
 
-readBS :: (T.Text -> Either String (a, T.Text))
+readBS :: (S.ByteString -> Maybe (a, S.ByteString))
        -> S.ByteString -> Maybe a
-readBS p b = case p $ T.decodeUtf8 b of
-    Right (i, s) -> if T.null s then Just i else Nothing
-    _            -> Nothing
+readBS p b = case p b of
+    Just (i, s) -> if S.null s then Just i else Nothing
+    _           -> Nothing
 
 readBSInt :: Integral a => S.ByteString -> Maybe a
-readBSInt = readBS (TR.signed TR.decimal)
+readBSInt = readBS (SL.signed SL.integral)
 
 readBSWord :: Integral a => S.ByteString -> Maybe a
-readBSWord = readBS TR.decimal
+readBSWord = readBS SL.integral
 
 readBSDouble :: S.ByteString -> Maybe Double
-readBSDouble = readBS (TR.signed TR.double)
+readBSDouble = readBS (SL.signed SL.double)
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
@@ -238,19 +240,15 @@ instance Query String where
 -- * 14.2.05
 instance Query Day where
     readQuery = (>>= \s0 -> do
-        (y, s1) <- eitherToMaybe . TR.decimal $ T.decodeUtf8 s0
-        when (T.null s1) Nothing
-        (m, s2) <- eitherToMaybe . TR.decimal $ T.tail s1
-        when (T.null s2) Nothing
-        (d, s3) <- eitherToMaybe . TR.decimal $ T.tail s2
-        unless (T.null s3) Nothing
+        (y, s1) <- SL.integral s0
+        when (S.null s1) Nothing
+        (m, s2) <- SL.integral $ S.tail s1
+        when (S.null s2) Nothing
+        (d, s3) <- SL.integral $ S.tail s2
+        unless (S.null s3) Nothing
         let y' = if y < 100 then 2000 + y else y
         return $ fromGregorian y' m d)
     qTypeRep _ = typeRep (Proxy :: Proxy Day)
-
-eitherToMaybe :: Either l r -> Maybe r
-eitherToMaybe = either (const Nothing) Just
-{-# INLINE eitherToMaybe #-}
 
 -- | fuzzy date parse. three decimal split by 1 char.
 -- if year < 100 then + 2000. since 0.16.0.
