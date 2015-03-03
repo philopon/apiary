@@ -9,7 +9,7 @@ if [ $# -eq 0 ]; then
   sudo cp ${FILE%.tar.gz}/lib/*     /usr/local/lib
 fi
 
-[ "$1" == "develop" ] && shift
+[ "${1-}" == "develop" ] && shift
 
 path=("." "./examples")
 for p in `cat submodules`; do
