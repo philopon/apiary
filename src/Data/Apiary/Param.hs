@@ -59,10 +59,10 @@ import Data.Word(Word, Word8, Word16, Word32, Word64)
 import Data.Maybe(isJust, catMaybes)
 import Network.Routing.Dict(KV((:=)), type (</), Store)
 import qualified Network.Routing.Dict as Dict
-import Data.Apiary.Compat
-    ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..)
-    , Symbol, KnownSymbol
-    )
+import Data.Typeable.Compat
+    ( Typeable, mkTyConApp, typeRepTyCon, typeOf, TypeRep, typeRep, Proxy(..))
+
+import GHC.TypeLits.Compat(Symbol, KnownSymbol)
 
 import Data.String(IsString)
 import Data.Time.Calendar(Day, fromGregorian)
@@ -76,8 +76,7 @@ import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.ByteString.Char8 as S
 import qualified Data.ByteString.Lazy.Char8 as L
 
-import qualified Data.ByteString.Lex.Integral as SL
-import qualified Data.ByteString.Lex.Double   as SL
+import qualified Data.ByteString.Read as SL
 
 jsToBool :: (IsString a, Eq a) => a -> Bool
 jsToBool = flip notElem jsFalse
@@ -180,13 +179,13 @@ readBS p b = case p b of
     _           -> Nothing
 
 readBSInt :: Integral a => S.ByteString -> Maybe a
-readBSInt = readBS (SL.readSigned SL.readDecimal)
+readBSInt = readBS (SL.signed SL.integral)
 
 readBSWord :: Integral a => S.ByteString -> Maybe a
-readBSWord = readBS SL.readDecimal
+readBSWord = readBS SL.integral
 
 readBSDouble :: S.ByteString -> Maybe Double
-readBSDouble = readBS SL.readDouble
+readBSDouble = readBS (SL.signed SL.double)
 
 -- | javascript boolean.
 -- when \"false\", \"0\", \"-0\", \"\", \"null\", \"undefined\", \"NaN\" then False, else True. since 0.6.0.0.
@@ -241,11 +240,11 @@ instance Query String where
 -- * 14.2.05
 instance Query Day where
     readQuery = (>>= \s0 -> do
-        (y, s1) <- SL.readDecimal s0
+        (y, s1) <- SL.integral s0
         when (S.null s1) Nothing
-        (m, s2) <- SL.readDecimal (S.tail s1)
+        (m, s2) <- SL.integral $ S.tail s1
         when (S.null s2) Nothing
-        (d, s3) <- SL.readDecimal (S.tail s2)
+        (d, s3) <- SL.integral $ S.tail s2
         unless (S.null s3) Nothing
         let y' = if y < 100 then 2000 + y else y
         return $ fromGregorian y' m d)

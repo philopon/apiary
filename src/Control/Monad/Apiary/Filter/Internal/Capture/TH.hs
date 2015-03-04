@@ -16,7 +16,8 @@ import qualified Control.Monad.Apiary.Filter.Capture as Capture
 import qualified Data.Text as T
 import Data.String(IsString(..))
 import Data.List(isInfixOf)
-import Data.Apiary.Compat(Proxy(..), SProxy(..))
+import Data.Apiary.SProxy(SProxy(..))
+import Data.Proxy.Compat(Proxy(..))
 
 preCap :: String -> [String]
 preCap ""  = []

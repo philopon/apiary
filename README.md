@@ -1,5 +1,8 @@
-Apiary [![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary) [![Hackage](http://img.shields.io/hackage/v/apiary.svg)](https://hackage.haskell.org/package/apiary) [![MIT license](http://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+Apiary
 ===
+[![Build Status](https://travis-ci.org/philopon/apiary.svg?branch=master)](https://travis-ci.org/philopon/apiary)
+[![Hackage](http://img.shields.io/hackage/v/apiary.svg)](https://hackage.haskell.org/package/apiary)
+[![MIT license](http://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Simple and type safe web framework that can be automatically generate API documentation. 
 
@@ -13,7 +16,8 @@ Feature
 
 Web sites using apiary web framework
 ---
-* [best-haskell.herokuapp.com](http://best-haskell.herokuapp.com) haskell download ranking.
+* [find-hackage.herokuapp.com](http://find-hackage.herokuapp.com) advanced hackage search
+* [best-haskell.herokuapp.com](http://best-haskell.herokuapp.com) haskell download ranking(dead)
 
 Install
 ---

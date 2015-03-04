@@ -12,7 +12,7 @@ import Web.Apiary(MonadIO(..))
 import Control.Monad.Apiary.Action(ActionT)
 import qualified Web.Apiary.PureScript.Internal as I
 import Data.Apiary.Extension(Initializer', initializer', Has, getExt)
-import Data.Apiary.Compat(Proxy(..))
+import Data.Proxy.Compat(Proxy(..))
 
 initPureScript :: MonadIO m => I.PureScriptConfig -> Initializer' m I.PureScript
 initPureScript = initializer' . liftIO . I.makePureScript

@@ -4,9 +4,10 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
+
 -- | Some helpers for parsing data out of a raw WAI 'Request'.
 --
--- copy from wai-extra 3.0.4.1.
+-- copy from wai-extra 3.0.4.5.
 
 module Network.Wai.Parse
     ( parseHttpAccept

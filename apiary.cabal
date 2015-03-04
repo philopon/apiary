@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.3.0
+version:             1.4.0
 synopsis:            Simple and type safe web framework that generate web API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -38,11 +38,11 @@ description:
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
+    * Auto generate API documentation(example: <http://find-hackage.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.3.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.4.0/examples/>
   .
-  live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
+  live demo: <http://find-hackage.herokuapp.com/> (source code: <https://github.com/philopon/find-hackage>)
 
 license:             MIT
 license-file:        LICENSE
@@ -76,12 +76,12 @@ library
                        Data.Apiary.Extension
                        Data.Apiary.Param
                        Data.Apiary.Method
-                       Data.Apiary.Compat
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
                        Network.Wai.Parse
+                       Data.Apiary.SProxy
                        Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
                        Control.Monad.Apiary.Internal
@@ -102,7 +102,7 @@ library
 
                      , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
-                     , bytestring-lexing    >=0.4   && <0.5
+                     , bytestring-read      >=0.2   && <0.3
                      , blaze-builder        >=0.3   && <0.5
                      , blaze-html           >=0.7   && <0.8
                      , blaze-markup         >=0.6   && <0.7
@@ -119,7 +119,8 @@ library
 
                      , wai                  >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
-                     , web-routing          >=0.4   && <0.5
+                     , web-routing          >=0.6   && <0.7
+                     , types-compat         >=0.1   && <0.2
 
   default-extensions:  OverlappingInstances
   hs-source-dirs:      src

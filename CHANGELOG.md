@@ -1,3 +1,7 @@
+# 1.4.0
+* remove Data.Apiary.Compat module
+* remove bytestring-lexing(and alex) dependency
+
 # 1.3.0
 * new router(web-routing package)
 * new dictionary

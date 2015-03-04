@@ -29,7 +29,7 @@ import qualified Web.Cookie as Cookie
 import Control.Monad.Apiary.Action(ActionT, getHeaders, addHeader)
 import Control.Monad.Apiary.Filter
 
-import Data.Apiary.Compat(KnownSymbol, symbolVal)
+import GHC.TypeLits.Compat(KnownSymbol, symbolVal)
 import Data.Apiary.Param(Strategy(..))
 
 import Data.Maybe(mapMaybe)

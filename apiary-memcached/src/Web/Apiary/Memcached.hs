@@ -30,7 +30,7 @@ import Data.Apiary.Extension
     (Has, Extension, Initializer', initializerBracket'
     , Initializer, initializerBracket, getExtension, getExt
     )
-import Data.Apiary.Compat(Proxy(Proxy))
+import Data.Proxy.Compat(Proxy(..))
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Read as T

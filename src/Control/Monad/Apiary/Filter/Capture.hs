@@ -15,7 +15,8 @@ import Control.Monad.Apiary.Internal (Filter, Filter', focus)
 import Control.Monad.Apiary.Filter.Internal
     (Doc(DocPath, DocFetch, DocAny, DocRest))
 
-import Data.Apiary.Compat(KnownSymbol, symbolVal, Proxy(..))
+import GHC.TypeLits.Compat(KnownSymbol, symbolVal)
+import Data.Proxy.Compat(Proxy(..))
 import Data.Apiary.Param(Path, pathRep, readPathAs)
 import Network.Routing.Dict(KV((:=)))
 import qualified Network.Routing.Dict as Dict
