@@ -38,11 +38,11 @@ description:
   .
     * Type safe route filter.
   .
-    * Auto generate API documentation(example: <http://best-haskell.herokuapp.com/api/documentation>).
+    * Auto generate API documentation(example: <http://find-hackage.herokuapp.com/api/documentation>).
   .
-  more examples: <https://github.com/philopon/apiary/blob/v1.3.0/examples/>
+  more examples: <https://github.com/philopon/apiary/blob/v1.4.0/examples/>
   .
-  live demo: <http://best-haskell.herokuapp.com/> (source code: <https://github.com/philopon/best-haskell>)
+  live demo: <http://find-hackage.herokuapp.com/> (source code: <https://github.com/philopon/find-hackage>)
 
 license:             MIT
 license-file:        LICENSE
