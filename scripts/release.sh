@@ -1,7 +1,6 @@
-#!/bin/bash
+#!/bin/bash -eu
 
-dir=$(cd `dirname $0`; pwd)
-password=`cat password`
+dir=$(cd `dirname $0`; cd ..; pwd)
 
 cd $dir
 uglifyjs static/api-documentation.js > static/api-documentation.min.js

@@ -1,3 +1,6 @@
+# 1.4.1
+* add viewport, charset, and async to auto generate API document
+
 # 1.4.0
 * remove Data.Apiary.Compat module
 * remove bytestring-lexing(and alex) dependency
