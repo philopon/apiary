@@ -83,6 +83,8 @@ instance Default DefaultDocumentConfig where
 defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
 defaultDocumentToHtml DefaultDocumentConfig{..} docs = H.docTypeHtml $ do
     H.head $ do
+        H.meta ! A.charset "UTF-8"
+        H.meta ! A.name "viewport" ! A.content "width=device-width,initial-scale=1.0"
         H.title (toHtml documentTitle)
         if documentUseCDN then cdns else embeds
         $(TH.runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
@@ -107,7 +109,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs = H.docTypeHtml $ do
 
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
-    js  u = H.script ! A.src u $ mempty
+    js  u = H.script ! A.src u ! A.async "async" $ mempty
     dataToggle = attribute "data-toggle" " data-toggle=\""
     dataTarget = attribute "data-target" " data-target=\""
 
