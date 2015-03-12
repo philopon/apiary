@@ -1,3 +1,6 @@
+# 1.4.2
+* fix: remove async from API document
+
 # 1.4.1
 * add viewport, charset, and async to auto generate API document
 
