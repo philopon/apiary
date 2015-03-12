@@ -109,7 +109,7 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs = H.docTypeHtml $ do
 
   where
     css u = H.link ! A.rel "stylesheet" ! A.href u
-    js  u = H.script ! A.src u ! A.async "async" $ mempty
+    js u = H.script ! A.src u $ mempty
     dataToggle = attribute "data-toggle" " data-toggle=\""
     dataTarget = attribute "data-target" " data-target=\""
 
@@ -117,8 +117,8 @@ defaultDocumentToHtml DefaultDocumentConfig{..} docs = H.docTypeHtml $ do
 
     cdns = do
         css "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-        js  "http://code.jquery.com/jquery-2.1.1.min.js"
-        js  "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
+        js "http://code.jquery.com/jquery-2.1.1.min.js"
+        js "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
 
     embeds = $( do
         let embed f p = TH.runIO (readFile p) >>= \c -> [|$(TH.varE f) $ preEscapedToHtml (c :: String)|]
