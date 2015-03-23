@@ -72,12 +72,14 @@ library
                        Control.Monad.Apiary.Filter
                        Control.Monad.Apiary.Filter.Capture
                        Control.Monad.Apiary.Action
+                       Control.Monad.Apiary.Documentation
 
                        Data.Apiary.Extension
                        Data.Apiary.Param
                        Data.Apiary.Method
                        Data.Apiary.Document
                        Data.Apiary.Document.Html
+                       Data.Apiary.Document.JSON
 
   other-modules:       Web.Apiary.TH
                        Network.Wai.Parse

@@ -4,6 +4,7 @@ module Web.Apiary
     ( module Control.Monad.Apiary
     , module Control.Monad.Apiary.Action
     , module Control.Monad.Apiary.Filter
+    , module Control.Monad.Apiary.Documentation
     -- | File(..), Proxies
     , module Data.Apiary.Param
 
@@ -43,6 +44,8 @@ import Control.Monad.Apiary
     , noDoc
     )
 
+import Control.Monad.Apiary.Documentation
+
 import Control.Monad.Apiary.Action
     ( ActionT
     , stop
@@ -64,8 +67,6 @@ import Control.Monad.Apiary.Action
     , appendString, appendChar
     , file, file'
     , redirect, redirectPermanently, redirectTemporary
-    , defaultDocumentationAction
-    , DefaultDocumentConfig(..)
     , hoistActionT
     )
 

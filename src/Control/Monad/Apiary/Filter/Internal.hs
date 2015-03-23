@@ -14,7 +14,7 @@ import qualified Network.Wai as Wai
 
 import Control.Monad(mzero)
 import Control.Monad.Apiary.Internal(Filter, Filter', focus)
-import Control.Monad.Apiary.Action(getRequest)
+import Control.Monad.Apiary.Action.Internal(getRequest)
 
 import GHC.TypeLits.Compat(KnownSymbol)
 import Network.Routing.Dict(type (</), KV((:=)), Store)

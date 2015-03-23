@@ -44,9 +44,6 @@ module Control.Monad.Apiary.Action.Internal
 
     , redirect, redirectPermanently, redirectTemporary
 
-    , defaultDocumentationAction
-    , DefaultDocumentConfig(..)
-
     , hoistActionT
     , ContentType
     , stopWith
@@ -79,6 +76,7 @@ module Control.Monad.Apiary.Action.Internal
     , getState
     , modifyState
     , getRequestBody
+    , getDocuments
     , execActionT
     , applyDict
 
@@ -120,11 +118,9 @@ import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
 import Data.Apiary.SProxy(SProxy(..))
 import Data.Apiary.Document(Documents)
-import Data.Apiary.Document.Html(defaultDocumentToHtml, DefaultDocumentConfig(..))
 import Data.Default.Class(Default(..))
 
 import Blaze.ByteString.Builder(Builder)
-import Text.Blaze.Html.Renderer.Utf8(renderHtmlBuilder)
 import qualified Blaze.ByteString.Builder as B
 import qualified Blaze.ByteString.Builder.Char.Utf8 as B
 import qualified Data.ByteString as S
@@ -148,13 +144,6 @@ data ApiaryConfig = ApiaryConfig
     , rootPattern         :: [T.Text]
     , mimeType            :: FilePath -> S.ByteString
     }
-
--- | auto generated document.
-defaultDocumentationAction :: Monad m => DefaultDocumentConfig -> ActionT exts prms m ()
-defaultDocumentationAction conf = do
-    d <- getDocuments
-    contentType "text/html"
-    builder . renderHtmlBuilder $ defaultDocumentToHtml conf d
 
 defaultNotFound :: Wai.Application
 defaultNotFound _ f = f      $ Wai.responseLBS HTTP.status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
