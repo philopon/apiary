@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Web.Apiary.Heroku
     ( Heroku
@@ -25,7 +26,9 @@ import qualified Network.Wai as Wai
 
 import Control.Exception(catch, try, SomeException)
 import Control.Arrow(second)
+#if !MIN_VERSION_base(4,8,0)
 import Control.Applicative((<$>), (<$), Applicative(..))
+#endif
 import Control.Monad.Trans(MonadIO(..))
 
 import Data.IORef(IORef, newIORef, readIORef, writeIORef)

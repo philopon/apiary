@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE CPP #-}
 
 module Data.Apiary.Param
     ( -- * route path parameter
@@ -55,7 +56,11 @@ import Control.Arrow(second)
 import qualified Network.HTTP.Types as HTTP
 
 import Data.Int(Int8, Int16, Int32, Int64)
+#if MIN_VERSION_base(4,8,0)
+import Data.Word(Word8, Word16, Word32, Word64)
+#else
 import Data.Word(Word, Word8, Word16, Word32, Word64)
+#endif
 import Data.Maybe(isJust, catMaybes)
 import Network.Routing.Dict(KV((:=)), type (</), Store)
 import qualified Network.Routing.Dict as Dict
@@ -338,34 +343,34 @@ class Strategy (w :: * -> *) where
 
 data First a = First
 instance Strategy First where
-    type SNext First k a ps = k := a ': ps
+    type SNext First k a ps = k ':= a ': ps
     strategy _ k (Just a:_) d = return $ Dict.add k a d
     strategy _ _ _          _ = mzero
     strategyRep _ = StrategyRep "first"
 
 data One a = One
 instance Strategy One where
-    type SNext One k a ps = k := a ': ps
+    type SNext One k a ps = k ':= a ': ps
     strategy _ k [Just a] d = return $ Dict.add k a d
     strategy _ _ _        _ = mzero
     strategyRep _ = StrategyRep "one"
 
 data Many a = Many
 instance Strategy Many where
-    type SNext Many k a ps = k := [a] ': ps
+    type SNext Many k a ps = k ':= [a] ': ps
     strategy _ k as d = if all isJust as then return $ Dict.add k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "many"
 
 data Some a = Some
 instance Strategy Some where
-    type SNext Some k a ps = k := [a] ': ps
+    type SNext Some k a ps = k ':= [a] ': ps
     strategy _ _ [] _ = mzero
     strategy _ k as d = if all isJust as then return $ Dict.add k (catMaybes as) d else mzero
     strategyRep _ = StrategyRep "some"
 
 data Option a = Option
 instance Strategy Option where
-    type SNext Option k a ps = k := Maybe a ': ps
+    type SNext Option k a ps = k ':= Maybe a ': ps
     strategy _ k (Just a:_)  d = return $ Dict.add k (Just a) d
     strategy _ _ (Nothing:_) _ = mzero
     strategy _ k []          d = return $ Dict.add k Nothing d
@@ -373,7 +378,7 @@ instance Strategy Option where
 
 data Optional a = Optional T.Text a
 instance Strategy Optional where
-    type SNext Optional k a ps = k := a ': ps
+    type SNext Optional k a ps = k ':= a ': ps
     strategy _              k (Just a:_)  d = return $ Dict.add k a d
     strategy _              _ (Nothing:_) _ = mzero
     strategy (Optional _ a) k []          d = return $ Dict.add k a d

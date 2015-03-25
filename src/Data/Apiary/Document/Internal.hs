@@ -12,8 +12,6 @@ module Data.Apiary.Document.Internal
     , docsToDocuments
     ) where
 
-import Control.Applicative((<$>))
-
 import Data.Typeable(TypeRep)
 import Data.Maybe(mapMaybe)
 import Data.List(groupBy)
@@ -100,9 +98,9 @@ initialToDocumentState = ToDocumentState id (\md -> [("*", md)]) id id Nothing N
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
-    (DocGroup "" d') -> (Nothing,) <$> loop initialToDocumentState d'
-    (DocGroup g  d') -> (Just  g,) <$> loop initialToDocumentState d'
-    d'               -> (Nothing,) <$> loop initialToDocumentState d'
+    (DocGroup "" d') -> (Nothing,) `fmap` loop initialToDocumentState d'
+    (DocGroup g  d') -> (Just  g,) `fmap` loop initialToDocumentState d'
+    d'               -> (Nothing,) `fmap` loop initialToDocumentState d'
   where
     loop st (DocDropNext       d) = loop st (dropNext d)
     loop st (DocPath         p d) = loop st { toDocumentPath = toDocumentPath st . Path p } d

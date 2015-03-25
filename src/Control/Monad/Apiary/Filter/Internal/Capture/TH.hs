@@ -6,7 +6,6 @@
 module Control.Monad.Apiary.Filter.Internal.Capture.TH(capture) where
 
 import Control.Arrow(first)
-import Control.Applicative((<$>))
 
 import qualified Language.Haskell.TH as TH
 import Language.Haskell.TH.Quote(QuasiQuoter(..))
@@ -29,9 +28,9 @@ splitPath :: String -> [String]
 splitPath = map T.unpack . T.splitOn "/" . T.pack
 
 description :: String -> TH.Q (String, TH.ExpQ)
-description s = case break (`elem` "([") s of
+description s = case break (`elem` ("([" :: String)) s of
     (t, []) -> return (t, [|Nothing|])
-    (t, st) -> case break (`elem` ")]") st of
+    (t, st) -> case break (`elem` (")]" :: String)) st of
         (_:'$':b, ")") -> do
             TH.reportWarning "DEPRECATED () description. use []."
             v <- TH.lookupValueName b
@@ -51,8 +50,8 @@ mkCap (('*':'*':tS):as) = do
     (k, d) <- description tS
     [|Capture.restPath (SProxy :: SProxy $(TH.litT $ TH.strTyLit k)) $d . $(mkCap as) |]
 mkCap (str:as)
-    | "::" `isInfixOf` fst (break (`elem` "([") str) = do
-        (key, d) <- first T.pack <$> description str
+    | "::" `isInfixOf` fst (break (`elem` ("([" :: String)) str) = do
+        (key, d) <- first T.pack `fmap` description str
         let v = T.unpack . T.strip . fst $ T.breakOn    "::" key
             t = T.unpack . T.strip . snd $ T.breakOnEnd "::" key
         ty <- TH.lookupTypeName t >>= maybe (fail $ t ++ " not found.") return

@@ -1,6 +1,7 @@
-> {-# LANGUAGE QuasiQuotes #-}
 > {-# LANGUAGE OverloadedStrings #-}
 > {-# LANGUAGE TemplateHaskell #-}
+> {-# LANGUAGE QuasiQuotes #-}
+> {-# LANGUAGE DataKinds #-}
 > 
 > import Web.Apiary
 > 

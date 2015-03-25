@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# LANGUAGE DataKinds #-}
+
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
 module Application(test) where
 
