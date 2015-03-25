@@ -18,7 +18,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Web.Apiary.EventSource
-  build-depends:       base              >=4.6  && <4.8
+  build-depends:       base              >=4.6  && <4.9
                      , apiary            >=1.1  && <1.5
                      , blaze-builder     >=0.3  && <0.5
                      , wai-extra         >=3.0  && <3.1
