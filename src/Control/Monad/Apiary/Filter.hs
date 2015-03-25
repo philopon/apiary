@@ -43,7 +43,6 @@ import qualified Network.Wai as Wai
 import Network.Wai.Parse (parseContentType, parseHttpAccept)
 import qualified Network.HTTP.Types as HTTP
 
-import Control.Applicative((<$>))
 import Control.Monad(mzero)
 import Control.Monad.Trans(MonadIO)
 
@@ -112,7 +111,7 @@ http11 = Control.Monad.Apiary.Filter.httpVersion HTTP.http11 "HTTP/1.1 only"
 -- | filter by 'Control.Monad.Apiary.Action.rootPattern' of 'Control.Monad.Apiary.Action.ApiaryConfig'.
 root :: (Monad m, Monad actM) => Filter' exts actM m
 root = focus DocRoot Nothing $ R.raw "ROOT" $ \d r -> do
-    roots <- rootPattern <$> getConfig
+    roots <- rootPattern `fmap` getConfig
     case r of
         [] -> return (d, [])
         [p] | p `elem` roots -> return (d, [])
@@ -160,7 +159,7 @@ query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
 -- [key|key|] =: pInt
 -- @
 (=:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-     => query k -> proxy v -> Filter exts actM m prms (k := v ': prms)
+     => query k -> proxy v -> Filter exts actM m prms (k ':= v ': prms)
 k =: v = query k (pFirst v)
 
 -- | get one matched paramerer. since 0.5.0.0.
@@ -171,7 +170,7 @@ k =: v = query k (pFirst v)
 -- [key|key|] =!: pInt
 -- @
 (=!:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v -> Filter exts actM m prms (k := v ': prms)
+      => query k -> proxy v -> Filter exts actM m prms (k ':= v ': prms)
 k =!: t = query k (pOne t)
 
 -- | get optional first paramerer. since 0.5.0.0.
@@ -182,7 +181,7 @@ k =!: t = query k (pOne t)
 -- [key|key|] =?: pInt
 -- @
 (=?:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v -> Filter exts actM m prms (k := Maybe v ': prms)
+      => query k -> proxy v -> Filter exts actM m prms (k ':= Maybe v ': prms)
 k =?: t = query k (pOption t)
 
 -- | get optional first paramerer with default. since 0.16.0.
@@ -193,7 +192,7 @@ k =?: t = query k (pOption t)
 -- [key|key|] =!?: (0 :: Int)
 -- @
 (=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, ReqParam v, KnownSymbol k, k </ prms)
-       => query k -> v -> Filter exts actM m prms (k := v ': prms)
+       => query k -> v -> Filter exts actM m prms (k ':= v ': prms)
 k =?!: v = query k (pOptional v)
 
 -- | get many paramerer. since 0.5.0.0.
@@ -202,7 +201,7 @@ k =?!: v = query k (pOptional v)
 -- [key|key|] =*: pInt
 -- @
 (=*:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v -> Filter exts actM m prms (k := [v] ': prms)
+      => query k -> proxy v -> Filter exts actM m prms (k ':= [v] ': prms)
 k =*: t = query k (pMany t)
 
 -- | get some paramerer. since 0.5.0.0.
@@ -211,12 +210,12 @@ k =*: t = query k (pMany t)
 -- [key|key|] =+: pInt
 -- @
 (=+:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
-      => query k -> proxy v -> Filter exts actM m prms (k := [v] ': prms)
+      => query k -> proxy v -> Filter exts actM m prms (k ':= [v] ': prms)
 k =+: t = query k (pSome t)
 
 -- | get existance of key only query parameter. since v0.17.0.
 switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
-            => proxy k -> Filter exts actM m prms (k := Bool ': prms)
+            => proxy k -> Filter exts actM m prms (k ':= Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
     qs      <- getQueryParams
     (ps,fs) <- getRequestBody
@@ -229,7 +228,7 @@ switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
 
 -- | filter by header and get first. since 0.6.0.0.
 header :: (KnownSymbol k, Monad actM, k </ prms)
-       => proxy k -> Filter exts actM m prms (k := SC.ByteString ': prms)
+       => proxy k -> Filter exts actM m prms (k ':= SC.ByteString ': prms)
 header k = focus doc Nothing $ R.raw "header" $ \d t -> do
     n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     return (Dict.add k n d, t)
@@ -248,7 +247,7 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> Filter' exts actM m
 accept ect = focus (DocAccept ect) Nothing $ R.raw "accept" $ \d t ->
-    (lookup "Accept" . Wai.requestHeaders <$> getRequest) >>= \case
+    fmap (lookup "Accept" . Wai.requestHeaders) getRequest >>= \case
         Nothing -> mzero
         Just ac ->
             let ex@(et, _) = parseContentType ect

@@ -88,8 +88,8 @@ library
                        Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal
                        Control.Monad.Apiary.Filter.Internal.Capture.TH
-  build-depends:       base                 >=4.6   && <4.8
-                     , template-haskell     >=2.8   && <2.10
+  build-depends:       base                 >=4.6   && <4.9
+                     , template-haskell     >=2.8   && <2.11
 
                      , transformers         >=0.2   && <0.5
                      , transformers-base    >=0.4   && <0.5
@@ -122,7 +122,6 @@ library
                      , web-routing          >=0.6   && <0.7
                      , types-compat         >=0.1   && <0.2
 
-  default-extensions:  OverlappingInstances
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall
   ghc-prof-options:    -O2 -Wall -auto-all
@@ -133,7 +132,7 @@ test-suite tasty
   other-modules:       Application
                      , Method
   type:                exitcode-stdio-1.0
-  build-depends:       base                      >=4.6   && <4.8
+  build-depends:       base                      >=4.6   && <4.9
                      , mtl                       >=2.1   && <2.3
                      , tasty                     >=0.10  && <0.11
                      , tasty-hunit               >=0.9   && <0.10

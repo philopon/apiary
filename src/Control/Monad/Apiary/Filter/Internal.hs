@@ -34,7 +34,7 @@ function doc f = focus doc Nothing $ R.raw "function" $ \d t -> do
 
 -- | filter and append argument.
 function' :: (KnownSymbol key, Monad actM, key </ prms) => (Doc -> Doc) -> (Wai.Request -> Maybe (proxy key, prm))
-          -> Filter exts actM m prms (key := prm ': prms)
+          -> Filter exts actM m prms (key ':= prm ': prms)
 function' d f = function d $ \c r -> f r >>= \(k, p) -> return $ Dict.add k p c
 
 -- | filter only(not modify arguments).

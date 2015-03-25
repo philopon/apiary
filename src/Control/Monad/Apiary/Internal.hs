@@ -35,7 +35,10 @@ module Control.Monad.Apiary.Internal
 
 import qualified Network.Wai as Wai
 
+#if !MIN_VERSION_base(4,8,0)
+import Data.Monoid(Monoid(..))
 import Control.Applicative(Applicative(..), (<$>))
+#endif
 import Control.Monad(liftM)
 import Control.Monad.Trans(MonadIO(liftIO), MonadTrans(lift))
 import Control.Monad.Trans.Control
@@ -54,7 +57,6 @@ import Data.Apiary.Method(Method, renderMethod)
 import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
 import Data.Apiary.Extension.Internal(Initializer(..), allMiddleware, allMiddleware')
 import Data.Apiary.Document.Internal(Doc(..), docsToDocuments)
-import Data.Monoid(Monoid(..), (<>))
 
 import Text.Blaze.Html(Html)
 import qualified Data.Text as T
@@ -150,7 +152,7 @@ instance Monad actM => Applicative (ApiaryT exts prms actM m) where
     mf <*> ma = ApiaryT $ \env cont ->
         unApiaryT mf env $ \f hdr  ->
         unApiaryT ma env $ \a hdr' ->
-        let hdr'' = hdr <> hdr'
+        let hdr'' = hdr `mappend` hdr'
         in hdr'' `seq` cont (f a) hdr''
 
 instance Monad actM => Monad (ApiaryT exts prms actM m) where
@@ -158,7 +160,7 @@ instance Monad actM => Monad (ApiaryT exts prms actM m) where
     m >>= k = ApiaryT $ \env cont ->
         unApiaryT    m  env $ \a hdr  ->
         unApiaryT (k a) env $ \b hdr' -> 
-        let hdr'' = hdr <> hdr'
+        let hdr'' = hdr `mappend` hdr'
         in hdr'' `seq` cont b hdr''
 
 instance Monad actM => MonadTrans (ApiaryT exts prms actM) where

@@ -94,7 +94,12 @@ import Language.Haskell.TH.Quote(QuasiQuoter(..))
 
 import qualified System.PosixCompat.Files as Files
 
+#if MIN_VERSION_base(4,8,0)
+import Control.Applicative (Alternative(..))
+#else
+import Data.Monoid(Monoid(..))
 import Control.Applicative (Applicative(..), Alternative(..), (<$>))
+#endif
 import Control.Monad (MonadPlus(..), liftM)
 import Control.Monad.Trans(MonadIO(..), MonadTrans(..))
 import Control.Monad.Base(MonadBase(..), liftBaseDefault)
@@ -111,7 +116,6 @@ import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as P
 
-import Data.Monoid(Monoid(..), (<>))
 import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
 import Data.Apiary.SProxy(SProxy(..))
@@ -178,7 +182,7 @@ data ResponseBody
 
 instance Monoid ResponseBody where
     mempty = ResponseBuilder mempty
-    ResponseBuilder a `mappend` ResponseBuilder b = ResponseBuilder $ a <> b
+    ResponseBuilder a `mappend` ResponseBuilder b = ResponseBuilder $ a `mappend` b
     _ `mappend` b = b
 
 toResponse :: ActionState -> Wai.Response
@@ -694,7 +698,7 @@ char = builder . B.fromChar
 
 -- | append response body from builder. since 1.2.0.
 appendBuilder :: Monad m => Builder -> ActionT exts prms m ()
-appendBuilder b = modifyState (\s -> s { actionResponse = actionResponse s <> ResponseBuilder b } )
+appendBuilder b = modifyState (\s -> s { actionResponse = actionResponse s `mappend` ResponseBuilder b } )
 
 -- | append response body from strict bytestring. since 1.2.0.
 appendBytes :: Monad m => S.ByteString -> ActionT exts prms m ()

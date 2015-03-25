@@ -7,6 +7,10 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE CPP #-}
 
+#if __GLASGOW_HASKELL__ < 710
+{-# LANGUAGE OverlappingInstances #-}
+#endif
+
 module Data.Apiary.Extension.Internal
     ( Initializer(..)
     , Has(..)
@@ -28,7 +32,11 @@ class Has a (as :: [*]) where
 instance Has a (a ': as) where
     getExtension _ (AddExtension a _) = a
 
+#if __GLASGOW_HASKELL__ >= 710
+instance {-# OVERLAPPABLE #-} Has a as => Has a (a' ': as) where
+#else
 instance Has a as => Has a (a' ': as) where
+#endif
     getExtension p (AddExtension _ as) = getExtension p as
 
 newtype Initializer m i o = Initializer 
