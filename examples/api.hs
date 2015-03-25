@@ -1,7 +1,7 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE DataKinds #-}
 
 import Web.Apiary
 import Network.Wai.Handler.Warp
