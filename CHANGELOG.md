@@ -1,3 +1,6 @@
+# 1.4.3
+* ghc-7.10
+
 # 1.4.2
 * fix: remove async from API document
 
