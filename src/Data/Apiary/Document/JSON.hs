@@ -9,11 +9,11 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
-import Text.Blaze.Html.Renderer.Text(renderHtml)
 
 import Data.Apiary.Param(StrategyRep(..), QueryRep(..))
 import Data.Apiary.Document
 import Data.Apiary.Method(Method, renderMethod)
+import Data.Apiary.Html
 
 import Unsafe.Coerce
 
@@ -67,12 +67,12 @@ routeToJSON' (Fetch k t md n) = jsonObject obj : routeToJSON' n
     obj = (:) ("tag",  jsonString' "fetch") $
           (:) ("name", jsonString' k) $
           (:) ("type", jsonString' . T.pack $ show t) $
-          maybe id (\d -> (:) ("doc", jsonString $ renderHtml d)) md $
+          maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) md $
           []
 routeToJSON' (Rest k md) = (:[]) $ jsonObject $
     (:) ("tag", jsonString' "rest") $
     (:) ("name", jsonString' k) $
-    maybe id (\d -> (:) ("doc", jsonString $ renderHtml d)) md $
+    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) md $
     []
 routeToJSON' Any = [jsonObject [ ("tag", jsonString' "rest") ]]
 routeToJSON' End = []
@@ -86,7 +86,7 @@ queryDocToJSON QueryDoc{..} = jsonObject $
     (:) ("strategy", jsonString' $ strategyInfo queryStrategy) $
     (:) ("query", jsonString' query) $
     maybe id (\t -> (:) ("type", jsonString' . T.pack $ show t)) queryType $
-    maybe id (\d -> (:) ("doc", jsonString $ renderHtml d)) queryDocument $
+    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) queryDocument $
     []
   where
     query = case queryRep of
@@ -103,15 +103,14 @@ queryDocToJSON QueryDoc{..} = jsonObject $
 methodDocToJSON :: MethodDoc -> JSON
 methodDocToJSON MethodDoc{..} = jsonObject $
     (:) ("queries", jsonArray $ map queryDocToJSON queries) $
-    (:) ("preconditions", jsonArray $ map (jsonString . renderHtml) preconditions) $
+    (:) ("preconditions", jsonArray $ map (jsonString . toLazyText) preconditions) $
     maybe id (\a -> (:) ("accept", jsonString' $ T.decodeUtf8 a)) accept $
-    [("doc", jsonString' document)]
+    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) document []
 
-methodToJSON :: Method -> [MethodDoc] -> JSON
-methodToJSON m md = jsonObject
-    [ ("method", jsonString' . T.decodeUtf8 $ renderMethod m)
-    , ("handlers", jsonArray $ map methodDocToJSON md)
-    ]
+methodToJSON :: Maybe Method -> [MethodDoc] -> JSON
+methodToJSON mbm md = jsonObject $
+    maybe id (\m -> (:) ("method", jsonString' . T.decodeUtf8 $ renderMethod m)) mbm $
+    [ ("handlers", jsonArray $ map methodDocToJSON md) ]
 
 pathDocToJSON :: PathDoc -> JSON
 pathDocToJSON PathDoc{..} = jsonObject

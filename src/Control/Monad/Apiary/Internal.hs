@@ -58,7 +58,7 @@ import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
 import Data.Apiary.Extension.Internal(Initializer(..), allMiddleware, allMiddleware')
 import Data.Apiary.Document.Internal(Doc(..), docsToDocuments)
 
-import Text.Blaze.Html(Html)
+import Data.Apiary.Html(Html)
 import qualified Data.Text as T
 
 -- | routing filter
@@ -262,7 +262,7 @@ group = insDoc . DocGroup
 --
 -- It use only filters prior document,
 -- so you should be placed document directly in front of action.
-document :: T.Text -> Filter' exts actM m
+document :: Html -> Filter' exts actM m
 document = insDoc . Document
 
 -- | add user defined precondition. since 0.13.0.
