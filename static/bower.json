@@ -1,0 +1,6 @@
+{
+  "name": "apiary",
+  "devDependencies": {
+    "foundation": "~5.5.1"
+  }
+}

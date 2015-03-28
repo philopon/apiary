@@ -1,0 +1,13 @@
+div
+  button {{method || '*'}}
+  div(class="target") {{route}}
+  x-combobox(data-v-with="model: accept, options: accepts")
+
+api-handler(data-v-repeat="handlers")
+
+div.result
+  pre.code 200 OK
+  pre.header header: neko
+    | header: nyan
+  pre.body { "body": "ok"}
+  div.dismiss ×

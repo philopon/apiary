@@ -1,0 +1,5 @@
+input(data-v-model="model")
+div(data-v-on="click: toggleOptions" data-v-if="isComboBox")
+  img(src=require('url!./down.svg') width="6")
+ul(data-v-show="visibleOptions")
+  li(data-v-repeat="o:options" data-v-on="click: selectOption") {{o}}

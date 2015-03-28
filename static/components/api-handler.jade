@@ -1,0 +1,7 @@
+ul(data-v-if="preconds | length")
+  li(data-v-repeat="precond : preconds") {{{precond}}}
+
+div(data-v-if="queries | length")
+  api-query-param(data-v-repeat="queries" data-v-ref="query")
+
+p {{{doc}}}

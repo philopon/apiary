@@ -1,0 +1,312 @@
+$include-html-classes: false;
+
+@import "normalize";
+@import "foundation";
+
+$method-saturation: 100%;
+$method-lightness:  36%;
+$method-fuctor: 360/9;
+$button-font-size: 0.9rem;
+$button-padding: 0.5rem;
+$button-width: $button-font-size * 7;
+
+$method-get-color:     hsl($method-fuctor * 0, $method-saturation, $method-lightness);
+$method-head-color:    hsl($method-fuctor * 1, $method-saturation, $method-lightness);
+$method-post-color:    hsl($method-fuctor * 2, $method-saturation, $method-lightness);
+$method-delete-color:  hsl($method-fuctor * 3, $method-saturation, $method-lightness);
+$method-connect-color: hsl($method-fuctor * 4, $method-saturation, $method-lightness);
+$method-options-color: hsl($method-fuctor * 5, $method-saturation, $method-lightness);
+$method-trace-color:   hsl($method-fuctor * 6, $method-saturation, $method-lightness);
+$method-link-color:    hsl($method-fuctor * 7, $method-saturation, $method-lightness);
+$method-unlink-color:  hsl($method-fuctor * 8, $method-saturation, $method-lightness);
+$method-any-color:     hsl(0, 0%, $method-lightness);
+$method-other-color:   hsl(0, 0%, $method-lightness);
+
+html {
+  @include box-sizing
+}
+
+body {
+  height: 100%;
+}
+
+*, *:before, *:after {
+  @include box-sizing(inherit);
+}
+
+h1 {
+  margin-left: 10px;
+
+  a {
+    color: black;
+    text-decoration: none;
+  }
+}
+
+h2 {
+  margin-left: 15px;
+
+  a {
+    color: black;
+    text-decoration: none;
+  }
+}
+
+x-document {
+  display: block;
+  @include grid-row();
+}
+
+@media #{$small-only} {
+  aside {
+    display: none;
+  }
+}
+
+aside {
+  @include grid-column(2);
+  height: 100%;
+  position: relative;
+  &:after { content: "\a0"; }
+
+  div {
+    height: 100%;
+    position: fixed;
+    overflow-x: hidden;
+    top: 0;
+    padding: 20px 5px;
+    width: 100% / 12 * 2;
+
+    @media screen and (min-width: 62.5rem) {
+      & {
+        width: (62.5rem / 12 * 2) - rem-calc(30) ;
+      }
+    }
+  }
+
+  ul {
+    $side-nav-heading-color: black;
+    @include side-nav;
+    white-space: nowrap;
+    padding: 2px;
+
+    li {
+      margin: 0;
+    }
+
+    a {
+      padding: 3px !important;
+      text-decoration: none;
+      cursor: pointer;
+    }
+  }
+}
+
+main {
+
+  @media #{$small-only} {
+    @include grid-column(12);
+  }
+  @include grid-column(10);
+
+  api-path {
+    .fetch, .rest {
+      color: #999;
+    }
+  }
+}
+
+api-path {
+  .fetch, .rest {
+    text-decoration: underline;
+    cursor: pointer;
+  }
+}
+
+api-route {
+  display: block;
+  @include panel;
+  background: white;
+
+  padding: 0;
+  margin-bottom: 50px;
+  border-bottom: none;
+
+  & > div {
+    margin: 25px 0;
+  }
+}
+
+api-route-param {
+  label {
+    @include form-label;
+    padding-left: 5px;
+  }
+  input {
+    @include form-element;
+    margin-bottom: 5px;
+  }
+  p { 
+    margin-top: 0;
+    padding-left: 40px;
+
+    * {
+      margin: 0; padding: 0;
+    }
+  }
+}
+
+api-query-param {
+  label {
+    @include form-label;
+    padding-left: 5px;
+  }
+
+  .query-param {
+    width: 100%;
+    @include clearfix;
+  }
+
+  .enabled {
+    @include prefix-postfix-base;
+    @include prefix($is-button: false);
+    width: 50px;
+    float: left;
+  }
+
+  input[type="text"] {
+    @include form-element;
+    width: 100%;
+    float: left;
+    margin-left: -50px;
+    padding-left: 58px;
+    margin-bottom: 5px;
+  }
+
+  p { 
+    margin: 0;
+    padding-left: 58px;
+    font-size: 0.9rem;
+
+    * {
+      margin: 0; padding: 0;
+    }
+  }
+}
+
+api-method {
+  display: block;
+  margin-bottom: 30px;
+
+  & button {
+    @include button($padding: $button-padding, $bg: $method-other-color);
+    margin: 0;
+    float: left;
+    font-size: $button-font-size;
+    min-width: $button-width;
+    max-width: $button-width;
+  }
+
+  @mixin method-style($color){
+    $bg-hover: scale-color($color, $lightness: $button-function-factor);
+    $ribon-width: 4px;
+
+    border-left: $ribon-width solid $color;
+
+    transition: border 300ms ease-out 0s;
+    &:hover {
+      border-left: $ribon-width solid $bg-hover;
+    }
+
+    & button {
+      @include button-style($bg: $color);
+    }
+
+    api-handler {
+      border-bottom: 1px solid scale-color($color, $lightness: 70%, $saturation: -50%);
+
+      &:hover {
+        border-bottom: 1px solid scale-color($bg-hover, $lightness: 70%, $saturation: -50%);
+      }
+    }
+
+    .result {
+      position: relative;
+      padding: 0 20px;
+      border-right: 25px solid $success-color;
+      border-bottom: 1px solid $color;
+
+      &:hover {
+        border-bottom: 1px solid $bg-hover;
+      }
+
+      &.error {
+        border-right: 25px solid $alert-color;
+      }
+
+      &:hover .dismiss {
+        opacity: 1;
+      }
+
+      $dismiss-size: 30px;
+      .dismiss {
+        position: absolute;
+        opacity: 0;
+        top: 0;
+        right: 0;
+        width: $dismiss-size;
+        height: $dismiss-size;
+        line-height: $dismiss-size;
+        text-align: center;
+        cursor: pointer;
+        transition: opacity 0.1s linear;
+      }
+
+    }
+  }
+
+  &.GET     { @include method-style($method-get-color) }
+  &.HEAD    { @include method-style($method-head-color) }
+  &.POST    { @include method-style($method-post-color) }
+  &.DELETE  { @include method-style($method-delete-color) }
+  &.CONNECT { @include method-style($method-connect-color) }
+  &.OPTIONS { @include method-style($method-options-color) }
+  &.TRACE   { @include method-style($method-trace-color) }
+  &.LINK    { @include method-style($method-link-color) }
+  &.UNLINK  { @include method-style($method-unlink-color) }
+  &.any     { @include method-style($method-any-color) }
+
+  .target {
+    font-family: $button-font-family;
+    font-size: $button-font-size;
+    padding: $button-padding 0.5rem ($button-padding + rem-calc(1));
+    float: left;
+    width: 70%;
+    margin-left: -$button-width;
+    padding-left: $button-width + 0.5rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  & > div {
+    display: block;
+    @include clearfix;
+  }
+
+  x-combobox {
+    width: 30%;
+    float: right;
+  }
+}
+
+api-handler {
+  display: block;
+
+  & > p {
+    margin: 0;
+    padding: 20px;
+  }
+}
+
+@import './combobox';

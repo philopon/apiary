@@ -1,0 +1,8 @@
+div.route-header
+  h2.route-path
+    a(data-v-attr="href: '#' + anchor")
+      api-path(data-v-with="path: path, attachLabel: 'true'")
+  div(data-v-if="path | route-parameter | length")
+    api-route-param(data-v-repeat="path | route-parameter" data-v-ref="param")
+
+api-method(data-v-repeat="methods" data-v-with="route: route")
