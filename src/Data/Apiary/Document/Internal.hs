@@ -20,7 +20,7 @@ import Data.Function(on)
 import Data.Apiary.Param(StrategyRep, QueryRep)
 import Data.Apiary.Method(Method)
 
-import Text.Blaze.Html(Html)
+import Data.Apiary.Html(Html)
 import qualified Data.Text as T
 import qualified Data.ByteString as S
 
@@ -37,7 +37,7 @@ data Doc
     | DocPrecondition Html   Doc
     | DocAccept S.ByteString Doc
     | DocGroup  T.Text       Doc
-    | Document  T.Text       Doc
+    | Document  Html         Doc
     | Action
 
 --------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ data Documents = Documents
 
 data PathDoc = PathDoc
     { path    :: Route
-    , methods :: [(Method, [MethodDoc])]
+    , methods :: [(Maybe Method, [MethodDoc])]
     }
 
 -- | query parameters document
@@ -72,29 +72,29 @@ data QueryDoc = QueryDoc
     { queryName     :: T.Text
     , queryStrategy :: StrategyRep
     , queryRep      :: QueryRep
-    , queryDocument :: (Maybe Html)
+    , queryDocument :: Maybe Html
     }
 
 data MethodDoc = MethodDoc
     { queries       :: [QueryDoc]
     , preconditions :: [Html]
     , accept        :: Maybe S.ByteString
-    , document      :: T.Text
+    , document      :: Html
     }
 
 --------------------------------------------------------------------------------
 
 data ToDocumentState = ToDocumentState
     { toDocumentPath      :: Route -> Route
-    , toDocumentMethodDoc :: [MethodDoc] -> [(Method, [MethodDoc])]
+    , toDocumentMethodDoc :: [MethodDoc] -> [(Maybe Method, [MethodDoc])]
     , toDocumentQueries   :: [QueryDoc] -> [QueryDoc]
     , toDocumentPreconds  :: [Html] -> [Html]
     , toDocumentAccept    :: Maybe S.ByteString
-    , toDocumentDocument  :: Maybe T.Text
+    , toDocumentDocument  :: Maybe Html
     }
 
 initialToDocumentState :: ToDocumentState
-initialToDocumentState = ToDocumentState id (\md -> [("*", md)]) id id Nothing Nothing
+initialToDocumentState = ToDocumentState id (\md -> [(Nothing, md)]) id id Nothing Nothing
 
 docToDocument :: Doc -> Maybe (Maybe T.Text, PathDoc)
 docToDocument = \case
@@ -108,7 +108,7 @@ docToDocument = \case
     loop st (DocFetch    k t h d) = loop st { toDocumentPath = toDocumentPath st . Fetch k t h } d
     loop st (DocRest     k   h d) = loop st { toDocumentPath = toDocumentPath st . const (Rest k h) } d
     loop st (DocAny            d) = loop st { toDocumentPath = toDocumentPath st . const Any } d
-    loop st (DocMethod       m d) = loop st { toDocumentMethodDoc = (\md -> [(m, md)]) } d
+    loop st (DocMethod       m d) = loop st { toDocumentMethodDoc = (\md -> [(Just m, md)]) } d
     loop st (DocQuery  p s q t d) = loop st { toDocumentQueries = toDocumentQueries st . (QueryDoc p s q t:) } d
     loop st (DocPrecondition h d) = loop st { toDocumentPreconds = toDocumentPreconds st . (h:) } d
     loop st (DocGroup        _ d) = loop st d
@@ -117,7 +117,7 @@ docToDocument = \case
     loop st Action                = case toDocumentDocument st of
         Nothing  -> Nothing
         Just doc -> Just . PathDoc (toDocumentPath st End) $ toDocumentMethodDoc st
-            [MethodDoc (toDocumentQueries st []) (toDocumentPreconds st []) (toDocumentAccept st) doc]
+           [MethodDoc (toDocumentQueries st []) (toDocumentPreconds st []) (toDocumentAccept st) doc]
 
     dropNext (DocPath         _ d) = d
     dropNext (DocRoot           d) = d
@@ -140,7 +140,7 @@ mergePathDoc (pd:pds) = merge (filter (same pd) pds) : mergePathDoc (filter (not
     same           = (==) `on` path
     merge pds' = PathDoc (path pd) (mergeMethods $ methods pd ++ concatMap methods pds')
 
-mergeMethods :: [(Method, [MethodDoc])] -> [(Method, [MethodDoc])]
+mergeMethods :: [(Maybe Method, [MethodDoc])] -> [(Maybe Method, [MethodDoc])]
 mergeMethods [] = []
 mergeMethods (m:ms) = merge (filter (same m) ms) : mergeMethods (filter (not . same m) ms)
   where

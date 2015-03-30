@@ -60,9 +60,10 @@ import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
 import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 
-import Text.Blaze.Html(Html, toHtml)
+import Data.Apiary.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text             as T
+import qualified Data.Text.Lazy        as TL
 import qualified Data.CaseInsensitive  as CI
 import Data.Monoid((<>))
 import Data.Proxy.Compat(Proxy(..))
@@ -233,7 +234,7 @@ header k = focus doc Nothing $ R.raw "header" $ \d t -> do
     n <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     return (Dict.add k n d, t)
   where
-    doc = DocPrecondition $ "has header: " <> toHtml (symbolVal k)
+    doc = DocPrecondition $ "has header: " <> toHtml (TL.pack $ symbolVal k)
 
 -- | check whether to exists specified valued header or not. since 0.6.0.0.
 eqHeader :: (KnownSymbol k, Monad actM)
@@ -242,7 +243,7 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
     v' <- maybe mzero return . lookup (CI.mk . SC.pack $ symbolVal k) . Wai.requestHeaders =<< getRequest
     if v == v' then return (d,t) else mzero
   where
-    doc = DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)
+    doc = DocPrecondition $ "header: " <> toHtml (TL.pack $ symbolVal k) <> " = " <> toHtml (TL.pack $ show v)
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> Filter' exts actM m

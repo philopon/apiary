@@ -23,7 +23,7 @@ import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
 
 import qualified Data.Text as T
-import Text.Blaze.Html(Html)
+import Data.Apiary.Html(Html)
 
 -- | check first path and drill down. since 0.11.0.
 path :: Monad actM => T.Text -> Filter' exts actM m

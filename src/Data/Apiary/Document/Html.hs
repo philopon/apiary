@@ -3,193 +3,66 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Data.Apiary.Document.Html
-    ( defaultDocumentToHtml
+    ( documentToHtml
     -- * config
-    , DefaultDocumentConfig(..)
-    -- * other functions
-    , rpHtml
+    , DocumentConfig(..)
+
+    -- * template
+    , parseTemplate
+    , parseTemplateFile
+    , defaultTemplate
     ) where
 
 import qualified Language.Haskell.TH as TH
-import qualified Language.Haskell.TH.Syntax as TH (addDependentFile)
-
-import Data.Monoid(Monoid(..), (<>))
-import Data.Default.Class(Default(..))
-
-import Data.Apiary.Param(QueryRep(Strict, Nullable, Check, NoValue), strategyInfo)
-import Data.Apiary.Method(renderMethod)
-import Data.Apiary.Document
-    ( Route(Path, Fetch, Rest, Any, End), Documents(..)
-    , QueryDoc(..), MethodDoc(..), PathDoc(..)
-    )
-
-import Text.Blaze.Html(Html, toHtml, (!), preEscapedToHtml, toValue)
-import Text.Blaze.Internal(attribute)
+import qualified Paths_apiary as Paths
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
+import qualified Data.Text.Lazy as L
+import qualified Data.Text.Lazy.IO as L
+import qualified Data.Text.Lazy.Read as R
+import qualified Data.Text.Lazy.Builder as B
+import Data.Default.Class
 
-noDescription :: Html
-noDescription = H.span "no description" ! A.class_ "no-description"
+import Data.Apiary.Html
+import Data.Apiary.Document(Documents)
+import qualified Data.Apiary.Document.JSON as JSON
 
-routeToHtml :: Route -> (T.Text, Html, Html)
-routeToHtml = loop "" mempty []
-  where
-    sp = H.span "/" ! A.class_ "splitter"
-    loop e r p (Path s d) = loop (T.concat [e, "/", s]) (r <> sp <> H.span (toHtml s) ! A.class_ "path") p d
-    loop e r p (Fetch k t mbh d) = 
-        let r' = r <> sp <> rpHtml (toHtml k)
-            p' = p <> [H.tr $ H.td (toHtml k) <> H.td (toHtml $ show t) <> H.td (maybe noDescription id mbh)]
-        in loop (T.concat [e, "/", k, "::", T.pack $ show t]) r' p' d
-    loop e r p (Rest k mbh) =
-        let p' = p <> [H.tr $ H.td (toHtml k) <> H.td "[Text]" <> H.td (maybe noDescription id mbh)]
-            in loop (T.concat [e, "/**", k]) (r <> sp <> (H.span "**" ! A.class_ "rest") <> (H.span (toHtml k) ! A.class_ "fetch")) p' End
-    loop e r p Any =
-        loop (T.concat [e, "/**"]) (r <> sp <> (H.span "**" ! A.class_ "rest")) p End
-    loop e r p End =
-        ( e
-        , r
-        , if null p
-          then mempty
-          else H.table ! A.class_ "table table-condensed route-parameters" $
-               H.tr (mconcat 
-                    [ H.th ! A.class_ "col-sm-1 com-md-1" $ "name"
-                    , H.th ! A.class_ "col-sm-1 com-md-1" $ "type"
-                    , H.th "description"
-                    ]) <> mconcat p
-        )
+templateFile :: FilePath
+templateFile = $(TH.litE . TH.stringL =<< TH.runIO (Paths.getDataFileName "template.html"))
 
-data DefaultDocumentConfig = DefaultDocumentConfig
-    { documentTitle           :: T.Text
-    , documentDescription     :: Maybe Html
-    , documentUseCDN          :: Bool
-    , documentGoogleAnalytics :: Maybe T.Text -- ^ google analytics. since 0.17.0.
+data DocumentConfig = DocumentConfig
+    { documentTitle       :: T.Text
+    , documentDescription :: Maybe Html
     }
 
-analytics :: T.Text -> Html
-analytics code = H.script . H.preEscapedToHtml . T.concat $
-    [ "(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){"
-    , "(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),"
-    , "m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)"
-    , "})(window,document,'script','//www.google-analytics.com/analytics.js','ga');"
-    , "ga('create', '", code, "', 'auto');"
-    , "ga('send', 'pageview');"
-    ]
+instance Default DocumentConfig where
+    def = DocumentConfig
+        { documentTitle       = "API documentation" 
+        , documentDescription = Nothing
+        }
 
-instance Default DefaultDocumentConfig where
-    def = DefaultDocumentConfig "API documentation" Nothing True Nothing
+documentJSON :: DocumentConfig -> Documents -> JSON.JSON
+documentJSON DocumentConfig{..} doc = JSON.object $
+    (:) ("title", JSON.string' documentTitle) $
+    maybe id (\d -> (:) ("description",  JSON.string $ toLazyText d)) documentDescription $
+    [("data", JSON.documentsToJSON doc)]
 
-defaultDocumentToHtml :: DefaultDocumentConfig -> Documents -> Html
-defaultDocumentToHtml DefaultDocumentConfig{..} docs = H.docTypeHtml $ do
-    H.head $ do
-        H.meta ! A.charset "UTF-8"
-        H.meta ! A.name "viewport" ! A.content "width=device-width,initial-scale=1.0"
-        H.title (toHtml documentTitle)
-        if documentUseCDN then cdns else embeds
-        $(TH.runIO (readFile "static/jquery.cookie-1.4.1.min.js") >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        -- , H.script "" ! A.src "/static/api-documentation.js"
-        -- , H.link ! A.rel "stylesheet" ! A.href "/static/api-documentation.css"
-        $(TH.addDependentFile "static/api-documentation.min.js"  >> TH.runIO (readFile "static/api-documentation.min.js")   >>= \c -> [|H.script $ preEscapedToHtml (c::String)|])
-        $(TH.addDependentFile "static/api-documentation.min.css" >> TH.runIO (readFile "static/api-documentation.min.css")  >>= \c -> [|H.style  $ preEscapedToHtml (c::String)|])
-        maybe mempty analytics documentGoogleAnalytics
+data Template = Template L.Text L.Text
 
-    H.body $ do
-        H.div ! A.class_ "container" $ do
-            H.div ! A.class_ "page-header" $ H.h1 (toHtml documentTitle)
-            maybe mempty (H.div ! A.class_ "description") documentDescription
-            H.div ! A.id "no-group" $ do
-                mcMap (pathH "") (noGroup docs)
-                mcMap groupH     (groups docs)
+parseTemplate :: L.Text -> Maybe Template
+parseTemplate str =
+    let (pLen, body) = (fmap L.tail . L.break (== '\n')) str
+    in case R.decimal pLen of
+        Right (len, "") -> Just . uncurry Template $ L.splitAt len body
+        _               -> Nothing
 
-    H.footer $ do
-        ("This API documentation generated by " :: Html)
-        H.a ! A.href "https://github.com/philopon/apiary" $ "apiary"
-        (" web framework." :: Html)
+parseTemplateFile :: FilePath -> IO Template
+parseTemplateFile file = L.readFile file >>=
+    maybe (fail "Data.Apiary.Document.Html.parseTemplate: parse failed.") return . parseTemplate
 
-  where
-    css u = H.link ! A.rel "stylesheet" ! A.href u
-    js u = H.script ! A.src u $ mempty
-    dataToggle = attribute "data-toggle" " data-toggle=\""
-    dataTarget = attribute "data-target" " data-target=\""
+defaultTemplate :: IO Template
+defaultTemplate = parseTemplateFile templateFile
 
-    mcMap f = mconcat . map f
-
-    cdns = do
-        css "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"
-        js "http://code.jquery.com/jquery-2.1.1.min.js"
-        js "http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"
-
-    embeds = $( do
-        let embed f p = TH.runIO (readFile p) >>= \c -> [|$(TH.varE f) $ preEscapedToHtml (c :: String)|]
-        [| mconcat 
-            [ $(embed 'H.style  "static/bootstrap.min.css")
-            , $(embed 'H.script "static/jquery-2.1.1.min.js")
-            , $(embed 'H.script "static/bootstrap.min.js")
-            ]
-         |])
-
-    groupH (g, p) = H.div ! A.id (toValue $ T.append "group-" g) $ do
-        H.h2 $ toHtml g
-        mcMap (pathH g) p
-
-    pathH grp (PathDoc r ms) = do
-        let (idnt, route, rdoc) = routeToHtml r
-        H.div ! A.class_ "panel panel-default" $ do
-            H.div ! A.class_ "panel-heading clearfix"
-                  ! dataToggle "collapse"
-                  ! dataTarget (toValue $ T.concat ["[id='collapse-", grp, "-", idnt, "']"]) $ do
-                H.h3  ! A.class_ "panel-title pull-left" $ route
-                H.div ! A.class_ "methods" $
-                    mcMap ( (\m -> H.div ! A.class_ "pull-right" $ toHtml (T.decodeUtf8 m))
-                          . renderMethod . fst) (reverse ms)
-
-            H.div ! A.id (toValue $ T.concat ["collapse-", grp, "-", idnt])
-                  ! A.class_ "panel-collapse collapse" $ do
-                rdoc
-                H.div ! A.class_ "panel-body" $ mcMap method ms
-
-    method (m, ms) = H.div ! A.class_ "method" $ do
-        H.h4 . toHtml $ T.decodeUtf8 $ renderMethod m
-        mcMap action ms
-
-    action (MethodDoc qs pc a d) =
-        H.div ! A.class_ "action col-sm-offset-1 col-md-offset-1" $ do
-            preconds $
-                maybe pc 
-                (\ac -> H.span ("Accept: " <> H.span (toHtml $ T.decodeUtf8 ac))
-                                          ! A.class_ "precondition-accept" : pc) a
-            H.div (H.p $ toHtml d)
-            queriesH qs
-
-    preconds [] = mempty
-    preconds p  = H.div ! A.class_ "well well-sm precondition" $ do
-            H.p "Preconditions:"
-            H.ul $ mcMap (\h -> H.li h) p
-
-    queriesH [] = mempty
-    queriesH qs = H.div $ do
-        H.table ! A.class_ "query-parameters table table-condensed" $ do
-            H.caption "Query parameters"
-            H.tr $ do
-                H.th ! A.class_ "col-sm-1 col-md-1" $ "name"
-                H.th ! A.class_ "col-sm-1 col-md-1" $ "num"
-                H.th ! A.class_ "col-sm-1 col-md-1" $ "type"
-                H.th "description"
-            mcMap query qs
-
-    query (QueryDoc p s q t) = H.tr $ do
-        H.td (toHtml p)
-        H.td (toHtml $ strategyInfo s)
-        H.td (htmlQR q)
-        H.td $ maybe noDescription id t
-
-    htmlQR (Strict   r) = toHtml (show r)
-    htmlQR (Nullable r) = H.span (toHtml (show r) <> "?") ! A.title (toValue (show r) <> "(nullable)")
-    htmlQR  Check       = "check"
-    htmlQR  NoValue     = "-"
-
-
--- | construct Html as route parameter. since 0.13.0.
-rpHtml :: Html -> Html
-rpHtml k = (H.span k ! A.class_ "fetch")
+documentToHtml :: DocumentConfig -> Template -> Documents -> Html
+documentToHtml cfg (Template pre suf) doc =
+    let json = B.toLazyText . JSON.unJSON $ documentJSON cfg doc
+    in preEscaped $ pre `L.append` json `L.append` suf

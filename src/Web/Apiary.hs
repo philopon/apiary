@@ -27,7 +27,7 @@ module Web.Apiary
     -- | FilePart(..), Application
     , module Network.Wai
     -- | Html
-    , module Text.Blaze.Html
+    , module Data.Apiary.Html
     ) where
  
 import Control.Monad.Apiary
@@ -100,5 +100,5 @@ import Data.Default.Class(def)
 import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 import Network.Wai(FilePart(..), Application)
-import Text.Blaze.Html(Html)
+import Data.Apiary.Html(Html)
 import Web.Apiary.TH(key)

@@ -1,6 +1,7 @@
 .cabal-sandbox*
 cabal.sandbox.config
 dist
+!static/dist
 .DS_Store
 client_session_key.aes
 *.o
@@ -10,3 +11,7 @@ client_session_key.aes
 password
 *.swp
 examples/bower_components/
+bower_components
+static/develop
+node_modules/
+tmp/

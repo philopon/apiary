@@ -1,0 +1,5 @@
+input(v-model="model" v-attr="placeholder: placeholder")
+div(v-click="toggleOptions" v-if="isComboBox")
+  img(src=require('url!./down.svg') width="6")
+ul(v-show="visibleOptions")
+  li(v-repeat="o:options" v-click="selectOption") {{o}}

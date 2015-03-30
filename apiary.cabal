@@ -54,14 +54,9 @@ copyright:           (c) 2014-2015 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
 stability:           stable
-extra-source-files:  static/api-documentation.min.js
-                   , static/jquery.cookie-1.4.1.min.js
-                   , static/api-documentation.min.css
-                   , static/jquery-2.1.1.min.js
-                   , static/bootstrap.min.css
-                   , static/bootstrap.min.js
-                   , CHANGELOG.md
 cabal-version:       >=1.10
+data-dir:            static/dist
+data-files:          template.html
 
 library
   exposed-modules:     Web.Apiary
@@ -75,11 +70,12 @@ library
                        Control.Monad.Apiary.Documentation
 
                        Data.Apiary.Extension
+                       Data.Apiary.Html
                        Data.Apiary.Param
                        Data.Apiary.Method
                        Data.Apiary.Document
-                       Data.Apiary.Document.Html
                        Data.Apiary.Document.JSON
+                       Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
                        Network.Wai.Parse
@@ -106,8 +102,6 @@ library
                      , bytestring           >=0.10  && <0.11
                      , bytestring-read      >=0.2   && <0.3
                      , blaze-builder        >=0.3   && <0.5
-                     , blaze-html           >=0.7   && <0.9
-                     , blaze-markup         >=0.6   && <0.8
                      , case-insensitive     >=1.1   && <1.3
                      , vault                >=0.3   && <0.4
 

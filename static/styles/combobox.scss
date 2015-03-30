@@ -1,0 +1,50 @@
+x-combobox {
+  $input-height: $input-font-size + ($form-spacing * 1.5) - rem-calc(3);
+
+  display: inline-block;
+  @include box-sizing;
+  position: relative;
+
+  input {
+    @include form-element;
+    margin-bottom: 0;
+    height: $input-height;
+    font-size: 0.9rem;
+  }
+
+  div {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    height: $input-height;
+    line-height: $input-height;
+    user-select: none;
+  }
+
+  ul {
+    position: absolute;
+    min-width: 100%;
+    top: $input-height - rem-calc(1);
+    background-color: white;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    border: 1px solid lightgray;
+    cursor: pointer;
+    box-shadow: 3px 6px 12px 0 rgba(0,0,0,0.2);
+  }
+
+  li {
+    padding: 3px 8px;
+    color: rgba(0,0,0,0.75);
+    font-size: 0.9rem;
+
+    &:hover {
+      background-color: scale-color($white, $lightness: -10%);
+    }
+  }
+}

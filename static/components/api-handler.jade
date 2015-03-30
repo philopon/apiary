@@ -1,0 +1,7 @@
+ul(v-if="preconds | length")
+  li(v-repeat="precond : preconds") {{{*precond}}}
+
+div(v-if="queries | length")
+  api-query-param(v-repeat="queries")
+
+p {{{*doc || ''}}}

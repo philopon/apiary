@@ -1,0 +1,8 @@
+label(v-attr="for: anchor") {{*name}} :: {{*queryType}} ({{*strategy}})
+
+div.query-param
+  div.enabled(v-click="toggleEnabled")
+    input(type="checkbox" v-model="enabled")
+  input(type="text" v-on="keydown: inputEnabling" v-attr="placeholder: name, id: anchor" v-model="value")
+
+p(v-if="doc") {{{*doc || ''}}}
