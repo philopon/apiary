@@ -54,14 +54,9 @@ copyright:           (c) 2014-2015 Hirotomo Moriwaki
 category:            Web
 build-type:          Simple
 stability:           stable
-extra-source-files:  static/api-documentation.min.js
-                   , static/jquery.cookie-1.4.1.min.js
-                   , static/api-documentation.min.css
-                   , static/jquery-2.1.1.min.js
-                   , static/bootstrap.min.css
-                   , static/bootstrap.min.js
-                   , CHANGELOG.md
 cabal-version:       >=1.10
+data-dir:            static/dist
+data-files:          template.html
 
 library
   exposed-modules:     Web.Apiary
@@ -80,6 +75,7 @@ library
                        Data.Apiary.Method
                        Data.Apiary.Document
                        Data.Apiary.Document.JSON
+                       Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
                        Network.Wai.Parse

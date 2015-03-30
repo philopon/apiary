@@ -79,7 +79,7 @@ data MethodDoc = MethodDoc
     { queries       :: [QueryDoc]
     , preconditions :: [Html]
     , accept        :: Maybe S.ByteString
-    , document      :: Maybe Html
+    , document      :: Html
     }
 
 --------------------------------------------------------------------------------
@@ -114,8 +114,10 @@ docToDocument = \case
     loop st (DocGroup        _ d) = loop st d
     loop st (DocAccept       a d) = loop st { toDocumentAccept = Just a } d
     loop st (Document        t d) = loop st { toDocumentDocument = Just t} d
-    loop st Action                = Just . PathDoc (toDocumentPath st End) $ toDocumentMethodDoc st
-        [MethodDoc (toDocumentQueries st []) (toDocumentPreconds st []) (toDocumentAccept st) (toDocumentDocument st)]
+    loop st Action                = case toDocumentDocument st of
+        Nothing  -> Nothing
+        Just doc -> Just . PathDoc (toDocumentPath st End) $ toDocumentMethodDoc st
+           [MethodDoc (toDocumentQueries st []) (toDocumentPreconds st []) (toDocumentAccept st) doc]
 
     dropNext (DocPath         _ d) = d
     dropNext (DocRoot           d) = d

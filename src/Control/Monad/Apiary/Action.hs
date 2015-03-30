@@ -32,10 +32,6 @@ module Control.Monad.Apiary.Action
     -- *** redirect
     , redirect, redirectPermanently, redirectTemporary
 
-    -- *** documentation
-    , defaultDocumentationAction
-    , DefaultDocumentConfig(..)
-
     -- * not export from Web.Apiary
     , ContentType
     , stopWith
@@ -66,5 +62,4 @@ module Control.Monad.Apiary.Action
     ) where
 
 import Control.Monad.Apiary.Action.Internal
-import Control.Monad.Apiary.Documentation
 import Network.Wai

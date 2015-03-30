@@ -1,7 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Apiary.Document.JSON (documentsToJSON) where
+module Data.Apiary.Document.JSON
+    ( JSON(unJSON)
+    , string', string
+    , object, array
+    , documentsToJSON
+    ) where
 
 import Data.Monoid((<>), mconcat)
 import Data.List(intersperse)
@@ -39,54 +44,54 @@ escapeJSON' = T.concatMap escape
 escapeJSON :: L.Text -> L.Text
 escapeJSON = L.foldrChunks (\t a -> L.fromStrict (escapeJSON' t) `L.append` a) L.empty
 
-jsonString' :: T.Text -> JSON
-jsonString' s = JSON $ B.singleton '"' <> B.fromText (escapeJSON' s) <> B.singleton '"'
+string' :: T.Text -> JSON
+string' s = JSON $ B.singleton '"' <> B.fromText (escapeJSON' s) <> B.singleton '"'
 
-jsonString :: L.Text -> JSON
-jsonString s = JSON $ B.singleton '"' <> B.fromLazyText (escapeJSON s) <> B.singleton '"'
+string :: L.Text -> JSON
+string s = JSON $ B.singleton '"' <> B.fromLazyText (escapeJSON s) <> B.singleton '"'
 
-jsonObject :: [(T.Text, JSON)] -> JSON
-jsonObject = JSON . obj . mconcat . intersperse (B.singleton ',') .
-    map (\(k,JSON v) -> unJSON (jsonString' k) <> B.singleton ':' <> v)
+object :: [(T.Text, JSON)] -> JSON
+object = JSON . obj . mconcat . intersperse (B.singleton ',') .
+    map (\(k,JSON v) -> unJSON (string' k) <> B.singleton ':' <> v)
   where
     obj b = B.singleton '{' <> b <> B.singleton '}'
 
-jsonArray :: [JSON] -> JSON
-jsonArray = JSON . ary . mconcat . intersperse (B.singleton ',') . unJSONList
+array :: [JSON] -> JSON
+array = JSON . ary . mconcat . intersperse (B.singleton ',') . unJSONList
   where
     ary b = B.singleton '[' <> b <> B.singleton ']'
 
 routeToJSON' :: Route -> [JSON]
-routeToJSON' (Path p n) = jsonObject obj : routeToJSON' n
+routeToJSON' (Path p n) = object obj : routeToJSON' n
   where
-    obj = [ ("tag",  jsonString' "path")
-          , ("path", jsonString' p)
+    obj = [ ("tag",  string' "path")
+          , ("path", string' p)
           ]
-routeToJSON' (Fetch k t md n) = jsonObject obj : routeToJSON' n
+routeToJSON' (Fetch k t md n) = object obj : routeToJSON' n
   where
-    obj = (:) ("tag",  jsonString' "fetch") $
-          (:) ("name", jsonString' k) $
-          (:) ("type", jsonString' . T.pack $ show t) $
-          maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) md $
+    obj = (:) ("tag",  string' "fetch") $
+          (:) ("name", string' k) $
+          (:) ("type", string' . T.pack $ show t) $
+          maybe id (\d -> (:) ("doc", string $ toLazyText d)) md $
           []
-routeToJSON' (Rest k md) = (:[]) $ jsonObject $
-    (:) ("tag", jsonString' "rest") $
-    (:) ("name", jsonString' k) $
-    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) md $
+routeToJSON' (Rest k md) = (:[]) $ object $
+    (:) ("tag", string' "rest") $
+    (:) ("name", string' k) $
+    maybe id (\d -> (:) ("doc", string $ toLazyText d)) md $
     []
-routeToJSON' Any = [jsonObject [ ("tag", jsonString' "rest") ]]
+routeToJSON' Any = [object [ ("tag", string' "rest") ]]
 routeToJSON' End = []
 
 routeToJSON :: Route -> JSON
-routeToJSON = jsonArray . routeToJSON'
+routeToJSON = array . routeToJSON'
 
 queryDocToJSON :: QueryDoc -> JSON
-queryDocToJSON QueryDoc{..} = jsonObject $
-    (:) ("name", jsonString' queryName) $
-    (:) ("strategy", jsonString' $ strategyInfo queryStrategy) $
-    (:) ("query", jsonString' query) $
-    maybe id (\t -> (:) ("type", jsonString' . T.pack $ show t)) queryType $
-    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) queryDocument $
+queryDocToJSON QueryDoc{..} = object $
+    (:) ("name", string' queryName) $
+    (:) ("strategy", string' $ strategyInfo queryStrategy) $
+    (:) ("query", string' query) $
+    maybe id (\t -> (:) ("type", string' . T.pack $ show t)) queryType $
+    maybe id (\d -> (:) ("doc", string $ toLazyText d)) queryDocument $
     []
   where
     query = case queryRep of
@@ -101,32 +106,29 @@ queryDocToJSON QueryDoc{..} = jsonObject $
         _          -> Nothing
 
 methodDocToJSON :: MethodDoc -> JSON
-methodDocToJSON MethodDoc{..} = jsonObject $
-    (:) ("queries", jsonArray $ map queryDocToJSON queries) $
-    (:) ("preconditions", jsonArray $ map (jsonString . toLazyText) preconditions) $
-    maybe id (\a -> (:) ("accept", jsonString' $ T.decodeUtf8 a)) accept $
-    maybe id (\d -> (:) ("doc", jsonString $ toLazyText d)) document []
+methodDocToJSON MethodDoc{..} = object $
+    (:) ("queries", array $ map queryDocToJSON queries) $
+    (:) ("preconditions", array $ map (string . toLazyText) preconditions) $
+    maybe id (\a -> (:) ("accept", string' $ T.decodeUtf8 a)) accept $
+    [("doc", string $ toLazyText document)]
 
 methodToJSON :: Maybe Method -> [MethodDoc] -> JSON
-methodToJSON mbm md = jsonObject $
-    maybe id (\m -> (:) ("method", jsonString' . T.decodeUtf8 $ renderMethod m)) mbm $
-    [ ("handlers", jsonArray $ map methodDocToJSON md) ]
+methodToJSON mbm md = object $
+    maybe id (\m -> (:) ("method", string' . T.decodeUtf8 $ renderMethod m)) mbm $
+    [ ("handlers", array $ map methodDocToJSON md) ]
 
 pathDocToJSON :: PathDoc -> JSON
-pathDocToJSON PathDoc{..} = jsonObject
+pathDocToJSON PathDoc{..} = object
     [ ("path", routeToJSON path)
-    , ("methods", jsonArray $ map (uncurry methodToJSON) methods)
+    , ("methods", array $ map (uncurry methodToJSON) methods)
     ]
 
 groupToJSON :: Maybe T.Text -> [PathDoc] -> JSON
-groupToJSON mg ps = jsonObject $
-    maybe id (\g -> (:) ("group", jsonString' g)) mg $
-    [("paths", jsonArray $ map pathDocToJSON ps)]
+groupToJSON mg ps = object $
+    maybe id (\g -> (:) ("group", string' g)) mg $
+    [("paths", array $ map pathDocToJSON ps)]
 
-documentsToJSON' :: Documents -> JSON
-documentsToJSON' Documents{..} = jsonArray $
+documentsToJSON :: Documents -> JSON
+documentsToJSON Documents{..} = array $
     groupToJSON Nothing noGroup :
     map (\(g, p) -> groupToJSON (Just g) p) groups
-
-documentsToJSON :: Documents -> L.Text
-documentsToJSON = B.toLazyText . unJSON . documentsToJSON'

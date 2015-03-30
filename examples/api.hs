@@ -9,11 +9,9 @@ import qualified Data.Aeson as JSON
 import Data.Aeson.TH
 import Control.Monad
 import Control.Concurrent
-import Text.Blaze.Html
 import Data.Monoid
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
 import Data.Apiary.Document.Html
+import Data.Apiary.Html
 
 data Test = Test 
     { name :: Maybe String
@@ -36,7 +34,7 @@ main = do
         [capture|/precondition|] .
             http11 .
             accept "text/plain" .
-            precondition ("user " <> H.strong "defined" <> " precondition.") .
+            precondition (preEscaped "user <strong>defined</strong> precondition.") .
             noDoc . header [key|User-Agent|] . -- <- hasHeader "User-Agent" is not documented because it is next of noDoc.
             document "precondition test" .  action $
                 bytes "precondition"
@@ -66,6 +64,8 @@ main = do
                     void . liftIO $ swapMVar nm Nothing
                     void . liftIO $ swapMVar ag 0
 
+                method CONNECT . document "doc" . action $ return ()
+
             -- you can add route capture description using [].
             -- you can reference value using '$'.
             [capture|/api/cat/name::String[$dName]/age::Int[age]|] .
@@ -84,35 +84,32 @@ main = do
         -- rpHtml function format as captured route parameter.
         group "dog group" $ do
             [capture|/api/dog/i::Int/**rest|] $ do
-                precondition (rpHtml "i" <> " is even.") . document "twice" . action $ do
+                precondition ("i is even.") . document "twice" . action $ do
                     i <- param [key|i|]
                     guard $ even i
                     contentType "text/plain"
                     showing (i * 2)
-                precondition (rpHtml "i" <> " is odd.") . document "succ" . action $ do
+                precondition ("i is odd.") . document "succ" . action $ do
                     i <- param [key|i|]
                     contentType "text/plain"
                     showing (succ i)
 
         -- add documentation page route.
-        [capture|/api/documentation|] . method GET . document "this page" . action $
-            defaultDocumentationAction def 
-                { documentTitle       = "Example of API documentation auto generation"
-                , documentDescription = Just $ H.p $ mconcat
-                    [ "source file: "
-                    , H.a ! A.href "https://github.com/philopon/apiary/blob/master/examples/api.hs" $ "here"
-                    ]
-                }
+        [capture|/api/documentation|] . document "this page" $ documentation def
+            { documentTitle       = "Example of API documentation auto generation"
+            , documentDescription = Just $ preEscaped
+                "source file: <a href=\"https://github.com/philopon/apiary/blob/master/examples/api.hs\">here</a>"
+            }
 
         [capture|/neko|] . document "nyan" $ do
             accept "text/plain"       . action $ bytes "nyan"
             accept "application/json" . action $ bytes "{\"neko\": \"yes\"}"
 
-        [capture|/static/api-documentation.js|] . action $ file "static/api-documentation.js" Nothing
+        [capture|/static/api-documentation.js|] .document "doc" . action $ file "static/api-documentation.js" Nothing
         [capture|/static/api-documentation.css|] . action $ file "static/api-documentation.css" Nothing
 
 dName :: Html
-dName = H.ul $ H.li "name of cat." <> H.li "if null, homeless."
+dName = preEscaped "<ul><li>name of cat</li><li>if null, homeless</li></ul>"
 
 dAge :: Html
-dAge = H.ul $ H.li "age of cat." <> H.li "cute!"
+dAge = preEscaped "<ul><li>age of cat.</li><li>cute!</li></ul>"
