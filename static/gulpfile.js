@@ -37,11 +37,11 @@ function html(develop, src, dest){
 }
 
 function js(develop, src, dest){
-  var webpackConfig = require('./webpack.config.js');
-  webpackConfig.plugins = webpackConfig.plugins || [];
-  webpackConfig.plugins.unshift(new webpackLib.DefinePlugin({DEBUG: develop}));
-
   return function(){
+    var webpackConfig = require('./webpack.config.js');
+    webpackConfig.plugins = webpackConfig.plugins || [];
+    webpackConfig.plugins.unshift(new webpackLib.DefinePlugin({DEBUG: develop}));
+
     var s = gulp.src(src);
     if(develop) s = s.pipe(plumber());
     s = s.pipe(webpack(webpackConfig));
