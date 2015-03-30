@@ -197,7 +197,6 @@ module.exports = Vue.extend({
 
         req.end(function(err, res){
           _this.$set('result', err || res);
-          console.log(_this.$$.result.offsetTop - 15);
           animatedScrollTo(documentElement, _this.$$.result.offsetTop - 15, 250);
           _this.$parent.$broadcast('request:done');
         });

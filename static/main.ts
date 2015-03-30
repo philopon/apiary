@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function(){
     windowSize.width = newSize.width;
     windowSize.height = newSize.height;
     registerSpy();
-  }, 200));
+  }, 500));
 
   function scrollSpy(){
     var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -122,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
-  var throttleSpy = throttle(scrollSpy, 500);
+  var throttleSpy = throttle(scrollSpy, 50);
 
   function registerSpy(){
     if(windowSize.width >= 600) {
