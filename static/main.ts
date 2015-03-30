@@ -19,9 +19,9 @@ Vue.directive('click', {
     var _this = this;
     this.eventName = hasTouchEvent ? 'touchstart' : 'mousedown';
 
-    this.handler = function () {
-      this.targetVM = _this.vm;
-      _this.vm.$eval(_this.expression)(this);
+    this.handler = function (e) {
+      e.targetVM = _this.vm;
+      _this.vm.$eval(_this.expression)(e);
     }
 
     this.el.addEventListener(this.eventName, this.handler);
