@@ -1,6 +1,7 @@
 div
   button(v-class="disabled: disabled" v-click="request") {{*method || '*'}}
-  div(class="target") {{route}}{{queries | queryParamsString}}
+  div(class="target") {{route}}
+    span(v-if="method !== 'POST' && method !== 'PUT'") {{queries | queryParamsString}}
   x-combobox(v-attr="id: 'Accept:' + anchor" v-with="model: accept, options: accepts", placeholder="Accept")
 
 api-handler(v-repeat="handlers" v-el="handler")

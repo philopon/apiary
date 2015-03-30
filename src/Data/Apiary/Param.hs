@@ -19,7 +19,6 @@ module Data.Apiary.Param
     , File(..)
     -- * request parameter
     , Param
-    , ReqParam(..)
     -- * Strategy
     , Strategy(..)
     , StrategyRep(..)
@@ -51,10 +50,6 @@ module Data.Apiary.Param
     ) where
 
 import Control.Monad(when, unless, MonadPlus(mzero))
-import Control.Arrow(second)
-
-import qualified Network.HTTP.Types as HTTP
-
 import Data.Int(Int8, Int16, Int32, Int64)
 #if MIN_VERSION_base(4,8,0)
 import Data.Word(Word8, Word16, Word32, Word64)
@@ -317,19 +312,6 @@ pMaybe _ = Proxy
 
 pFile :: Proxy File
 pFile = Proxy
-
-class ReqParam a where
-    reqParams   :: proxy a -> HTTP.Query -> [Param] -> [File] -> [(S.ByteString, Maybe a)]
-    reqParamRep :: proxy a -> QueryRep
-
-instance ReqParam File where
-    reqParams _ _ _ = map (\f -> (fileParameter f, Just f))
-    reqParamRep   _ = Strict $ typeRep pFile
-
-instance Query a => ReqParam a where
-    reqParams _ q p _ = map (second readQuery) q ++
-        map (second $ readQuery . Just) p
-    reqParamRep = queryRep
 
 newtype StrategyRep = StrategyRep
     { strategyInfo :: T.Text }

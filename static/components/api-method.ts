@@ -186,11 +186,12 @@ module.exports = Vue.extend({
         var qs = this.queries;
         for(var k in qs) {
           for(var i = 0, l = qs[k].length; i < l; i++) {
-            var obj = {};
-            obj[k] = qs[k][i];
+            var val = qs[k][i];
             if(method === 'POST' || method === 'PUT') {
-              req.send(obj);
+              if(val) req.field(k, val);
             } else {
+              var obj = {};
+              obj[k] = val;
               req.query(obj);
             }
           }

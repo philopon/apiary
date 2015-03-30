@@ -47,7 +47,7 @@ import Control.Monad(mzero)
 import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
-    ( getQueryParams, getRequestBody
+    ( getQueryParams, getReqBodyParams
     , getRequest, ContentType, contentType
     , getConfig, ApiaryConfig(..)
     )
@@ -74,9 +74,8 @@ import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
 
 import Data.Apiary.Param
-    ( ReqParam, StrategyRep(..), QueryRep(NoValue)
-    , Strategy(..), reqParamRep, reqParams
-    , pFirst, pOne, pOption, pOptional, pMany, pSome
+    ( StrategyRep(..), QueryRep(NoValue), Query(..)
+    , Strategy(..), pFirst, pOne, pOption, pOptional, pMany, pSome
     )
 import Data.Apiary.Method(Method)
 
@@ -141,25 +140,25 @@ instance HasDesc Proxy where
 instance HasDesc SProxy where
     queryDesc = const Nothing
 
---     type SNext w (k::Symbol) a (prms :: [(Symbol, *)]) :: [(Symbol, *)]
-query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, KnownSymbol k, ReqParam v, HasDesc query, Strategy strategy)
+query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, KnownSymbol k, Query v, HasDesc query, Strategy strategy)
       => query k -> strategy v -> Filter exts actM m prms (SNext strategy k v prms)
 query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
-    qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
-    let as = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams (Proxy :: Proxy v) qs ps fs
-    case strategy w k as d of
+    meth <- Wai.requestMethod `fmap` getRequest
+    ps <- if meth == "POST" || meth == "PUT"
+          then map (fmap Just) `fmap` getReqBodyParams
+          else getQueryParams
+    case strategy w k (map (readQuery . snd) $ filter ((SC.pack (symbolVal k) ==) . fst) ps) d of
         Nothing -> mzero
         Just d' -> return (d', t)
   where
-    doc = DocQuery (T.pack $ symbolVal k) (strategyRep w) (reqParamRep (Proxy :: Proxy v)) (queryDesc k)
+    doc = DocQuery (T.pack $ symbolVal k) (strategyRep w) (queryRep (Proxy :: Proxy v)) (queryDesc k)
 
 -- | get first matched paramerer. since 0.5.0.0.
 --
 -- @
 -- [key|key|] =: pInt
 -- @
-(=:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
+(=:) :: (HasDesc query, MonadIO actM, KnownSymbol k, Query v, k </ prms)
      => query k -> proxy v -> Filter exts actM m prms (k ':= v ': prms)
 k =: v = query k (pFirst v)
 
@@ -170,7 +169,7 @@ k =: v = query k (pFirst v)
 -- @
 -- [key|key|] =!: pInt
 -- @
-(=!:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
+(=!:) :: (HasDesc query, MonadIO actM, KnownSymbol k, Query v, k </ prms)
       => query k -> proxy v -> Filter exts actM m prms (k ':= v ': prms)
 k =!: t = query k (pOne t)
 
@@ -181,7 +180,7 @@ k =!: t = query k (pOne t)
 -- @
 -- [key|key|] =?: pInt
 -- @
-(=?:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
+(=?:) :: (HasDesc query, MonadIO actM, KnownSymbol k, Query v, k </ prms)
       => query k -> proxy v -> Filter exts actM m prms (k ':= Maybe v ': prms)
 k =?: t = query k (pOption t)
 
@@ -192,7 +191,7 @@ k =?: t = query k (pOption t)
 -- @
 -- [key|key|] =!?: (0 :: Int)
 -- @
-(=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, ReqParam v, KnownSymbol k, k </ prms)
+(=?!:) :: forall query k v exts prms actM m. (HasDesc query, MonadIO actM, Show v, KnownSymbol k, Query v, k </ prms)
        => query k -> v -> Filter exts actM m prms (k ':= v ': prms)
 k =?!: v = query k (pOptional v)
 
@@ -201,7 +200,7 @@ k =?!: v = query k (pOptional v)
 -- @
 -- [key|key|] =*: pInt
 -- @
-(=*:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
+(=*:) :: (HasDesc query, MonadIO actM, KnownSymbol k, Query v, k </ prms)
       => query k -> proxy v -> Filter exts actM m prms (k ':= [v] ': prms)
 k =*: t = query k (pMany t)
 
@@ -210,7 +209,7 @@ k =*: t = query k (pMany t)
 -- @
 -- [key|key|] =+: pInt
 -- @
-(=+:) :: (HasDesc query, MonadIO actM, ReqParam v, KnownSymbol k, k </ prms)
+(=+:) :: (HasDesc query, MonadIO actM, KnownSymbol k, Query v, k </ prms)
       => query k -> proxy v -> Filter exts actM m prms (k ':= [v] ': prms)
 k =+: t = query k (pSome t)
 
@@ -218,9 +217,11 @@ k =+: t = query k (pSome t)
 switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
             => proxy k -> Filter exts actM m prms (k ':= Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
-    qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
-    let n = maybe False id . fmap (maybe True id) . lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy Bool) qs ps fs
+    meth <- Wai.requestMethod `fmap` getRequest
+    ps <- if meth == "POST" || meth == "PUT"
+          then map (fmap Just) `fmap` getReqBodyParams
+          else getQueryParams
+    let n = maybe False id . fmap (maybe True id . readQuery) $ lookup (SC.pack $ symbolVal k) ps
     return (Dict.add k n d, t)
   where
     doc = (DocQuery (T.pack $ symbolVal k) (StrategyRep "switch") NoValue (queryDesc k))
