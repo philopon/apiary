@@ -4,9 +4,6 @@ var ApiPath = require('./api-path.ts');
 
 module.exports = Vue.extend({
   template: require('./api-nav-link.jade')(),
-  components: {
-    'api-path': ApiPath
-  },
   methods: {
     jump: function(e){
       var target = document.getElementById(e.targetVM.anchor);

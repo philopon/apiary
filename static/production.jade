@@ -1,0 +1,14 @@
+- var placeholder = "\0";
+
+doctype html
+html
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title
+    style
+      include tmp/main.css
+  body
+    script(type="application/json" id="data")!= placeholder
+    script
+      include tmp/main.js

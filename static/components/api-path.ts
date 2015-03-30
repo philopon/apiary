@@ -7,7 +7,7 @@ function pieceToString(data : piece) : string {
   if(tag === "path") {
     return data.path;
   } else if (tag === "fetch") {
-    return data.name;
+    return ':' + data.name;
   } else {
     return "**" + data.name;
   }
@@ -45,7 +45,7 @@ var piece = Vue.extend({
 });
 
 module.exports = Vue.extend({
-  template: '<api-path-piece data-v-repeat="path"></api-path-piece>',
+  template: require('./api-path.jade')(),
   components: {'api-path-piece': piece},
   computed: {
     anchor: function(){

@@ -1,6 +1,22 @@
 var Vue = require('Vue');
 
-Vue.config.prefix = 'data-v-';
+function watchValue(val){
+  if(this.$data.tag === 'rest') {
+    this.$dispatch('route-param-updated', this.name, val);
+    this.$set('error', false);
+    return;
+  }
+
+  var len = 0;
+  for(var i = 0, l = val.length; i < l; i++){
+    if(val[i] === '/') { len = 0; break; }
+    len += 1;
+  }
+
+  var v = len === 0 ? null : val;
+  this.$dispatch('route-param-updated', this.name, v);
+  this.$set('error', len === 0);
+}
 
 var ApiRouteParam = Vue.extend({
   data: function(){
@@ -11,6 +27,15 @@ var ApiRouteParam = Vue.extend({
     checkInput: function(e){
       var tag = this.$data.tag, key = e.which || e.keyCode;
       if(tag !== 'rest' && key == 191) e.preventDefault();
+    }
+  },
+  created: function(){
+    this.$watch('value', watchValue, false, true);
+    this.$data.value = window.localStorage.getItem(this.anchor) || "";
+  },
+  watch: {
+    value: function(value){
+      window.localStorage.setItem(this.anchor, value);
     }
   },
   computed: {
@@ -31,7 +56,27 @@ var RouteParameterFilter = function(inp){
 
 var ApiPath = require('./api-path.ts');
 
+function applyRouteParams(path : [{tag: string; path: string; name: string}], params: {key?: string}) : string {
+  var out = '';
+  for(var i = 0, l = path.length; i < l; i++){
+    var piece = path[i], tag = piece.tag;
+    out += '/';
+    if(tag === 'path') {
+      out += piece.path;
+    } else if (tag === 'fetch') {
+      var v = params[piece.name];
+      if (v && v.length > 0) { out += v } else { return null };
+    } else if (tag === 'rest' && piece.name) {
+      out += params[piece.name] || '';
+    }
+  }
+  return out;
+}
+
 module.exports = Vue.extend({
+  data: function(){
+    return {routeParams: {}}
+  },
   template: require('./api-route.jade')(),
   components: {
     'api-path': ApiPath,
@@ -42,41 +87,29 @@ module.exports = Vue.extend({
     'route-parameter': RouteParameterFilter
   },
   computed: {
-    route: function(){
-      var paramComponents = this.$.param || [],
-          params          = {};
-      for(var i = 0, l = paramComponents.length; i < l; i++){
-        var pc = paramComponents[i];
-        params[pc.name] = pc.value;
-      }
-
-      var route = "";
-      var pathPiecies = this.$data.path;
-      for(var i = 0, l = pathPiecies.length; i < l; i++){
-        var pp = pathPiecies[i];
-        route += '/';
-        if(pp.tag === 'path'){
-          route += pp.path;
-        } else if(pp.tag !== 'rest') {
-          var val = '', raw = params[pp.name];
-          for(var j = 0, m = raw.length; j < m; j++) {
-            if(raw[j] !== '/') val += raw[j];
-          }
-          route += val;
-        } else {
-          route += params[pp.name];
-        }
-      }
-
-      return route;
-    },
     anchor: function(){
       return ApiPath.anchorString(this.$data.path)
     }
   },
+  events: {
+    'route-param-updated': function(name, value){
+      var data   = this.$data,
+          params = data.routeParams;
+      params[name] = value;
+
+      var route = applyRouteParams(data.path, params);
+      this.$broadcast('route-updated', route);
+    }
+  },
   compiled: function(){
+    // data for scroll spy
     var el = this.$el;
     el.id = this.anchor;
     this.$root.routes.push(el);
+
+    // initial send route-updated
+    var data = this.$data;
+    var route = applyRouteParams(data.path, data.routeParams);
+    this.$broadcast('route-updated', route);
   }
 });

@@ -9,6 +9,9 @@ $method-fuctor: 360/9;
 $button-font-size: 0.9rem;
 $button-padding: 0.5rem;
 $button-width: $button-font-size * 7;
+$side-space: 15px;
+$sidebar-width: 180px;
+$hide-sidebar-width: 600px;
 
 $method-get-color:     hsl($method-fuctor * 0, $method-saturation, $method-lightness);
 $method-head-color:    hsl($method-fuctor * 1, $method-saturation, $method-lightness);
@@ -27,6 +30,7 @@ html {
 }
 
 body {
+  font-family: $font-family-sans-serif;
   height: 100%;
 }
 
@@ -34,55 +38,53 @@ body {
   @include box-sizing(inherit);
 }
 
-h1 {
-  margin-left: 10px;
-
+h1, h2, h3 {
+  font-weight: 500;
   a {
     color: black;
     text-decoration: none;
   }
 }
 
-h2 {
-  margin-left: 15px;
+h1 {
+  margin-top: 0;
+  padding-top: 21px;
+}
 
-  a {
-    color: black;
-    text-decoration: none;
-  }
+h2 {
+  font-size: 28px;
+  margin-left: 10px;
+}
+
+h3 {
+  font-size: 24px;
+  margin: 15px;
 }
 
 x-document {
   display: block;
-  @include grid-row();
+  position: relative;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-@media #{$small-only} {
+@media only screen and (max-width: $hide-sidebar-width) {
   aside {
     display: none;
   }
 }
 
 aside {
-  @include grid-column(2);
   height: 100%;
   position: relative;
   &:after { content: "\a0"; }
 
-  div {
-    height: 100%;
-    position: fixed;
-    overflow-x: hidden;
-    top: 0;
-    padding: 20px 5px;
-    width: 100% / 12 * 2;
-
-    @media screen and (min-width: 62.5rem) {
-      & {
-        width: (62.5rem / 12 * 2) - rem-calc(30) ;
-      }
-    }
-  }
+  width: $sidebar-width;
+  height: 100%;
+  position: fixed;
+  overflow-x: hidden;
+  top: 0;
+  padding: 20px 0 20px $side-space;
 
   ul {
     $side-nav-heading-color: black;
@@ -92,6 +94,10 @@ aside {
 
     li {
       margin: 0;
+
+      &.active {
+        a { text-decoration: underline; }
+      }
     }
 
     a {
@@ -103,11 +109,16 @@ aside {
 }
 
 main {
+  position: relative;
 
-  @media #{$small-only} {
-    @include grid-column(12);
+  @media only screen and (min-width: $hide-sidebar-width) {
+    left: $sidebar-width;
+    margin-right: $sidebar-width + $side-space;
   }
-  @include grid-column(10);
+
+  @media only screen and (max-width: $hide-sidebar-width) {
+    margin: 0 $side-space;
+  }
 
   api-path {
     .fetch, .rest {
@@ -137,15 +148,25 @@ api-route {
   }
 }
 
+.route-params {
+  margin-top: 20px;
+}
+
 api-route-param {
+  display: block;
   label {
     @include form-label;
     padding-left: 5px;
+
+    &.error { @include form-label-error-color; }
   }
   input {
     @include form-element;
     margin-bottom: 5px;
+
+    &.error { @include form-error-color; }
   }
+
   p { 
     margin-top: 0;
     padding-left: 40px;
@@ -220,6 +241,10 @@ api-method {
 
     & button {
       @include button-style($bg: $color);
+
+      &.disabled {
+        @include button-style($bg: $color, $disabled: true);
+      }
     }
 
     api-handler {
@@ -233,13 +258,15 @@ api-method {
     .result {
       position: relative;
       padding: 0 20px;
-      border-right: 25px solid $success-color;
       border-bottom: 1px solid $color;
 
       &:hover {
         border-bottom: 1px solid $bg-hover;
       }
 
+      &.success {
+        border-right: 25px solid $success-color;
+      }
       &.error {
         border-right: 25px solid $alert-color;
       }
@@ -248,8 +275,8 @@ api-method {
         opacity: 1;
       }
 
-      $dismiss-size: 30px;
       .dismiss {
+        $dismiss-size: 30px;
         position: absolute;
         opacity: 0;
         top: 0;
@@ -306,6 +333,31 @@ api-handler {
   & > p {
     margin: 0;
     padding: 20px;
+  }
+}
+
+footer {
+  position: relative;
+  background-color: white;
+  border-top: 1px solid #e5e5e5;
+  padding-top: 20px;
+  padding-bottom: 50px;
+
+  p {
+    font-size: 14px;
+    color: #777;
+    text-align: center;
+  }
+
+  a {
+    text-decoration: none;
+    color: $primary-color;
+    transition: color 0.1s linear;
+
+    &:hover {
+      text-decoration: underline;
+      color: scale-color($primary-color, $lightness: 30%)
+    }
   }
 }
 

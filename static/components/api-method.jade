@@ -1,13 +1,13 @@
 div
-  button {{method || '*'}}
-  div(class="target") {{route}}
-  x-combobox(data-v-with="model: accept, options: accepts")
+  button(v-class="disabled: disabled" v-on="click: request") {{*method || '*'}}
+  div(class="target") {{route}}{{queries | queryParamsString}}
+  x-combobox(v-attr="id: 'Accept:' + anchor" v-with="model: accept, options: accepts", placeholder="Accept")
 
-api-handler(data-v-repeat="handlers")
+api-handler(v-repeat="handlers")
 
-div.result
-  pre.code 200 OK
-  pre.header header: neko
-    | header: nyan
-  pre.body { "body": "ok"}
-  div.dismiss ×
+div.result(v-show="requested" v-class="success: result.status === 200, error: result.status !== 200")
+  pre.code {{result.status}} {{result.message}}
+  ul.header
+    li(v-repeat="result.response ? result.response.headers : {}") {{$key}}: {{$value}}
+  pre.body {{result.response ? result.response.body : ''}}
+  div.dismiss(v-on="click: dismiss") ×

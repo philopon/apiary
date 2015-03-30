@@ -121,7 +121,7 @@ pathDocToJSON PathDoc{..} = jsonObject
 groupToJSON :: Maybe T.Text -> [PathDoc] -> JSON
 groupToJSON mg ps = jsonObject $
     maybe id (\g -> (:) ("group", jsonString' g)) mg $
-    [("pathes", jsonArray $ map pathDocToJSON ps)]
+    [("paths", jsonArray $ map pathDocToJSON ps)]
 
 documentsToJSON' :: Documents -> JSON
 documentsToJSON' Documents{..} = jsonArray $

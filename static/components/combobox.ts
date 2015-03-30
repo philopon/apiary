@@ -12,6 +12,7 @@ function searchParent(elm: Node, target: Node) : boolean{
 }
 
 module.exports = Vue.extend({
+  paramAttributes: ['placeholder'],
   data: function(){
     return { visibleOptions: false }
   },

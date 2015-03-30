@@ -2,7 +2,11 @@ declare var module : any;
 
 var Vue = require('Vue');
 
-Vue.config.debug = true;
+var definition = require('./define.js');
+if(definition.debug){
+  Vue.config.debug = true;
+  console.warn('Debug mode');
+}
 
 Vue.filter('length', function(i){return i.length});
 
@@ -14,17 +18,15 @@ function getWindowHeight() : number {
   return w.innerHeight || e.clientHeight || g.clientHeight;
 }
 
-
 document.addEventListener('DOMContentLoaded', function(){
 
-  var title = document.getElementsByTagName('title')[0].innerHTML;
   var data = JSON.parse(document.getElementById('data').innerHTML);
 
   var vm = new Vue({
     template: require('./main.jade')(),
     data: {
-      title: title,
-      data: data,
+      title: data.title,
+      data: data.data,
       anchorSplitter: ':',
       routes: []
     },
@@ -45,8 +47,8 @@ document.addEventListener('DOMContentLoaded', function(){
           if(datum.group){
             out.push({type: 'group', name: datum.group})
           }
-          for(var j = 0, m = datum.pathes.length; j < m; j++){
-            var path = datum.pathes[j];
+          for(var j = 0, m = datum.paths.length; j < m; j++){
+            var path = datum.paths[j];
             out.push({type: 'path', path: path.path});
           }
         }
@@ -55,19 +57,15 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   });
 
-  var elm = document.createElement('x-document');
-  vm.$mount(elm);
-  document.body.appendChild(vm.$el);
+  var title = vm.$addChild({
+    el: 'title',
+    template: '{{*title}}',
+    inherit: true
+  });
 
-  var offsetTops = [];
-  for(var i = 0, l = vm.routes.length; i < l; i++) {
-    var r = vm.routes[i];
-    offsetTops.unshift({offsetTop: r.offsetTop, id: r.id});
-  }
-
-  document.addEventListener('scroll', function(){
-    var scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
-    var windowHeight = getWindowHeight();
+  function scrollSpy(){
+    var scrollTop = document.documentElement.scrollTop || document.body.scrollTop,
+        windowHeight = getWindowHeight();
 
     for(var i = 0, l = offsetTops.length; i < l; i++){
       var o = offsetTops[i];
@@ -76,6 +74,19 @@ document.addEventListener('DOMContentLoaded', function(){
         break;
       }
     }
+  }
+
+  vm.$mount(document.createElement('x-document'));
+
+  var offsetTops = [];
+  vm.$appendTo('body', function(){
+    for(var i = 0, l = vm.routes.length; i < l; i++) {
+      var r = vm.routes[i];
+      offsetTops.unshift({offsetTop: r.offsetTop, id: r.id});
+    }
+    scrollSpy();
   });
+
+  document.addEventListener('scroll', scrollSpy);
 
 });
