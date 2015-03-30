@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function(){
     template: require('./main.jade')(),
     data: {
       title: data.title,
+      description: data.description,
       data: data.data,
       anchorSplitter: ':',
       routes: []

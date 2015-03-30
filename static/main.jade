@@ -3,8 +3,10 @@ aside
     li(v-repeat="sideNav" v-component="api-nav-link")
 
 main
-  h1
-    a(href='#') {{*title}}
+  div.title
+    h1
+      a(href='#') {{*title}}
+    p {{*description}}
   section(v-repeat="data")
     h2(v-if="group") {{*group}}
     api-route(v-repeat="paths")
