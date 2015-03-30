@@ -3,11 +3,11 @@ div
   div(class="target") {{route}}{{queries | queryParamsString}}
   x-combobox(v-attr="id: 'Accept:' + anchor" v-with="model: accept, options: accepts", placeholder="Accept")
 
-api-handler(v-repeat="handlers")
+api-handler(v-repeat="handlers" v-el="handler")
 
-div.result(v-show="requested" v-class="success: result.status === 200, error: result.status !== 200" v-el="result")
-  pre.code {{result.status}} {{result.message}}
+div.result(v-show="requested" v-class="success: result.status === 200, error: result.status !== 200")
+  pre.code {{result.status}} {{result.message}} {{ result.type | braket ( ) }}
   ul.header
-    li(v-repeat="result.response ? result.response.headers : {}") {{$key}}: {{$value}}
-  pre.body {{result.response ? result.response.body : ''}}
+    li(v-repeat="result.headers || {}") {{$key}}: {{$value}}
+  pre.body {{result.body || ''}}
   div.dismiss(v-click="dismiss") ×

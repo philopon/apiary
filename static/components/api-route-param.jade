@@ -1,3 +1,3 @@
 label(v-attr="for: anchor" v-class="error: error") {{*name}} :: {{*type || '**'}}
 input(v-attr="id: anchor, placeholder: name" v-class="error: error" v-on="keydown: checkInput" v-model="value")
-p(v-if="doc") {{{*doc}}}
+p(v-if="doc") {{{*doc || ''}}}

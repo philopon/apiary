@@ -11,6 +11,7 @@ module.exports = {
     ]
   },
   plugins: [
-    new webpack.DefinePlugin({DEBUG: true})
+    new webpack.DefinePlugin({DEBUG: true}),
+    new webpack.optimize.OccurenceOrderPlugin()
   ]
 }

@@ -102,7 +102,10 @@ module.exports = Vue.extend({
   },
   template: require('./api-method.jade')(),
   filters: {
-    queryParamsString: queryParamsString
+    queryParamsString: queryParamsString,
+    braket: function(v, bra, ket){
+      return v ? bra + v + ket : v;
+    }
   },
   components: {
     'api-handler': ApiHandler,
@@ -196,20 +199,26 @@ module.exports = Vue.extend({
         }
 
         req.end(function(err, res){
-          _this.$set('result', err || res);
-          animatedScrollTo(documentElement, _this.$$.result.offsetTop - 15, 250);
+          _this.$set('result', {
+            status: res.status,
+            message: res.statusText,
+            type: res.type,
+            headers: res.headers,
+            body: res.body ? JSON.stringify(res.body, null, 2) : res.text
+          });
+          var hs = _this.$$.handler, h = hs[hs.length - 1];
+          animatedScrollTo(documentElement, h.offsetTop + h.offsetHeight - 14, 250);
           _this.$parent.$broadcast('request:done');
         });
       } catch(e) {
         _this.$set('result', {
           status: 'XXX',
           message: e.name,
-          response: {
-            headers: {},
-            body: e.message + '\n\n' + e.stack
-          }
+          headers: {},
+          body: e.message + '\n\n' + e.stack
         });
-        animatedScrollTo(documentElement, _this.$$.result.offsetTop - 15, 250);
+        var hs = _this.$$.handler, h = hs[hs.length - 1];
+        animatedScrollTo(documentElement, h.offsetTop + h.offsetHeight - 14, 250);
         _this.$parent.$broadcast('request:done');
       }
     },

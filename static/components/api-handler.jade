@@ -4,4 +4,4 @@ ul(v-if="preconds | length")
 div(v-if="queries | length")
   api-query-param(v-repeat="queries")
 
-p {{{*doc}}}
+p {{{*doc || ''}}}

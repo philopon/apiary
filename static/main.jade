@@ -6,7 +6,7 @@ main(v-class="touch: touch")
   div.title
     h1
       a(href='#') {{*title}}
-    p {{*description}}
+    p {{{*description || ''}}}
   section(v-repeat="data")
     h2(v-if="group") {{*group}}
     api-route(v-repeat="paths")

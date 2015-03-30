@@ -31,15 +31,12 @@ Vue.directive('click', {
   }
 });
 
-function getWindowSize() : any {
+function getWindowWidth() : number {
   var w = window,
   d = document,
   e = d.documentElement,
   g = d.getElementsByTagName('body')[0];
-  return {
-    height: w.innerHeight || e.clientHeight || g.clientHeight,
-    width:  w.innerWidth  || e.clientWidth  || g.clientWidth
-  };
+  return w.innerWidth  || e.clientWidth  || g.clientWidth;
 }
 
 document.addEventListener('DOMContentLoaded', function(){
@@ -92,8 +89,10 @@ document.addEventListener('DOMContentLoaded', function(){
   vm.$mount(document.createElement('x-document'));
 
   var offsetTops = [];
-  var windowSize = getWindowSize();
-  windowSize.registered = false;
+  var spyState = {
+    width: getWindowWidth(),
+    registered: false
+    }
 
   vm.$appendTo('body', function(){
     for(var i = 0, l = vm.routes.length; i < l; i++) {
@@ -104,9 +103,7 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   window.addEventListener('resize', debounce(function(){
-    var newSize = getWindowSize();
-    windowSize.width = newSize.width;
-    windowSize.height = newSize.height;
+    spyState.width = getWindowWidth();
     registerSpy();
   }, 500));
 
@@ -115,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     for(var i = 0, l = offsetTops.length; i < l; i++){
       var o = offsetTops[i];
-      if(scrollTop > o.offsetTop - windowSize.height / 3) {
+      if(scrollTop > o.offsetTop) {
         vm.$set('navbar', o.id);
         break;
       }
@@ -125,14 +122,14 @@ document.addEventListener('DOMContentLoaded', function(){
   var throttleSpy = throttle(scrollSpy, 50);
 
   function registerSpy(){
-    if(windowSize.width >= 600) {
-      if (!windowSize.registered) {
-        windowSize.registered = true;
+    if(spyState.width >= 600) {
+      if (!spyState.registered) {
+        spyState.registered = true;
         document.addEventListener('scroll', throttleSpy);
       }
     } else {
-      if (windowSize.registered) {
-        windowSize.registered = false;
+      if (spyState.registered) {
+        spyState.registered = false;
         document.removeEventListener('scroll', throttleSpy);
       }
     }
