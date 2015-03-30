@@ -1,5 +1,6 @@
 var Vue = require('Vue');
 var SuperAgent = require('superagent');
+var animatedScrollTo = require('animated-scrollto');
 
 var ApiQueryParam = Vue.extend({
   data: function(){
@@ -173,6 +174,7 @@ module.exports = Vue.extend({
       var _this = this;
       var data = this.$data, method = data.method || 'GET';
       if(this.disabled) return;
+      var documentElement = document.body.scrollTop ? document.body : document.documentElement;
 
       this.$parent.$broadcast('request:start');
 
@@ -195,6 +197,9 @@ module.exports = Vue.extend({
 
         req.end(function(err, res){
           _this.$set('result', err || res);
+          console.log(_this.$$.result.offsetTop - 15);
+          animatedScrollTo(documentElement, _this.$$.result.offsetTop - 15, 250);
+          _this.$parent.$broadcast('request:done');
         });
       } catch(e) {
         _this.$set('result', {
@@ -205,8 +210,8 @@ module.exports = Vue.extend({
             body: e.message + '\n\n' + e.stack
           }
         });
-      } finally {
-       _this.$parent.$broadcast('request:done');
+        animatedScrollTo(documentElement, _this.$$.result.offsetTop - 15, 250);
+        _this.$parent.$broadcast('request:done');
       }
     },
     dismiss: function(){ this.result = {}; }

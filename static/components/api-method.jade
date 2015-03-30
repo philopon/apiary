@@ -1,13 +1,13 @@
 div
-  button(v-class="disabled: disabled" v-on="click: request") {{*method || '*'}}
+  button(v-class="disabled: disabled" v-click="request") {{*method || '*'}}
   div(class="target") {{route}}{{queries | queryParamsString}}
   x-combobox(v-attr="id: 'Accept:' + anchor" v-with="model: accept, options: accepts", placeholder="Accept")
 
 api-handler(v-repeat="handlers")
 
-div.result(v-show="requested" v-class="success: result.status === 200, error: result.status !== 200")
+div.result(v-show="requested" v-class="success: result.status === 200, error: result.status !== 200" v-el="result")
   pre.code {{result.status}} {{result.message}}
   ul.header
     li(v-repeat="result.response ? result.response.headers : {}") {{$key}}: {{$value}}
   pre.body {{result.response ? result.response.body : ''}}
-  div.dismiss(v-on="click: dismiss") ×
+  div.dismiss(v-click="dismiss") ×

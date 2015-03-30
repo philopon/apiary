@@ -75,7 +75,7 @@ x-document {
   margin-right: auto;
 }
 
-@media only screen and (max-width: $hide-sidebar-width) {
+@media only screen and (max-width: $hide-sidebar-width - 1px) {
   aside {
     display: none;
   }
@@ -123,7 +123,7 @@ main {
     margin-right: $sidebar-width + $side-space;
   }
 
-  @media only screen and (max-width: $hide-sidebar-width) {
+  @media only screen and (max-width: $hide-sidebar-width - 1px) {
     margin: 0 $side-space;
   }
 
@@ -131,6 +131,14 @@ main {
     .fetch, .rest {
       color: #999;
     }
+  }
+
+  .dismiss {
+    opacity: 0;
+  }
+
+  &.touch .dismiss {
+    opacity: 1;
   }
 }
 
@@ -285,7 +293,6 @@ api-method {
       .dismiss {
         $dismiss-size: 30px;
         position: absolute;
-        opacity: 0;
         top: 0;
         right: 0;
         width: $dismiss-size;

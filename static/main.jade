@@ -2,7 +2,7 @@ aside
   ul
     li(v-repeat="sideNav" v-component="api-nav-link")
 
-main
+main(v-class="touch: touch")
   div.title
     h1
       a(href='#') {{*title}}
