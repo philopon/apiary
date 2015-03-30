@@ -70,18 +70,18 @@ library
                        Control.Monad.Apiary.Documentation
 
                        Data.Apiary.Extension
-                       Data.Apiary.Html
                        Data.Apiary.Param
                        Data.Apiary.Method
                        Data.Apiary.Document
-                       Data.Apiary.Document.JSON
-                       Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
+                       Data.Apiary.Html
+                       Data.Apiary.JSON
                        Network.Wai.Parse
                        Data.Apiary.SProxy
                        Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
+                       Data.Apiary.Document.Html
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal

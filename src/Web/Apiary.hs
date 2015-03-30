@@ -26,8 +26,8 @@ module Web.Apiary
     , module Control.Monad
     -- | FilePart(..), Application
     , module Network.Wai
-    -- | Html
-    , module Data.Apiary.Html
+    -- | Html, toHtml, preEscaped
+    , module Data.Apiary.Document
     ) where
  
 import Control.Monad.Apiary
@@ -100,5 +100,5 @@ import Data.Default.Class(def)
 import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad (MonadPlus(..), msum, mfilter, guard, (>=>))
 import Network.Wai(FilePart(..), Application)
-import Data.Apiary.Html(Html)
+import Data.Apiary.Document(Html, toHtml, preEscaped)
 import Web.Apiary.TH(key)

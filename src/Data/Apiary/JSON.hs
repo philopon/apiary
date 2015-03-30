@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Data.Apiary.Document.JSON
+module Data.Apiary.JSON
     ( JSON(unJSON)
     , string', string
     , object, array
@@ -16,7 +16,7 @@ import qualified Data.Text.Lazy as L
 import qualified Data.Text.Lazy.Builder as B
 
 import Data.Apiary.Param(StrategyRep(..), QueryRep(..))
-import Data.Apiary.Document
+import Data.Apiary.Document.Internal
 import Data.Apiary.Method(Method, renderMethod)
 import Data.Apiary.Html
 

@@ -8,9 +8,7 @@ module Data.Apiary.Document.Html
     , DocumentConfig(..)
 
     -- * template
-    , parseTemplate
     , parseTemplateFile
-    , defaultTemplate
     ) where
 
 import qualified Language.Haskell.TH as TH
@@ -24,19 +22,21 @@ import Data.Default.Class
 
 import Data.Apiary.Html
 import Data.Apiary.Document(Documents)
-import qualified Data.Apiary.Document.JSON as JSON
+import qualified Data.Apiary.JSON as JSON
 
 templateFile :: FilePath
 templateFile = $(TH.litE . TH.stringL =<< TH.runIO (Paths.getDataFileName "template.html"))
 
 data DocumentConfig = DocumentConfig
-    { documentTitle       :: T.Text
+    { documentTemplate    :: FilePath
+    , documentTitle       :: T.Text
     , documentDescription :: Maybe Html
     }
 
 instance Default DocumentConfig where
     def = DocumentConfig
-        { documentTitle       = "API documentation" 
+        { documentTemplate    = templateFile
+        , documentTitle       = "API documentation" 
         , documentDescription = Nothing
         }
 
@@ -58,9 +58,6 @@ parseTemplate str =
 parseTemplateFile :: FilePath -> IO Template
 parseTemplateFile file = L.readFile file >>=
     maybe (fail "Data.Apiary.Document.Html.parseTemplate: parse failed.") return . parseTemplate
-
-defaultTemplate :: IO Template
-defaultTemplate = parseTemplateFile templateFile
 
 documentToHtml :: DocumentConfig -> Template -> Documents -> Html
 documentToHtml cfg (Template pre suf) doc =

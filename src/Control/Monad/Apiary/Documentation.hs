@@ -12,13 +12,17 @@ import Control.Monad.Apiary.Filter(method, accept)
 
 import Data.Apiary.Html(toLazyText)
 import Data.Apiary.Method(Method(..))
-import Data.Apiary.Document.Html(DocumentConfig(..), documentToHtml, defaultTemplate)
+import Data.Apiary.Document.Html(DocumentConfig(..), documentToHtml, parseTemplateFile)
 
 
 -- | auto generated document.
+--
+-- @
+-- [path|/document|] $ documentation def
+-- @
 documentation :: (MonadIO m, Monad actM) => DocumentConfig -> ApiaryT exts prms actM m ()
 documentation cfg = method GET $ do
-    template <- liftIO defaultTemplate
+    template <- liftIO $ parseTemplateFile (documentTemplate cfg)
     accept "text/html" . action $ do
         d <- getDocuments
         lazyText . toLazyText $ documentToHtml cfg template d

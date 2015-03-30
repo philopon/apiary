@@ -111,10 +111,10 @@ routerToAction router = do
 
 -- | run Apiary monad.
 runApiaryTWith :: (Monad actM, Monad m)
-               => (forall b. actM b -> IO b)
-               -> (Wai.Application -> m a)
-               -> Initializer m '[] exts
-               -> ApiaryConfig
+               => (forall b. actM b -> IO b) -- ^ runner of ActionT monad
+               -> (Wai.Application -> m a) -- ^ server
+               -> Initializer m '[] exts -- ^ extension initializer
+               -> ApiaryConfig -- ^ configuration
                -> ApiaryT exts '[] actM m ()
                -> m a
 runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
@@ -126,6 +126,9 @@ runApiaryTWith runAct run (Initializer ir) conf m = ir NoExtension $ \exts -> do
         app = mw $ execActionT conf exts doc (mw' $ hoistActionT runAct $ routerToAction rtr)
     run $! app
 
+-- | @
+-- runApiaryWith = runApiaryTWith id
+-- @
 runApiaryWith :: Monad m
               => (Wai.Application -> m a)
               -> Initializer m '[] exts
@@ -134,6 +137,16 @@ runApiaryWith :: Monad m
               -> m a
 runApiaryWith = runApiaryTWith id
 
+-- | @
+-- runApiary run = runApiaryWith run noExtension
+-- @
+--
+-- example:
+--
+-- @
+-- main = runApiary (Warp.run 3000) def $ do
+--     -- server definition
+-- @
 runApiary :: Monad m
           => (Wai.Application -> m a)
           -> ApiaryConfig
@@ -262,6 +275,11 @@ group = insDoc . DocGroup
 --
 -- It use only filters prior document,
 -- so you should be placed document directly in front of action.
+--
+-- @
+-- (filters) . document "documentation" . action $ do
+--     -- action definition
+-- @
 document :: Html -> Filter' exts actM m
 document = insDoc . Document
 
@@ -270,5 +288,9 @@ precondition :: Html -> Filter' exts actM m
 precondition = insDoc . DocPrecondition
 
 -- | ignore next document.
+--
+-- @
+-- (filters) . noDoc . document "this document is ignored" . (other filters)
+-- @
 noDoc :: Filter' exts actM m
 noDoc = insDoc DocDropNext

@@ -274,7 +274,7 @@ actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
     Continue !st' a -> cont a st'
 {-# INLINE actionT #-}
 
--- | n must be Monad, so cant be MFunctor.
+-- | hoist function like MFunctor(mmorph package).
 hoistActionT :: (Monad m, Monad n)
              => (forall b. m b -> n b) -> ActionT exts prms m a -> ActionT exts prms n a
 hoistActionT run m = actionT $ \d e s -> run (runActionT m d e s)

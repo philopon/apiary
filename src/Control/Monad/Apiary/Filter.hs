@@ -36,7 +36,6 @@ module Control.Monad.Apiary.Filter (
     , Control.Monad.Apiary.Filter.httpVersion
 
     , function, function', function_, focus
-    , Doc(..)
     ) where
 
 import qualified Network.Wai as Wai
