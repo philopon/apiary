@@ -75,6 +75,11 @@ x-document {
   margin-right: auto;
 }
 
+a {
+  color: $primary-color;
+  text-decoration: none;
+}
+
 @media only screen and (max-width: $hide-sidebar-width - 1px) {
   aside {
     display: none;
@@ -111,6 +116,8 @@ aside {
       padding: 3px !important;
       text-decoration: none;
       cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     for(var i = 0, l = offsetTops.length; i < l; i++){
       var o = offsetTops[i];
-      if(scrollTop > o.offsetTop) {
+      if(scrollTop + 10 > o.offsetTop) {
         vm.$set('navbar', o.id);
         break;
       }
