@@ -7,22 +7,17 @@ module Control.Monad.Apiary.Documentation
 
 import Control.Monad.IO.Class(MonadIO(..))
 import Control.Monad.Apiary.Internal(ApiaryT, action)
-import Control.Monad.Apiary.Action.Internal(getDocuments, lazyText)
+import Control.Monad.Apiary.Action.Internal(getDocuments, builder)
 import Control.Monad.Apiary.Filter(method, accept)
 
-import Data.Apiary.Html(toLazyText)
 import Data.Apiary.Method(Method(..))
 import Data.Apiary.Document.Html(DocumentConfig(..), documentToHtml, parseTemplateFile)
 
 
 -- | auto generated document.
---
--- @
--- [path|/document|] $ documentation def
--- @
 documentation :: (MonadIO m, Monad actM) => DocumentConfig -> ApiaryT exts prms actM m ()
 documentation cfg = method GET $ do
     template <- liftIO $ parseTemplateFile (documentTemplate cfg)
     accept "text/html" . action $ do
         d <- getDocuments
-        lazyText . toLazyText $ documentToHtml cfg template d
+        builder . toBuilder $ documentToHtml cfg template d

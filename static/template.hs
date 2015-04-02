@@ -1,12 +1,13 @@
 #!/usr/bin/env runghc
 
-import qualified Data.Text.Lazy as L
-import qualified Data.Text.Lazy.IO as L
+import Data.Binary
+import Data.Binary.Put
+import qualified Data.ByteString.Lazy.Char8 as L
 
 main :: IO ()
 main = do
     c <- L.getContents
     let (pre, suf) = fmap L.tail $ L.break (== '\0') c
-    print (L.length pre)
-    L.putStr pre
-    L.putStr suf
+    L.putStr . runPut $ do
+        put pre
+        putLazyByteString suf

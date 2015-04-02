@@ -56,9 +56,8 @@ import qualified Network.Routing as R
 import Data.Apiary.Method(Method, renderMethod)
 import Data.Apiary.Extension ( Has, MonadExts(..), getExt, noExtension )
 import Data.Apiary.Extension.Internal(Initializer(..), allMiddleware, allMiddleware')
-import Data.Apiary.Document.Internal(Doc(..), docsToDocuments)
+import Data.Apiary.Document.Internal(Doc(..), docsToDocuments, Desc(..))
 
-import Data.Apiary.Html(Html)
 import qualified Data.Text as T
 
 -- | routing filter
@@ -267,7 +266,7 @@ insDoc d m = ApiaryT $ \env cont -> unApiaryT m env
 
 -- | API document group. since 0.12.0.0.
 --
--- only top level group recognized.
+-- Only top level group is recognized.
 group :: T.Text -> Filter' exts actM m
 group = insDoc . DocGroup
 
@@ -280,12 +279,12 @@ group = insDoc . DocGroup
 -- (filters) . document "documentation" . action $ do
 --     -- action definition
 -- @
-document :: Html -> Filter' exts actM m
-document = insDoc . Document
+document :: Desc d => d -> Filter' exts actM m
+document = insDoc . maybe id Document . toDesc
 
 -- | add user defined precondition. since 0.13.0.
-precondition :: Html -> Filter' exts actM m
-precondition = insDoc . DocPrecondition
+precondition :: Desc d => d -> Filter' exts actM m
+precondition = insDoc . maybe id DocPrecondition . toDesc
 
 -- | ignore next document.
 --

@@ -4,6 +4,7 @@
 
 module Data.Apiary.Document.Internal
     ( Doc(..)
+    , Desc(..)
     , Documents(..)
     , PathDoc(..)
     , QueryDoc(..)
@@ -17,35 +18,41 @@ import Data.Maybe(mapMaybe)
 import Data.List(groupBy)
 import Data.Function(on)
 
+import Text.Blaze.JSON(JSON)
 import Data.Apiary.Param(StrategyRep, QueryRep)
 import Data.Apiary.Method(Method)
 
-import Data.Apiary.Html(Html)
 import qualified Data.Text as T
 import qualified Data.ByteString as S
+
+class Desc a where
+    toDesc :: a -> Maybe JSON -- ^ should be text type
+
+instance Desc () where
+    toDesc _ = Nothing
 
 data Doc
     = DocPath   T.Text       Doc
     | DocRoot                Doc
-    | DocFetch  T.Text TypeRep (Maybe Html) Doc
-    | DocRest   T.Text  (Maybe Html) Doc
+    | DocFetch  T.Text TypeRep (Maybe JSON) Doc
+    | DocRest   T.Text  (Maybe JSON) Doc
     | DocAny    Doc
     | DocDropNext            Doc
 
     | DocMethod Method       Doc
-    | DocQuery  T.Text StrategyRep QueryRep (Maybe Html) Doc
-    | DocPrecondition Html   Doc
+    | DocQuery  T.Text StrategyRep QueryRep (Maybe JSON) Doc
+    | DocPrecondition JSON   Doc
     | DocAccept S.ByteString Doc
     | DocGroup  T.Text       Doc
-    | Document  Html         Doc
+    | Document  JSON         Doc
     | Action
 
 --------------------------------------------------------------------------------
 
 data Route
     = Path  T.Text                      Route
-    | Fetch T.Text TypeRep (Maybe Html) Route
-    | Rest  T.Text (Maybe Html) -- ^ \*\* with name
+    | Fetch T.Text TypeRep (Maybe JSON) Route
+    | Rest  T.Text (Maybe JSON) -- ^ \*\* with name
     | Any -- ^ \*\* without name
     | End
 
@@ -72,14 +79,14 @@ data QueryDoc = QueryDoc
     { queryName     :: T.Text
     , queryStrategy :: StrategyRep
     , queryRep      :: QueryRep
-    , queryDocument :: Maybe Html
+    , queryDocument :: Maybe JSON
     }
 
 data MethodDoc = MethodDoc
     { queries       :: [QueryDoc]
-    , preconditions :: [Html]
+    , preconditions :: [JSON]
     , accept        :: Maybe S.ByteString
-    , document      :: Html
+    , document      :: JSON
     }
 
 --------------------------------------------------------------------------------
@@ -88,9 +95,9 @@ data ToDocumentState = ToDocumentState
     { toDocumentPath      :: Route -> Route
     , toDocumentMethodDoc :: [MethodDoc] -> [(Maybe Method, [MethodDoc])]
     , toDocumentQueries   :: [QueryDoc] -> [QueryDoc]
-    , toDocumentPreconds  :: [Html] -> [Html]
+    , toDocumentPreconds  :: [JSON] -> [JSON]
     , toDocumentAccept    :: Maybe S.ByteString
-    , toDocumentDocument  :: Maybe Html
+    , toDocumentDocument  :: Maybe JSON
     }
 
 initialToDocumentState :: ToDocumentState

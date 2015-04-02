@@ -22,20 +22,21 @@ import Network.Routing.Dict(KV((:=)))
 import qualified Network.Routing.Dict as Dict
 import qualified Network.Routing as R
 
+import Data.Apiary.Document.Internal(Desc(..))
 import qualified Data.Text as T
-import Data.Apiary.Html(Html)
 
 -- | check first path and drill down. since 0.11.0.
 path :: Monad actM => T.Text -> Filter' exts actM m
 path p = focus (DocPath p) Nothing (R.exact p)
 
 -- | get first path and drill down. since 0.11.0.
-fetch' :: (k Dict.</ prms, KnownSymbol k, Path p, Monad actM) => proxy k -> proxy' p -> Maybe Html
+fetch' :: (k Dict.</ prms, KnownSymbol k, Path p, Monad actM, Desc d)
+       => proxy k -> proxy' p -> d
        -> Filter exts actM m prms (k ':= p ': prms)
-fetch' k p h = focus (DocFetch (T.pack $ symbolVal k) (pathRep p) h) Nothing $ R.fetch k (readPathAs p)
+fetch' k p h = focus (DocFetch (T.pack $ symbolVal k) (pathRep p) (toDesc h)) Nothing $ R.fetch k (readPathAs p)
 
-fetch :: forall proxy k p exts prms actM m. (k Dict.</ prms, KnownSymbol k, Path p, Monad actM)
-      => proxy (k ':= p) -> Maybe Html
+fetch :: forall proxy k p d exts prms actM m. (k Dict.</ prms, KnownSymbol k, Path p, Monad actM, Desc d)
+      => proxy (k ':= p) -> d
       -> Filter exts actM m prms (k ':= p ': prms)
 fetch _ h = fetch' k p h
   where
@@ -45,7 +46,7 @@ fetch _ h = fetch' k p h
 anyPath :: (Monad m, Monad actM) => Filter' exts actM m
 anyPath = focus DocAny Nothing R.any
 
-restPath :: (k Dict.</ prms, KnownSymbol k, Monad m, Monad actM)
-         => proxy k -> Maybe Html
+restPath :: (k Dict.</ prms, KnownSymbol k, Monad m, Monad actM, Desc d)
+         => proxy k -> d
          -> Filter exts actM m prms (k ':= [T.Text] ': prms)
-restPath k h = focus (DocRest (T.pack $ symbolVal k) h) Nothing (R.rest k)
+restPath k h = focus (DocRest (T.pack $ symbolVal k) (toDesc h)) Nothing (R.rest k)

@@ -92,7 +92,7 @@ gulp.task('html', ['css', 'js'], html(false, 'production.jade', tmpDir));
 gulp.task('template', ['html'], function(){
   return gulp.src(path.join(tmpDir, 'index.html'))
     .pipe(run('./template.hs', {silent: true}))
-    .pipe(rename('template.html'))
+    .pipe(rename('template.bin'))
     .pipe(gulp.dest(productionDir));
 });
 

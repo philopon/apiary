@@ -59,7 +59,6 @@ import Control.Monad.Apiary.Filter.Internal
 import Control.Monad.Apiary.Filter.Internal.Capture.TH(capture)
 import Control.Monad.Apiary.Internal(Filter, Filter', focus)
 
-import Data.Apiary.Html(Html, toHtml)
 import qualified Data.ByteString.Char8 as SC
 import qualified Data.Text             as T
 import qualified Data.Text.Lazy        as TL
@@ -139,11 +138,14 @@ instance HasDesc Proxy where
 instance HasDesc SProxy where
     queryDesc = const Nothing
 
+isRequestBodyMethod :: SC.ByteString -> Bool
+isRequestBodyMethod m = m == "POST" || m == "PUT"
+
 query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, KnownSymbol k, Query v, HasDesc query, Strategy strategy)
       => query k -> strategy v -> Filter exts actM m prms (SNext strategy k v prms)
 query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
     meth <- Wai.requestMethod `fmap` getRequest
-    ps <- if meth == "POST" || meth == "PUT"
+    ps <- if isRequestBodyMethod meth
           then map (fmap Just) `fmap` getReqBodyParams
           else getQueryParams
     case strategy w k (map (readQuery . snd) $ filter ((SC.pack (symbolVal k) ==) . fst) ps) d of
@@ -217,7 +219,7 @@ switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
             => proxy k -> Filter exts actM m prms (k ':= Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
     meth <- Wai.requestMethod `fmap` getRequest
-    ps <- if meth == "POST" || meth == "PUT"
+    ps <- if isRequestBodyMethod meth
           then map (fmap Just) `fmap` getReqBodyParams
           else getQueryParams
     let n = maybe False id . fmap (maybe True id . readQuery) $ lookup (SC.pack $ symbolVal k) ps

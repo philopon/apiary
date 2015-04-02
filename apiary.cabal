@@ -56,7 +56,7 @@ build-type:          Simple
 stability:           stable
 cabal-version:       >=1.10
 data-dir:            static/dist
-data-files:          template.html
+data-files:          template.bin
 
 library
   exposed-modules:     Web.Apiary
@@ -75,13 +75,12 @@ library
                        Data.Apiary.Document
 
   other-modules:       Web.Apiary.TH
-                       Data.Apiary.Html
-                       Data.Apiary.JSON
                        Network.Wai.Parse
                        Data.Apiary.SProxy
                        Data.Apiary.Document.Internal
-                       Data.Apiary.Extension.Internal
+                       Data.Apiary.Document.JSON
                        Data.Apiary.Document.Html
+                       Data.Apiary.Extension.Internal
                        Control.Monad.Apiary.Internal
                        Control.Monad.Apiary.Filter.Internal
                        Control.Monad.Apiary.Action.Internal
@@ -100,7 +99,7 @@ library
 
                      , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
-                     , bytestring-read      >=0.2   && <0.3
+                     , bytestring-read      >=0.3   && <0.4
                      , blaze-builder        >=0.3   && <0.5
                      , case-insensitive     >=1.1   && <1.3
                      , vault                >=0.3   && <0.4
@@ -117,6 +116,8 @@ library
                      , stringsearch         >=0.3   && <0.4
                      , web-routing          >=0.6   && <0.7
                      , types-compat         >=0.1   && <0.2
+                     , blaze-json           >=0.2   && <0.3
+                     , binary               >=0.7   && <0.8
 
   hs-source-dirs:      src
   ghc-options:         -O2 -Wall

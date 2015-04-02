@@ -10,8 +10,6 @@ import Data.Aeson.TH
 import Control.Monad
 import Control.Concurrent
 import Data.Monoid
-import Data.Apiary.Document.Html
-import Data.Apiary.Html
 
 data Test = Test 
     { name :: Maybe String
@@ -109,7 +107,7 @@ main = do
         [capture|/static/api-documentation.css|] . action $ file "static/api-documentation.css" Nothing
 
 dName :: Html
-dName = preEscaped "<ul><li>name of cat</li><li>if null, homeless</li></ul>"
+dName = preEscaped "<ul><li>nコンビニame of cat</li><li>if null, homeless</li></ul>"
 
 dAge :: Html
-dAge = preEscaped "<ul><li>age of cat.</li><li>cute!</li></ul>"
+dAge = preEscaped "<ul><li>遭遇age of cat.</li><li>cute!</li></ul>"

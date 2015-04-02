@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Data.Apiary.Document.Html
     ( documentToHtml
@@ -11,55 +12,59 @@ module Data.Apiary.Document.Html
     , parseTemplateFile
     ) where
 
+import Data.Monoid
 import qualified Language.Haskell.TH as TH
 import qualified Paths_apiary as Paths
 import qualified Data.Text as T
-import qualified Data.Text.Lazy as L
-import qualified Data.Text.Lazy.IO as L
-import qualified Data.Text.Lazy.Read as R
-import qualified Data.Text.Lazy.Builder as B
+import qualified Data.ByteString.Lazy as L
+import qualified Data.ByteString.Read as R
+import qualified Data.ByteString.Builder as B
+import qualified Data.Binary as Bin
+import qualified Data.Binary.Get as Bin
 import Data.Default.Class
 
-import Data.Apiary.Html
-import Data.Apiary.Document(Documents)
-import qualified Data.Apiary.JSON as JSON
+import Data.Apiary.Document.Internal(Documents, Desc(..))
+import Data.Apiary.Document.JSON(documentsToJSON)
+import Text.Blaze.JSON(JSON)
+import qualified Text.Blaze.JSON as JSON
+import qualified Text.Blaze.JSON.Internal as JSONI
 
 templateFile :: FilePath
-templateFile = $(TH.litE . TH.stringL =<< TH.runIO (Paths.getDataFileName "template.html"))
+templateFile = $(TH.litE . TH.stringL =<< TH.runIO (Paths.getDataFileName "template.bin"))
 
-data DocumentConfig = DocumentConfig
+data DocumentConfig = forall d. Desc d => DocumentConfig
     { documentTemplate    :: FilePath
     , documentTitle       :: T.Text
-    , documentDescription :: Maybe Html
+    , documentDescription :: d
     }
 
 instance Default DocumentConfig where
     def = DocumentConfig
         { documentTemplate    = templateFile
         , documentTitle       = "API documentation" 
-        , documentDescription = Nothing
+        , documentDescription = ()
         }
 
-documentJSON :: DocumentConfig -> Documents -> JSON.JSON
+documentJSON :: DocumentConfig -> Documents -> JSON
 documentJSON DocumentConfig{..} doc = JSON.object $
-    (:) ("title", JSON.string' documentTitle) $
-    maybe id (\d -> (:) ("description",  JSON.string $ toLazyText d)) documentDescription $
-    [("data", JSON.documentsToJSON doc)]
+    (:) ("title", JSON.text documentTitle) $
+    maybe id (\d -> (:) ("description", d)) (toDesc documentDescription) $
+    [("data", documentsToJSON doc)]
 
-data Template = Template L.Text L.Text
+newtype Template = Template (JSON -> B.Builder)
 
-parseTemplate :: L.Text -> Maybe Template
-parseTemplate str =
-    let (pLen, body) = (fmap L.tail . L.break (== '\n')) str
-    in case R.decimal pLen of
-        Right (len, "") -> Just . uncurry Template $ L.splitAt len body
-        _               -> Nothing
+parseTemplate :: L.ByteString -> Either String Template
+parseTemplate str = either (\(_,_,m) -> Left m) (\(_,_,a) -> Right a) .
+    flip Bin.runGetOrFail str $ do
+        len <- Bin.get
+        pre <- Bin.getLazyByteString len
+        suf <- Bin.getRemainingLazyByteString
+        return . Template $ \dat ->
+            B.lazyByteString pre <> JSON.toBuilder def dat <> B.lazyByteString suf
 
 parseTemplateFile :: FilePath -> IO Template
 parseTemplateFile file = L.readFile file >>=
-    maybe (fail "Data.Apiary.Document.Html.parseTemplate: parse failed.") return . parseTemplate
+    either fail return . parseTemplate
 
-documentToHtml :: DocumentConfig -> Template -> Documents -> Html
-documentToHtml cfg (Template pre suf) doc =
-    let json = B.toLazyText . JSON.unJSON $ documentJSON cfg doc
-    in preEscaped $ pre `L.append` json `L.append` suf
+documentToBuilder :: DocumentConfig -> Template -> Documents -> B.Builder
+documentToBuilder cfg (Template apply) = apply . documentJSON cfg
