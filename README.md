@@ -16,8 +16,8 @@ Feature
 
 Web sites using apiary web framework
 ---
-* [find-hackage.herokuapp.com](http://find-hackage.herokuapp.com) advanced hackage search
-* [best-haskell.herokuapp.com](http://best-haskell.herokuapp.com) haskell download ranking(dead)
+* [find-hackage.dizzy-life.com](http://find-hackage.dizzy-life.com) advanced hackage search
+* [best-haskell.dizzy-life.com](http://best-haskell.dizzy-life.com) haskell download ranking(dead)
 
 Install
 ---
