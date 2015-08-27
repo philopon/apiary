@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.4.3
+version:             1.4.4
 synopsis:            Simple and type safe web framework that generate web API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -80,7 +80,6 @@ library
                        Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
-                       Network.Wai.Parse
                        Data.Apiary.SProxy
                        Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
@@ -118,6 +117,7 @@ library
                      , http-date            >=0.0   && <0.1
 
                      , wai                  >=3.0   && <3.1
+                     , wai-extra            >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
                      , web-routing          >=0.6   && <0.7
                      , types-compat         >=0.1   && <0.2
