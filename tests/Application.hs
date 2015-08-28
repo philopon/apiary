@@ -14,6 +14,7 @@ import Control.Monad(when)
 import Control.Monad.Identity(Identity(..))
 
 import Web.Apiary
+import Control.Monad.Apiary.Action
 import Network.Wai(Request)
 import qualified Network.Wai.Test as WT
 import qualified Network.Wai as Wai
@@ -326,6 +327,30 @@ multipleFilter1Test = testGroup "multiple test1: root, method"
 
 --------------------------------------------------------------------------------
 
+-- https://github.com/philopon/apiary/issues/17
+
+issue17App :: Application
+issue17App = runApp $ do
+    root $ do
+        method GET . ([key|foo|] =: pInt) . action $ do
+            foo <- param [key|foo|]
+            params <- getReqBodyParams
+            showing (foo, params)
+
+    method POST . action $ do
+        params <- getReqBodyParams
+        showing params
+
+issue17Test :: TestTree
+issue17Test = testGroup "issue17"
+    [ testReq "GET /" $ assert404 issue17App
+    , testReq "GET /?foo=test" $ assert404 issue17App
+    , testReq "GET /?foo=12"   $ assertPlain200 "(12,[(\"foo\",\"12\")])" issue17App
+    , testReq "POST /?foo=12"  $ assertPlain200 "[(\"foo\",\"12\")]" issue17App -- reported
+    ]
+
+--------------------------------------------------------------------------------
+
 test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
@@ -338,5 +363,6 @@ test = testGroup "Application"
     , stopTest
     , acceptTest
     , multipleFilter1Test
+    , issue17Test
     ]
 
