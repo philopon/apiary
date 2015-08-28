@@ -35,12 +35,21 @@ testReq str f =
                    | otherwise        = r { Wai.httpVersion = HTTP.http11 }
 --------------------------------------------------------------------------------
 
-assertRequest :: Int -> (Maybe S.ByteString) -> L.ByteString -> Application -> Request -> IO ()
-assertRequest sc ct body app req = flip WT.runSession app $ do
-    res <- WT.request req
+assertSRequest :: Int                -- ^ expected status code
+               -> Maybe S.ByteString -- ^ expected content type
+               -> L.ByteString       -- ^ expected request body
+               -> Application -> WT.SRequest -> IO ()
+assertSRequest sc ct body app req = flip WT.runSession app $ do
+    res <- WT.srequest req
     WT.assertBody body res
     WT.assertStatus sc res
     maybe (return ()) (flip WT.assertContentType res) ct
+
+assertRequest :: Int                -- ^ expected status code
+              -> Maybe S.ByteString -- ^ expected content type
+              -> L.ByteString       -- ^ expected request body
+              -> Application -> Request -> IO ()
+assertRequest sc ct body app req = assertSRequest sc ct body app (WT.SRequest req "")
 
 assertPlain200 :: L.ByteString -> Application -> Request -> IO ()
 assertPlain200 = assertRequest 200 (Just "text/plain")
@@ -334,19 +343,19 @@ issue17App = runApp $ do
     root $ do
         method GET . ([key|foo|] =: pInt) . action $ do
             foo <- param [key|foo|]
-            params <- getReqBodyParams
-            showing (foo, params)
+            showing foo
 
     method POST . action $ do
-        params <- getReqBodyParams
-        showing params
+        ps <- getReqBodyParams
+        showing ps
 
 issue17Test :: TestTree
-issue17Test = testGroup "issue17"
-    [ testReq "GET /" $ assert404 issue17App
-    , testReq "GET /?foo=test" $ assert404 issue17App
-    , testReq "GET /?foo=12"   $ assertPlain200 "(12,[(\"foo\",\"12\")])" issue17App
-    , testReq "POST /?foo=12"  $ assertPlain200 "[(\"foo\",\"12\")]" issue17App -- reported
+issue17Test = testGroup "issue17" $ map ($ issue17App)
+    [ testReq "GET /"          . assert404
+    , testReq "GET /?foo=test" . assert404
+    , testReq "GET /?foo=12"   . assertPlain200 "12"
+    , \app -> testReq "POST /" $ \req -> assertSRequest 200 Nothing "[(\"foo\",\"12\")]" app
+      (WT.SRequest req { Wai.requestHeaders = ("Content-Type", "application/x-www-form-urlencoded") : Wai.requestHeaders req} "foo=12")
     ]
 
 --------------------------------------------------------------------------------
