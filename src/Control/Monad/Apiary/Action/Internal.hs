@@ -258,7 +258,7 @@ data ActionEnv exts = ActionEnv
 
 data Action a 
     = Continue ActionState a
-    | Pass
+    | Pass (Maybe RequestBody)
     | Stop Wai.Response
 
 newtype ActionT exts prms m a = ActionT { unActionT :: forall b. 
@@ -280,7 +280,7 @@ actionT :: Monad m
         => (Dict.Dict prms -> ActionEnv exts -> ActionState -> m (Action a))
         -> ActionT exts prms m a
 actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
-    Pass            -> return Pass
+    Pass b          -> return $ Pass b
     Stop s          -> return $ Stop s
     Continue !st' a -> cont a st'
 {-# INLINE actionT #-}
@@ -298,7 +298,7 @@ applyDict d (ActionT m) = ActionT $ const (m d)
 execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts '[] IO () -> Wai.Application
 execActionT config exts doc m request send = 
     runActionT m Dict.emptyDict (ActionEnv config request doc exts) (initialState config) >>= \case
-        Pass         -> notFound config request send
+        Pass _       -> notFound config request send
         Stop s       -> send s
         Continue r _ -> send $ toResponse r
 
@@ -355,11 +355,11 @@ instance (Monad m, Functor m) => Alternative (ActionT exts prms m) where
     {-# INLINE (<|>) #-}
 
 instance Monad m => MonadPlus (ActionT exts prms m) where
-    mzero = ActionT $ \_ _ _ _ -> return Pass
+    mzero = ActionT $ \_ _ !st _ -> return $ Pass (actionReqBody st)
     mplus m n = ActionT $ \dict e !s cont -> unActionT m dict e s cont >>= \case
         Continue !st a -> return $ Continue st a
         Stop stp       -> return $ Stop stp
-        Pass           -> unActionT n dict e s cont
+        Pass b         -> unActionT n dict e s { actionReqBody = b } cont
     {-# INLINE mzero #-}
     {-# INLINE mplus #-}
 

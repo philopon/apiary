@@ -345,9 +345,9 @@ issue17App = runApp $ do
             foo <- param [key|foo|]
             showing foo
 
-    method POST . action $ do
-        ps <- getReqBodyParams
-        showing ps
+        method POST . action $ do
+            ps <- getReqBodyParams
+            showing ps
 
 issue17Test :: TestTree
 issue17Test = testGroup "issue17" $ map ($ issue17App)
