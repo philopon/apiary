@@ -116,7 +116,7 @@ library
                      , unix-compat          >=0.4   && <0.5
                      , http-date            >=0.0   && <0.1
 
-                     , wai                  >=3.0   && <3.1
+                     , wai                  >=3.0   && <3.3
                      , wai-extra            >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
                      , web-routing          >=0.6   && <0.7
@@ -141,7 +141,7 @@ test-suite tasty
                      , bytestring           >=0.10  && <0.11
                      , http-types           >=0.8   && <0.10
                      , HUnit                >=1.2   && <1.4
-                     , wai                  >=3.0   && <3.1
+                     , wai                  >=3.0   && <3.3
                      , wai-extra            >=3.0   && <3.1
 
   hs-source-dirs:      tests
