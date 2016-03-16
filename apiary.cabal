@@ -1,5 +1,5 @@
 name:                apiary
-version:             1.4.3
+version:             1.4.5
 synopsis:            Simple and type safe web framework that generate web API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -80,7 +80,6 @@ library
                        Data.Apiary.Document.Html
 
   other-modules:       Web.Apiary.TH
-                       Network.Wai.Parse
                        Data.Apiary.SProxy
                        Data.Apiary.Document.Internal
                        Data.Apiary.Extension.Internal
@@ -97,12 +96,12 @@ library
                      , monad-control        >=0.3   && <1.1
                      , exceptions           >=0.6   && <0.9
 
-                     , http-types           >=0.8   && <0.9
+                     , http-types           >=0.8   && <0.10
                      , mime-types           >=0.1   && <0.2
 
                      , text                 >=1.1   && <1.3
                      , bytestring           >=0.10  && <0.11
-                     , bytestring-read      >=0.2   && <0.3
+                     , bytestring-read      >=0.2   && <0.4
                      , blaze-builder        >=0.3   && <0.5
                      , blaze-html           >=0.7   && <0.9
                      , blaze-markup         >=0.6   && <0.8
@@ -117,7 +116,8 @@ library
                      , unix-compat          >=0.4   && <0.5
                      , http-date            >=0.0   && <0.1
 
-                     , wai                  >=3.0   && <3.1
+                     , wai                  >=3.0   && <3.3
+                     , wai-extra            >=3.0   && <3.1
                      , stringsearch         >=0.3   && <0.4
                      , web-routing          >=0.6   && <0.7
                      , types-compat         >=0.1   && <0.2
@@ -134,14 +134,14 @@ test-suite tasty
   type:                exitcode-stdio-1.0
   build-depends:       base                      >=4.6   && <4.9
                      , mtl                       >=2.1   && <2.3
-                     , tasty                     >=0.10  && <0.11
+                     , tasty                     >=0.10  && <0.12
                      , tasty-hunit               >=0.9   && <0.10
                      , tasty-quickcheck          >=0.8   && <0.9
                      , apiary
                      , bytestring           >=0.10  && <0.11
-                     , http-types           >=0.8   && <0.9
-                     , HUnit                >=1.2   && <1.3
-                     , wai                  >=3.0   && <3.1
+                     , http-types           >=0.8   && <0.10
+                     , HUnit                >=1.2   && <1.4
+                     , wai                  >=3.0   && <3.3
                      , wai-extra            >=3.0   && <3.1
 
   hs-source-dirs:      tests

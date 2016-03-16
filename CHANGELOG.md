@@ -1,3 +1,12 @@
+# 1.4.5
+* fix: MonadPlus lows of ApiaryT Monad
+
+# 1.4.4
+* use wai-extra to parse request body
+
+# 1.4.3
+* ghc-7.10 compatible
+
 # 1.4.2
 * fix: remove async from API document
 

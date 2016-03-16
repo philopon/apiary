@@ -13,7 +13,6 @@ cabal install
 
 for path in `cat submodules`; do
   cd $path
-  ln -s ../cabal.sandbox.config .
   printHeader $path
   cabal configure --enable-tests
   cabal test
@@ -23,5 +22,4 @@ done
 
 printHeader "build examples"
 cd examples
-ln -s ../cabal.sandbox.config .
 cabal install .
