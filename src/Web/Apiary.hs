@@ -48,6 +48,7 @@ import Control.Monad.Apiary
 
 import Control.Monad.Apiary.Action
     ( ActionT
+    , application
     , stop
     , param
     , params

@@ -1,7 +1,8 @@
-module Control.Monad.Apiary.Action 
+module Control.Monad.Apiary.Action
     ( ActionT
     , hoistActionT
     -- * stop action
+    , application
     , stop
 
     -- * getter

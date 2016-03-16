@@ -18,6 +18,7 @@
 module Control.Monad.Apiary.Action.Internal
     ( ActionT
 
+    , application
     , stop
 
     , param
@@ -260,6 +261,7 @@ data Action a
     = Continue ActionState a
     | Pass (Maybe RequestBody)
     | Stop Wai.Response
+    | App Wai.Application
 
 newtype ActionT exts prms m a = ActionT { unActionT :: forall b.
     Dict.Dict prms
@@ -283,7 +285,14 @@ actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
     Pass b          -> return $ Pass b
     Stop s          -> return $ Stop s
     Continue !st' a -> cont a st'
+    App a           -> return $ App a
 {-# INLINE actionT #-}
+
+-- | stop and proxy current request to a 'Wai.Application'
+application :: Monad m
+        => Wai.Application
+        -> ActionT exts prms m a
+application app = ActionT $ \_ _ _ _ -> return $ App app
 
 -- | n must be Monad, so cant be MFunctor.
 hoistActionT :: (Monad m, Monad n)
@@ -301,6 +310,7 @@ execActionT config exts doc m request send =
         Pass _       -> notFound config request send
         Stop s       -> send s
         Continue r _ -> send $ toResponse r
+        App a        -> a request send
 
 --------------------------------------------------------------------------------
 
@@ -360,6 +370,7 @@ instance Monad m => MonadPlus (ActionT exts prms m) where
         Continue !st a -> return $ Continue st a
         Stop stp       -> return $ Stop stp
         Pass b         -> unActionT n dict e s { actionReqBody = b } cont
+        App a          -> return $ App a
     {-# INLINE mzero #-}
     {-# INLINE mplus #-}
 
