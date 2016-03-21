@@ -18,6 +18,7 @@
 module Control.Monad.Apiary.Action.Internal
     ( ActionT
 
+    , application
     , stop
 
     , param
@@ -160,7 +161,7 @@ defaultNotFound :: Wai.Application
 defaultNotFound _ f = f      $ Wai.responseLBS HTTP.status404 [("Content-Type", "text/plain")] "404 Page Notfound.\n"
 
 instance Default ApiaryConfig where
-    def = ApiaryConfig 
+    def = ApiaryConfig
         { notFound            = defaultNotFound
         , defaultStatus       = HTTP.ok200
         , defaultHeaders      = []
@@ -256,12 +257,13 @@ data ActionEnv exts = ActionEnv
     , actionExts      :: Extensions exts
     }
 
-data Action a 
+data Action a
     = Continue ActionState a
     | Pass (Maybe RequestBody)
     | Stop Wai.Response
+    | App Wai.Application
 
-newtype ActionT exts prms m a = ActionT { unActionT :: forall b. 
+newtype ActionT exts prms m a = ActionT { unActionT :: forall b.
     Dict.Dict prms
     -> ActionEnv exts
     -> ActionState
@@ -276,14 +278,21 @@ runActionT m dict env st = unActionT m dict env st $ \a !st' ->
     return (Continue st' a)
 {-# INLINE runActionT #-}
 
-actionT :: Monad m 
+actionT :: Monad m
         => (Dict.Dict prms -> ActionEnv exts -> ActionState -> m (Action a))
         -> ActionT exts prms m a
 actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
     Pass b          -> return $ Pass b
     Stop s          -> return $ Stop s
     Continue !st' a -> cont a st'
+    App a           -> return $ App a
 {-# INLINE actionT #-}
+
+-- | stop and proxy current request to a 'Wai.Application'
+application :: Monad m
+        => Wai.Application
+        -> ActionT exts prms m a
+application app = ActionT $ \_ _ _ _ -> return $ App app
 
 -- | n must be Monad, so cant be MFunctor.
 hoistActionT :: (Monad m, Monad n)
@@ -296,11 +305,12 @@ applyDict d (ActionT m) = ActionT $ const (m d)
 {-# INLINE applyDict #-}
 
 execActionT :: ApiaryConfig -> Extensions exts -> Documents -> ActionT exts '[] IO () -> Wai.Application
-execActionT config exts doc m request send = 
+execActionT config exts doc m request send =
     runActionT m Dict.emptyDict (ActionEnv config request doc exts) (initialState config) >>= \case
         Pass _       -> notFound config request send
         Stop s       -> send s
         Continue r _ -> send $ toResponse r
+        App a        -> a request send
 
 --------------------------------------------------------------------------------
 
@@ -360,6 +370,7 @@ instance Monad m => MonadPlus (ActionT exts prms m) where
         Continue !st a -> return $ Continue st a
         Stop stp       -> return $ Stop stp
         Pass b         -> unActionT n dict e s { actionReqBody = b } cont
+        App a          -> return $ App a
     {-# INLINE mzero #-}
     {-# INLINE mplus #-}
 
@@ -374,7 +385,7 @@ instance MonadTransControl (ActionT exts prms) where
     restoreT m = actionT $ \_ _ _ -> m
 #else
     newtype StT (ActionT exts prms) a = StActionT { unStActionT :: Action a }
-    liftWith f = actionT $ \prms e !s -> 
+    liftWith f = actionT $ \prms e !s ->
         liftM (\a -> Continue s a) (f $ \t -> liftM StActionT $ runActionT t prms e s)
     restoreT m = actionT $ \_ _ _ -> liftM unStActionT m
 #endif
@@ -591,7 +602,7 @@ redirectPermanently = redirectWith HTTP.movedPermanently301
 --
 -- 303 See Other (HTTP/1.1)  or
 -- 302 Moved Temporarily (Other)
--- 
+--
 -- since 0.6.2.0.
 redirect :: Monad m => S.ByteString -> ActionT exts prms m ()
 redirect to = do

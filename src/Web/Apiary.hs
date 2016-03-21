@@ -1,6 +1,6 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 
-module Web.Apiary 
+module Web.Apiary
     ( module Control.Monad.Apiary
     , module Control.Monad.Apiary.Action
     , module Control.Monad.Apiary.Filter
@@ -28,12 +28,15 @@ module Web.Apiary
     -- | Html
     , module Text.Blaze.Html
     ) where
- 
+
 import Control.Monad.Apiary
     ( ApiaryT
     , runApiaryTWith
     , runApiaryWith
     , runApiary
+    , getApiaryTWith
+    , getApiaryWith
+    , getApiary
     , ApiaryConfig(..)
     , action
     , middleware
@@ -45,6 +48,7 @@ import Control.Monad.Apiary
 
 import Control.Monad.Apiary.Action
     ( ActionT
+    , application
     , stop
     , param
     , params

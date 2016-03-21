@@ -5,6 +5,9 @@ module Control.Monad.Apiary
     , runApiaryTWith
     , runApiaryWith
     , runApiary
+    , getApiaryTWith
+    , getApiaryWith
+    , getApiary
     , ApiaryConfig(..)
     -- * execute action
     , action

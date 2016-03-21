@@ -14,6 +14,9 @@ module Control.Monad.Apiary.Internal
     , runApiaryTWith
     , runApiaryWith
     , runApiary
+    , getApiaryTWith
+    , getApiaryWith
+    , getApiary
     , ApiaryConfig(..)
 
     , action
@@ -96,7 +99,7 @@ instance Monoid (ApiaryWriter exts actM) where
 newtype ApiaryT exts prms actM m a = ApiaryT { unApiaryT :: forall b.
     ApiaryEnv exts prms actM
     -> (a -> ApiaryWriter exts actM -> m b)
-    -> m b 
+    -> m b
     }
 
 apiaryT :: Monad m
@@ -141,6 +144,35 @@ runApiary :: Monad m
           -> m a
 runApiary run = runApiaryWith run noExtension
 
+-- | get 'Application' from Apiary monad.
+getApiaryTWith :: (Monad actM, Monad m)
+               => (forall b. actM b -> IO b)
+               -> Initializer m '[] exts
+               -> ApiaryConfig
+               -> ApiaryT exts '[] actM m ()
+               -> m Wai.Application
+getApiaryTWith runAct (Initializer ir) conf m = ir NoExtension $ \exts -> do
+    wtr <- unApiaryT m (initialEnv conf exts) (\_ w -> return w)
+    let doc = docsToDocuments $ writerDoc wtr []
+        rtr = writerRouter wtr R.empty
+        mw  = allMiddleware exts . writerMw wtr
+        mw' = allMiddleware' exts
+        app = mw $ execActionT conf exts doc (mw' $ hoistActionT runAct $ routerToAction rtr)
+    return $! app
+
+getApiaryWith :: Monad m
+              => Initializer m '[] exts
+              -> ApiaryConfig
+              -> ApiaryT exts '[] IO m ()
+              -> m Wai.Application
+getApiaryWith = getApiaryTWith id
+
+getApiary :: Monad m
+          => ApiaryConfig
+          -> ApiaryT '[] '[] IO m ()
+          -> m Wai.Application
+getApiary = getApiaryWith noExtension
+
 --------------------------------------------------------------------------------
 
 instance Functor (ApiaryT exts prms actM m) where
@@ -159,7 +191,7 @@ instance Monad actM => Monad (ApiaryT exts prms actM m) where
     return x = ApiaryT $ \_ cont -> cont x mempty
     m >>= k = ApiaryT $ \env cont ->
         unApiaryT    m  env $ \a hdr  ->
-        unApiaryT (k a) env $ \b hdr' -> 
+        unApiaryT (k a) env $ \b hdr' ->
         let hdr'' = hdr `mappend` hdr'
         in hdr'' `seq` cont b hdr''
 
@@ -180,7 +212,7 @@ instance Monad actM => MonadTransControl (ApiaryT exts prms actM) where
 #else
     newtype StT (ApiaryT exts prms actM) a = StTApiary { unStTApiary :: (a, ApiaryWriter exts actM) }
     liftWith f = apiaryT $ \env ->
-        liftM (\a -> (a, mempty)) 
+        liftM (\a -> (a, mempty))
         (f $ \t -> liftM StTApiary $ unApiaryT t env (\a w -> return (a,w)))
     restoreT m = apiaryT $ \_ -> liftM unStTApiary m
 #endif
@@ -243,6 +275,9 @@ action a = do
         id
 
 -- | add middleware.
+--
+-- please note that, this method just provide a shortcut to stack middleware.
+-- middlewares are added to whole Apiary application rather than specific route.
 middleware :: Monad actM => Wai.Middleware -> ApiaryT exts prms actM m ()
 middleware mw = addRoute (ApiaryWriter id id mw)
 
