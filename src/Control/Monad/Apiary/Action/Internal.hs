@@ -58,7 +58,8 @@ module Control.Monad.Apiary.Action.Internal
     , getQueryParams
     , getReqBodyParams
     , getReqBodyFiles
-    , RequestBody(..)
+    , getReqBodyJSON
+    , ActionReqBody(..)
     , getReqBody
 
     , devFile
@@ -79,7 +80,7 @@ module Control.Monad.Apiary.Action.Internal
     , getConfig
     , getState
     , modifyState
-    , getRequestBody
+    , getReqBodyInternal
     , execActionT
     , applyDict
 
@@ -110,12 +111,15 @@ import Control.Monad.Trans.Control
     (MonadTransControl(..), MonadBaseControl(..)
     , ComposeSt
     , defaultLiftBaseWith, defaultRestoreM)
+import Control.Exception (try)
+import Control.Monad.Trans.Resource (runResourceT, withInternalState)
 
 import Network.Mime(defaultMimeLookup)
 import Network.HTTP.Date(parseHTTPDate, epochTimeToHTTPDate, formatHTTPDate)
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as Wai
 import qualified Network.Wai.Parse as P
+import Network.Wai.Request (requestSizeCheck, RequestSizeException(..))
 
 import qualified Network.Routing.Dict as Dict
 import Data.Apiary.Param(Param, File(..))
@@ -134,6 +138,9 @@ import qualified Data.ByteString.Lazy.Char8 as LC
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Vault.Lazy as V
+import Data.Word (Word64)
+import Data.Aeson (FromJSON)
+import qualified Data.Aeson as JSON
 
 data ApiaryConfig = ApiaryConfig
     { -- | call when no handler matched.
@@ -145,6 +152,11 @@ data ApiaryConfig = ApiaryConfig
     , defaultContentType  :: S.ByteString
     , failStatus          :: HTTP.Status
     , failHeaders         :: HTTP.ResponseHeaders
+      -- | maximum request size.
+    , maxRequestSize      :: Word64
+      -- | where to store upload file.
+      -- default to 'Nothing', which saves file content in memory.
+    , uploadFilePath      :: Maybe FilePath
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
     , rootPattern         :: [T.Text]
     , mimeType            :: FilePath -> S.ByteString
@@ -169,6 +181,8 @@ instance Default ApiaryConfig where
         , failStatus          = HTTP.internalServerError500
         , failHeaders         = []
         , rootPattern         = ["index.html", "index.htm"]
+        , maxRequestSize      = 5242880
+        , uploadFilePath      = Nothing
         , mimeType            = defaultMimeLookup . T.pack
         }
 
@@ -198,13 +212,11 @@ toResponse ActionState{..} = case actionResponse of
 
 --------------------------------------------------------------------------------
 
-data RequestBody
-    = Unknown S.ByteString -- ^ raw body
-    | UrlEncoded [Param] [File]
-    | Multipart
-        {-#UNPACK#-}!S.ByteString
-        [Param]
-        [File] -- ^ boundary params files
+data ActionReqBody
+    = Unknown L.ByteString -- ^ raw body
+    | UrlEncoded [Param]   -- ^ url-encoded params
+    | Multipart [Param] [File] -- ^ boundary params files
+  deriving (Show, Eq)
 
 data ActionState = ActionState
     { actionResponse    :: ResponseBody
@@ -212,7 +224,7 @@ data ActionState = ActionState
     , actionHeaders     :: HTTP.ResponseHeaders
     , actionVault       :: V.Vault
     , actionContentType :: S.ByteString
-    , actionReqBody     :: Maybe RequestBody
+    , actionReqBody     :: Maybe ActionReqBody
     }
 
 initialState :: ApiaryConfig -> ActionState
@@ -259,7 +271,7 @@ data ActionEnv exts = ActionEnv
 
 data Action a
     = Continue ActionState a
-    | Pass (Maybe RequestBody)
+    | Pass (Maybe ActionReqBody)
     | Stop Wai.Response
     | App Wai.Application
 
@@ -455,50 +467,91 @@ params = QuasiQuoter
     , quoteDec  = error "params QQ is defined only exp."
     }
 
+getQueryParams :: Monad m => ActionT exts prms m HTTP.Query
+getQueryParams = Wai.queryString <$> getRequest
+
 getDocuments :: Monad m => ActionT exts prms m Documents
 getDocuments = liftM actionDocuments getEnv
 
--- | parse request body and return it. since 1.2.2.
-getReqBody :: MonadIO m => ActionT exts prms m RequestBody
+-- | parse request body into 'ActionReqBody' and return it. since 1.2.2.
+getReqBody :: MonadIO m => ActionT exts prms m ActionReqBody
 getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
     Just  b -> c b s
     Nothing -> do
         let req  = actionRequest e
-            body = Wai.requestBody req
-        b <- liftIO $ case P.getRequestBodyType req of
-            Nothing                  -> Unknown `liftM` body
-            Just typ@P.UrlEncoded    -> sink UrlEncoded typ body
-            Just typ@(P.Multipart b) -> sink (Multipart b) typ body
-        c b s { actionReqBody = Just b }
+            config = actionConfig e
+            rbody = Wai.requestBody =<< requestSizeCheck (maxRequestSize config) req
+
+        b <- liftIO $ try(
+            case P.getRequestBodyType req of
+                Nothing              -> sinkRaw rbody
+                Just typ@P.UrlEncoded    -> sinkUrlEncoded typ rbody
+                Just typ@(P.Multipart _) ->
+                    case uploadFilePath config of
+                        Nothing -> sinkMultipartLBS typ rbody
+                        Just p  -> sinkMultipartToDisk p typ rbody
+            )
+        case b of
+            Left (RequestSizeException limit) ->
+                return $ Stop $ Wai.responseLBS HTTP.status413 [] $ B.toLazyByteString $
+                    "Request body is too large(limit is "
+                        `mappend` B.fromString (show limit) `mappend` " bytes)"
+            Right b' ->
+                c b' s { actionReqBody = Just b' }
   where
-    sink con typ body = do
-        (p, f) <- P.sinkRequestBody P.lbsBackEnd typ body
-        return $ con p (map convFile f)
+    sinkRaw rbody = do
+        let loop front = do
+                bs <- rbody
+                if S.null bs
+                    then return $ L.fromChunks $ front []
+                    else loop $ front . (bs:)
+        Unknown `liftM` loop id
 
-    convFile (p, P.FileInfo{..}) = File p fileName fileContentType fileContent
+    sinkUrlEncoded typ rbody = do
+        (p, _) <- P.sinkRequestBody P.lbsBackEnd typ rbody
+        return (UrlEncoded p)
 
-getQueryParams :: Monad m => ActionT exts prms m HTTP.Query
-getQueryParams = Wai.queryString <$> getRequest
+    sinkMultipartLBS typ rbody = do
+        (p, f) <- P.sinkRequestBody P.lbsBackEnd typ rbody
+        let f' = map (\ (pn, P.FileInfo{..})
+                    -> File pn fileName fileContentType (Left fileContent)
+                ) f
+        return (Multipart p f')
 
-getRequestBody :: MonadIO m => ActionT exts prms m ([Param], [File])
-getRequestBody = getReqBody >>= return . \case
+    sinkMultipartToDisk path typ rbody = runResourceT . withInternalState $ \ internalState -> do
+        (p, f) <- P.sinkRequestBody
+            (P.tempFileBackEndOpts (return path) "apiaryUpload" internalState)
+            typ
+            rbody
+        let f' = map (\ (pn, P.FileInfo{..})
+                    -> File pn fileName fileContentType (Right fileContent)
+                ) f
+        return (Multipart p f')
+
+getReqBodyInternal :: MonadIO m => ActionT exts prms m ([Param], [File])
+getReqBodyInternal = getReqBody >>= return . \case
     Unknown _       -> ([], [])
-    UrlEncoded  p f -> (p, f)
-    Multipart _ p f -> (p, f)
+    UrlEncoded  p   -> (p, [])
+    Multipart   p f -> (p, f)
 
 -- | parse request body and return params. since 1.0.0.
 getReqBodyParams :: MonadIO m => ActionT exts prms m [Param]
 getReqBodyParams = getReqBody >>= return . \case
     Unknown _       -> []
-    UrlEncoded  p _ -> p
-    Multipart _ p _ -> p
+    UrlEncoded  p   -> p
+    Multipart   p _ -> p
 
 -- | parse request body and return files. since 0.9.0.0.
 getReqBodyFiles :: MonadIO m => ActionT exts prms m [File]
 getReqBodyFiles = getReqBody >>= return . \case
-    Unknown _       -> []
-    UrlEncoded  _ f -> f
-    Multipart _ _ f -> f
+    Multipart   _ f -> f
+    _               -> []
+
+-- | parse request body and try parse it as JSON.
+getReqBodyJSON :: (MonadIO m, FromJSON a) => ActionT exts prms m (Maybe a)
+getReqBodyJSON = getReqBody >>= return . \case
+    Unknown lbs     -> JSON.decode' lbs
+    _               -> Nothing
 
 -- | get all request headers. since 0.6.0.0.
 getHeaders :: Monad m => ActionT exts prms m HTTP.RequestHeaders

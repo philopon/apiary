@@ -22,9 +22,10 @@ import qualified Network.HTTP.Types as HTTP
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString.Char8 as S
+import Data.Word (Word64)
 
 testReq :: String -> (Request -> IO ()) -> TestTree
-testReq str f = 
+testReq str f =
     let (meth, other) = break (== ' ') str
         (p,  version) = break (== ' ') (tail other)
     in testCase str $ f (WT.setPath (setVersion version $ (WT.defaultRequest { Wai.requestMethod = S.pack meth })) (S.pack p))
@@ -330,7 +331,7 @@ multipleFilter1Test :: TestTree
 multipleFilter1Test = testGroup "multiple test1: root, method"
     [ testReq "GET /index.html" $ assertPlain200 "GET /"      multipleFilter1App
     , testReq "POST /"          $ assertHtml200 "POST /"      multipleFilter1App
-    , testReq "DELETE /"        $ assertPlain200 "DELETE ANY" multipleFilter1App 
+    , testReq "DELETE /"        $ assertPlain200 "DELETE ANY" multipleFilter1App
     , testReq "PUT /"           $ assert404 multipleFilter1App
     ]
 
@@ -360,6 +361,48 @@ issue17Test = testGroup "issue17" $ map ($ issue17App)
 
 --------------------------------------------------------------------------------
 
+limit :: Word64
+limit = 1024
+
+largeReq :: WT.SRequest
+largeReq = WT.SRequest
+    Wai.defaultRequest
+        { Wai.requestBodyLength = Wai.KnownLength (limit + 1)
+        , Wai.requestMethod = HTTP.methodPut
+        }
+    "some request body"
+
+largeReq' :: WT.SRequest
+largeReq' = WT.SRequest
+    Wai.defaultRequest
+        { Wai.requestBodyLength = Wai.ChunkedBody
+        , Wai.requestMethod = HTTP.methodPost
+        }
+    (L.replicate (fromIntegral (limit + 1)) 'a')
+
+assertLargeReq413 :: Application -> WT.SRequest -> IO ()
+assertLargeReq413 app req = flip WT.runSession app $ do
+    respond <- WT.srequest req
+    WT.assertStatus 413 respond
+
+tooLargeReqTestApp :: Application
+tooLargeReqTestApp = runIdentity . runApiary return (def {maxRequestSize = limit}) $ do
+    root $ do
+        method PUT  . action $ do
+            b <- getReqBody
+            b `seq` bytes "Test"
+        method POST . action $ do
+            b <- getReqBody
+            b `seq` bytes "Test"
+
+tooLargeReqTest :: TestTree
+tooLargeReqTest = testGroup "large request body"
+    [ testCase "Large request" $ assertLargeReq413 tooLargeReqTestApp largeReq
+    , testCase "Large request" $ assertLargeReq413 tooLargeReqTestApp largeReq'
+    ]
+
+--------------------------------------------------------------------------------
+
 test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
@@ -373,5 +416,6 @@ test = testGroup "Application"
     , acceptTest
     , multipleFilter1Test
     , issue17Test
+    , tooLargeReqTest
     ]
 

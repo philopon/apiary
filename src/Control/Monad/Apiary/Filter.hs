@@ -47,7 +47,7 @@ import Control.Monad(mzero)
 import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
-    ( getQueryParams, getRequestBody
+    ( getQueryParams, getReqBodyInternal
     , getRequest, ContentType, contentType
     , getConfig, ApiaryConfig(..)
     )
@@ -145,7 +145,7 @@ query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, K
       => query k -> strategy v -> Filter exts actM m prms (SNext strategy k v prms)
 query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
     qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
+    (ps,fs) <- getReqBodyInternal
     let as = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams (Proxy :: Proxy v) qs ps fs
     case strategy w k as d of
         Nothing -> mzero
@@ -218,7 +218,7 @@ switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
             => proxy k -> Filter exts actM m prms (k ':= Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
     qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
+    (ps,fs) <- getReqBodyInternal
     let n = maybe False id . fmap (maybe True id) . lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy Bool) qs ps fs
     return (Dict.add k n d, t)
   where
