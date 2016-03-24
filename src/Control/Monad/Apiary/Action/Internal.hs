@@ -111,8 +111,8 @@ import Control.Monad.Trans.Control
     (MonadTransControl(..), MonadBaseControl(..)
     , ComposeSt
     , defaultLiftBaseWith, defaultRestoreM)
-import Control.Exception (try)
-import Control.Monad.Trans.Resource (runResourceT, withInternalState)
+import Control.Exception (try, onException)
+import Control.Monad.Trans.Resource (createInternalState, closeInternalState)
 
 import Network.Mime(defaultMimeLookup)
 import Network.HTTP.Date(parseHTTPDate, epochTimeToHTTPDate, formatHTTPDate)
@@ -156,6 +156,8 @@ data ApiaryConfig = ApiaryConfig
     , maxRequestSize      :: Word64
       -- | where to store upload file.
       -- default to 'Nothing', which saves file content in memory.
+      -- NOTE. once you set this value to some path,
+      -- it's your responsibility to clean uploaded files. eg. move or remove it.
     , uploadFilePath      :: Maybe FilePath
       -- | used by 'Control.Monad.Apiary.Filter.root' filter.
     , rootPattern         :: [T.Text]
@@ -467,6 +469,7 @@ params = QuasiQuoter
     , quoteDec  = error "params QQ is defined only exp."
     }
 
+-- | only get parameters in query string.
 getQueryParams :: Monad m => ActionT exts prms m HTTP.Query
 getQueryParams = Wai.queryString <$> getRequest
 
@@ -484,7 +487,7 @@ getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
 
         b <- liftIO $ try(
             case P.getRequestBodyType req of
-                Nothing              -> sinkRaw rbody
+                Nothing                  -> sinkRaw rbody
                 Just typ@P.UrlEncoded    -> sinkUrlEncoded typ rbody
                 Just typ@(P.Multipart _) ->
                     case uploadFilePath config of
@@ -518,11 +521,14 @@ getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
                 ) f
         return (Multipart p f')
 
-    sinkMultipartToDisk path typ rbody = runResourceT . withInternalState $ \ internalState -> do
-        (p, f) <- P.sinkRequestBody
-            (P.tempFileBackEndOpts (return path) "apiaryUpload" internalState)
-            typ
-            rbody
+    sinkMultipartToDisk path typ rbody = do
+        internalState <- createInternalState
+        (p, f) <-
+            P.sinkRequestBody
+                (P.tempFileBackEndOpts (return path) "apiaryUpload" internalState)
+                typ
+                rbody
+            `onException` closeInternalState internalState
         let f' = map (\ (pn, P.FileInfo{..})
                     -> File pn fileName fileContentType (Right fileContent)
                 ) f

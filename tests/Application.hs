@@ -19,6 +19,7 @@ import Network.Wai(Request)
 import qualified Network.Wai.Test as WT
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
+import System.Directory (removeFile)
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString.Char8 as S
@@ -403,6 +404,50 @@ tooLargeReqTest = testGroup "large request body"
 
 --------------------------------------------------------------------------------
 
+dalvikRequest :: IO WT.SRequest
+dalvikRequest = do
+    bs <- L.readFile "./tests/dalvik-request"
+    return $ WT.SRequest
+        Wai.defaultRequest
+            {
+              Wai.requestBodyLength = Wai.ChunkedBody
+            , Wai.requestMethod = HTTP.methodPost
+            , Wai.requestHeaders = [("Content-Type", "multipart/form-data; boundary=*****")]
+            }
+        bs
+
+multiPartTestApp :: Application
+multiPartTestApp = runIdentity . runApiary return def $ do
+    root $ do
+        method POST . action $ do
+            p <- getReqBodyParams
+            f <- getReqBodyFiles
+            guard (not . null $ p)
+            guard (not . null $ f)
+            case fileContent (head f) of
+                Left lbs -> bytes "lbs file"
+
+multiPartTestApp' :: Application
+multiPartTestApp' = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . action $ do
+            p <- getReqBodyParams
+            f <- getReqBodyFiles
+            guard (not . null $ p)
+            guard (not . null $ f)
+            case fileContent (head f) of
+                Right path -> do
+                    liftIO $ removeFile path
+                    bytes "disk file"
+
+multiPartTest :: TestTree
+multiPartTest = testGroup "multipart request body"
+    [ testCase "multipart test" $ assertSRequest 200 Nothing "lbs file" multiPartTestApp =<< dalvikRequest
+    , testCase "multipart test" $ assertSRequest 200 Nothing "disk file" multiPartTestApp' =<< dalvikRequest
+    ]
+
+--------------------------------------------------------------------------------
+
 test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
@@ -417,5 +462,6 @@ test = testGroup "Application"
     , multipleFilter1Test
     , issue17Test
     , tooLargeReqTest
+    , multiPartTest
     ]
 
