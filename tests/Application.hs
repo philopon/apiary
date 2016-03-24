@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
@@ -24,6 +25,8 @@ import System.Directory (removeFile)
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString.Char8 as S
 import Data.Word (Word64)
+import qualified Data.Aeson as JSON
+import qualified Data.Aeson.TH as JSON
 
 testReq :: String -> (Request -> IO ()) -> TestTree
 testReq str f =
@@ -90,7 +93,7 @@ methodFilterApp = runApp $ do
     method POST  . action $ contentType "text/plain" >> bytes "POST"
 
 methodFilterTest :: TestTree
-methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
+methodFilterTest = testGroup "methodFilter" $ map ($ methodFilterApp)
     [ testReq "GET /"    . assertPlain200 "GET"
     , testReq "POST /"   . assertPlain200 "POST"
     , testReq "GET /foo" . assert404
@@ -448,6 +451,37 @@ multiPartTest = testGroup "multipart request body"
 
 --------------------------------------------------------------------------------
 
+data Foo = Foo {foo :: Int} deriving Show
+
+$(JSON.deriveJSON JSON.defaultOptions ''Foo)
+
+jsonRequest :: WT.SRequest
+jsonRequest = WT.SRequest
+        Wai.defaultRequest { Wai.requestMethod = HTTP.methodPost }
+        "{\"foo\": 123}"
+
+jsonReqTestApp :: Application
+jsonReqTestApp = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . (jsonReqBody [key|foo|]) . action $ do
+            f <- param [key|foo|]
+            showing $ foo f
+
+jsonReqTestApp' :: Application
+jsonReqTestApp' = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . (jsonReqBody [key|foo|]) . action $ do
+            f <- param [key|foo|]
+            showing $ (f :: Int)
+
+jsonReqBodyTest :: TestTree
+jsonReqBodyTest = testGroup "json request body filter"
+    [ testCase "json request body test" $ assertSRequest 200 Nothing "123" jsonReqTestApp jsonRequest
+    , testCase "json request body test" $ assertSRequest 404 (Just "text/plain") "404 Page Notfound.\n" jsonReqTestApp' jsonRequest
+    ]
+
+--------------------------------------------------------------------------------
+
 test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
@@ -463,5 +497,6 @@ test = testGroup "Application"
     , issue17Test
     , tooLargeReqTest
     , multiPartTest
+    , jsonReqBodyTest
     ]
 

@@ -554,6 +554,8 @@ getReqBodyFiles = getReqBody >>= return . \case
     _               -> []
 
 -- | parse request body and try parse it as JSON.
+-- it's recommended to use @"jsonReqBody"@ filter to leverage
+-- type level routing instead of 'getReqBodyJSON'.
 getReqBodyJSON :: (MonadIO m, FromJSON a) => ActionT exts prms m (Maybe a)
 getReqBodyJSON = getReqBody >>= return . \case
     Unknown lbs     -> JSON.decode' lbs

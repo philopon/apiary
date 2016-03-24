@@ -24,6 +24,7 @@ module Control.Monad.Apiary.Filter (
     -- * header matcher
     , eqHeader
     , header
+    , jsonReqBody
     , accept
 
     -- * other
@@ -48,7 +49,7 @@ import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
     ( getQueryParams, getReqBodyInternal
-    , getRequest, ContentType, contentType
+    , getRequest, getReqBodyJSON, ContentType, contentType
     , getConfig, ApiaryConfig(..)
     )
 
@@ -78,6 +79,7 @@ import Data.Apiary.Param
     , pFirst, pOne, pOption, pOptional, pMany, pSome
     )
 import Data.Apiary.Method(Method)
+import Data.Aeson (FromJSON)
 
 -- | filter by HTTP method. since 0.1.0.0.
 --
@@ -243,6 +245,15 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
     if v == v' then return (d,t) else mzero
   where
     doc = DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)
+
+-- | filter by JSON typed body.
+jsonReqBody :: (KnownSymbol k, MonadIO actM, k </ prms, FromJSON a)
+       => proxy k -> Filter exts actM m prms (k ':= a ': prms)
+jsonReqBody k = focus doc Nothing $ R.raw "json body" $ \d t -> do
+    n <- maybe mzero return =<< getReqBodyJSON
+    return (Dict.add k n d, t)
+  where
+    doc = DocPrecondition $ "json body: " <> toHtml (symbolVal k)
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> Filter' exts actM m
