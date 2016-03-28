@@ -20,7 +20,7 @@ library
   exposed-modules:     Web.Apiary.PureScript
   other-modules:       Web.Apiary.PureScript.Internal
   build-depends:       base                 >=4.6   && <4.9
-                     , apiary               >=1.4   && <1.5
+                     , apiary               >=1.4   && <3.0
                      , purescript           >=0.6.8 && <0.7
                      , transformers         >=0.3   && <0.5
 

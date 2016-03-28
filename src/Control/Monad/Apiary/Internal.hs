@@ -144,7 +144,7 @@ runApiary :: Monad m
           -> m a
 runApiary run = runApiaryWith run noExtension
 
--- | get 'Application' from Apiary monad.
+-- | get 'Application' from Apiary monad. since 2.0.0.
 getApiaryTWith :: (Monad actM, Monad m)
                => (forall b. actM b -> IO b)
                -> Initializer m '[] exts

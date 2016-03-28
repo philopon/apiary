@@ -47,7 +47,7 @@ module Control.Monad.Apiary.Action
     , getParams
     , getQueryParams
 
-    , RequestBody(..), getReqBody
+    , ActionReqBody(..), getReqBody
     , getReqBodyParams
     , getReqBodyFiles
     -- ** setter
