@@ -23,7 +23,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Web.Apiary.Session.ClientSession
   build-depends:       base               >=4.6   && <4.9
-                     , apiary             >=1.2   && <1.5
+                     , apiary             >=1.2   && <3.0
                      , apiary-cookie      >=1.2   && <1.5
                      , apiary-session     >=1.2   && <1.5
 
