@@ -246,7 +246,7 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
   where
     doc = DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)
 
--- | filter by JSON typed body.
+-- | filter by JSON typed body. since 2.0.0.
 jsonReqBody :: (KnownSymbol k, MonadIO actM, k </ prms, FromJSON a)
        => proxy k -> Filter exts actM m prms (k ':= a ': prms)
 jsonReqBody k = focus doc Nothing $ R.raw "json body" $ \d t -> do

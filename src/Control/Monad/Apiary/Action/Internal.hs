@@ -155,6 +155,7 @@ data ApiaryConfig = ApiaryConfig
       -- | maximum request size.
     , maxRequestSize      :: Word64
       -- | where to store upload file.
+      --
       -- default to 'Nothing', which saves file content in memory.
       -- NOTE. once you set this value to some path,
       -- it's your responsibility to clean uploaded files. eg. move or remove it.
@@ -485,7 +486,7 @@ getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
             config = actionConfig e
             rbody = Wai.requestBody =<< requestSizeCheck (maxRequestSize config) req
 
-        b <- liftIO $ try(
+        b <- liftIO $ try (
             case P.getRequestBodyType req of
                 Nothing                  -> sinkRaw rbody
                 Just typ@P.UrlEncoded    -> sinkUrlEncoded typ rbody
@@ -499,6 +500,9 @@ getReqBody = ActionT $ \_ e s c -> case actionReqBody s of
                 return $ Stop $ Wai.responseLBS HTTP.status413 [] $ B.toLazyByteString $
                     "Request body is too large(limit is "
                         `mappend` B.fromString (show limit) `mappend` " bytes)"
+            Left _   ->
+                return $ Stop $ Wai.responseLBS HTTP.status400 [] $ "Bad Request"
+
             Right b' ->
                 c b' s { actionReqBody = Just b' }
   where
@@ -554,8 +558,9 @@ getReqBodyFiles = getReqBody >>= return . \case
     _               -> []
 
 -- | parse request body and try parse it as JSON.
--- it's recommended to use @"jsonReqBody"@ filter to leverage
--- type level routing instead of 'getReqBodyJSON'.
+--
+-- it's recommended to use 'Control.Monad.Apiary.Filter.jsonReqBody' filter
+-- to leverage type level routing instead of 'getReqBodyJSON'. since 2.0.0.
 getReqBodyJSON :: (MonadIO m, FromJSON a) => ActionT exts prms m (Maybe a)
 getReqBodyJSON = getReqBody >>= return . \case
     Unknown lbs     -> JSON.decode' lbs
