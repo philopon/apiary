@@ -1,3 +1,10 @@
+# 2.0.0
+* add methods to get application from Apiary monad stack.
+* add Control.Monad.Apiary.Action.application to mount a wai application at certain route.
+* rewrite getReqBody to allow file upload with temp file backend, check out ApiaryConfig and Data.Param.File.
+* guard against large request body.
+* add Control.Monad.Filter.jsonReqBody to do type level route based on request body's JSON type.
+
 # 1.4.5
 * fix: MonadPlus lows of ApiaryT Monad
 

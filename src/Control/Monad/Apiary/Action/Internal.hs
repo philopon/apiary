@@ -152,9 +152,9 @@ data ApiaryConfig = ApiaryConfig
     , defaultContentType  :: S.ByteString
     , failStatus          :: HTTP.Status
     , failHeaders         :: HTTP.ResponseHeaders
-      -- | maximum request size.
+      -- | maximum request size, default to 5MB. since 2.0.0.
     , maxRequestSize      :: Word64
-      -- | where to store upload file.
+      -- | where to store upload file. since 2.0.0.
       --
       -- default to 'Nothing', which saves file content in memory.
       -- NOTE. once you set this value to some path,
@@ -303,7 +303,7 @@ actionT f = ActionT $ \dict env !st cont -> f dict env st >>= \case
     App a           -> return $ App a
 {-# INLINE actionT #-}
 
--- | stop and proxy current request to a 'Wai.Application'
+-- | stop and proxy current request to a 'Wai.Application', since 2.0.0.
 application :: Monad m
         => Wai.Application
         -> ActionT exts prms m a
