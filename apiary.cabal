@@ -1,5 +1,5 @@
 name:                apiary
-version:             2.0.1
+version:             2.0.1.1
 synopsis:            Simple and type safe web framework that generate web API documentation.
 description:
   Simple and type safe web framework that can be automatically generate API documentation.
@@ -60,6 +60,7 @@ extra-source-files:  static/api-documentation.min.js
                    , static/jquery-2.1.1.min.js
                    , static/bootstrap.min.css
                    , static/bootstrap.min.js
+                   , tests/dalvik-request
                    , CHANGELOG.md
 cabal-version:       >=1.10
 
