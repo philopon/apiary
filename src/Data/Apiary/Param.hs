@@ -102,6 +102,9 @@ data File
           fileParameter   :: S.ByteString
         , fileName        :: S.ByteString
         , fileContentType :: S.ByteString
+        -- | check out 'Control.Monad.Apiary.uploadFilePath'. since 2.0.0
+        --
+        -- a Left value store file in memmory, a Right value contain 'FilePath' of uploaded file.
         , fileContent     :: Either L.ByteString FilePath
         }
     deriving (Show, Eq, Typeable)

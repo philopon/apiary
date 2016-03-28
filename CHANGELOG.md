@@ -1,3 +1,7 @@
+# 2.0.1
+* document Data.Param.File
+* expose Control.Monad.Apiary.Action.getReqBodyJSON
+
 # 2.0.0
 * add methods to get application from Apiary monad stack.
 * add Control.Monad.Apiary.Action.application to mount a wai application at certain route.

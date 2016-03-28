@@ -50,6 +50,7 @@ module Control.Monad.Apiary.Action
     , ActionReqBody(..), getReqBody
     , getReqBodyParams
     , getReqBodyFiles
+    , getReqBodyJSON
     -- ** setter
     , devFile
     , devFile'
