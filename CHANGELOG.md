@@ -1,5 +1,5 @@
 # 2.0.2
-* add json to send ToJson instances with auto 'application/json' type.
+* add json to send ToJson instances with auto 'application/json' content type.
 
 # 2.0.1
 * document Data.Param.File
