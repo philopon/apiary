@@ -97,12 +97,17 @@ data Text deriving Typeable
 
 type Param = (S.ByteString, S.ByteString)
 
-data File = File
-    { fileParameter   :: S.ByteString
-    , fileName        :: S.ByteString
-    , fileContentType :: S.ByteString
-    , fileContent     :: L.ByteString
-    } deriving (Show, Eq, Typeable)
+data File
+    = File {
+          fileParameter   :: S.ByteString
+        , fileName        :: S.ByteString
+        , fileContentType :: S.ByteString
+        -- | check out 'Control.Monad.Apiary.uploadFilePath'. since 2.0.0
+        --
+        -- a Left value store file in memmory, a Right value contain 'FilePath' of uploaded file.
+        , fileContent     :: Either L.ByteString FilePath
+        }
+    deriving (Show, Eq, Typeable)
 
 data QueryRep
     = Strict   TypeRep -- ^ require value
@@ -223,11 +228,11 @@ instance Query TL.Text where
     readQuery  = fmap (TL.decodeUtf8With lenientDecode . L.fromStrict)
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
-instance Query S.ByteString where 
+instance Query S.ByteString where
     readQuery  = id
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 
-instance Query L.ByteString where 
+instance Query L.ByteString where
     readQuery  = fmap L.fromStrict
     qTypeRep _ = typeRep (Proxy :: Proxy Text)
 

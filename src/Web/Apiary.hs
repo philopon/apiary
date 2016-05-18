@@ -82,6 +82,7 @@ import Control.Monad.Apiary.Filter
     , switchQuery
     , eqHeader
     , header
+    , jsonReqBody
     , accept
     , ssl
     )

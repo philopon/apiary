@@ -20,7 +20,7 @@ library
                        Web.Apiary.Session.Internal
   other-modules:       
   build-depends:       base               >=4.6   && <4.9
-                     , apiary             >=1.4   && <1.5
+                     , apiary             >=1.4   && <3.0
                      , wai                >=3.0   && <3.3
                      , web-routing
                      , types-compat

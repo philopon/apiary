@@ -24,6 +24,7 @@ module Control.Monad.Apiary.Filter (
     -- * header matcher
     , eqHeader
     , header
+    , jsonReqBody
     , accept
 
     -- * other
@@ -47,8 +48,8 @@ import Control.Monad(mzero)
 import Control.Monad.Trans(MonadIO)
 
 import Control.Monad.Apiary.Action.Internal
-    ( getQueryParams, getRequestBody
-    , getRequest, ContentType, contentType
+    ( getQueryParams, getReqBodyInternal
+    , getRequest, getReqBodyJSON, ContentType, contentType
     , getConfig, ApiaryConfig(..)
     )
 
@@ -78,6 +79,7 @@ import Data.Apiary.Param
     , pFirst, pOne, pOption, pOptional, pMany, pSome
     )
 import Data.Apiary.Method(Method)
+import Data.Aeson (FromJSON)
 
 -- | filter by HTTP method. since 0.1.0.0.
 --
@@ -145,7 +147,7 @@ query :: forall query strategy k v exts prms actM m. (k </ prms, MonadIO actM, K
       => query k -> strategy v -> Filter exts actM m prms (SNext strategy k v prms)
 query k w = focus doc Nothing $ R.raw "query" $ \d t -> do
     qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
+    (ps,fs) <- getReqBodyInternal
     let as = map snd . filter ((SC.pack (symbolVal k) ==) . fst) $ reqParams (Proxy :: Proxy v) qs ps fs
     case strategy w k as d of
         Nothing -> mzero
@@ -218,7 +220,7 @@ switchQuery :: (HasDesc proxy, MonadIO actM, KnownSymbol k, k </ prms)
             => proxy k -> Filter exts actM m prms (k ':= Bool ': prms)
 switchQuery k = focus doc Nothing $ R.raw "switch" $ \d t -> do
     qs      <- getQueryParams
-    (ps,fs) <- getRequestBody
+    (ps,fs) <- getReqBodyInternal
     let n = maybe False id . fmap (maybe True id) . lookup (SC.pack $ symbolVal k) $ reqParams (Proxy :: Proxy Bool) qs ps fs
     return (Dict.add k n d, t)
   where
@@ -243,6 +245,15 @@ eqHeader k v = focus doc Nothing $ R.raw "=header" $ \d t -> do
     if v == v' then return (d,t) else mzero
   where
     doc = DocPrecondition $ "header: " <> toHtml (symbolVal k) <> " = " <> toHtml (show v)
+
+-- | filter by JSON typed body. since 2.0.0.
+jsonReqBody :: (KnownSymbol k, MonadIO actM, k </ prms, FromJSON a)
+       => proxy k -> Filter exts actM m prms (k ':= a ': prms)
+jsonReqBody k = focus doc Nothing $ R.raw "json body" $ \d t -> do
+    n <- maybe mzero return =<< getReqBodyJSON
+    return (Dict.add k n d, t)
+  where
+    doc = DocPrecondition $ "json body: " <> toHtml (symbolVal k)
 
 -- | require Accept header and set response Content-Type. since 0.16.0.
 accept :: Monad actM => ContentType -> Filter' exts actM m

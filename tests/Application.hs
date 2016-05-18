@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 
@@ -19,12 +20,16 @@ import Network.Wai(Request)
 import qualified Network.Wai.Test as WT
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
+import System.Directory (removeFile)
 
 import qualified Data.ByteString.Lazy.Char8 as L
 import qualified Data.ByteString.Char8 as S
+import Data.Word (Word64)
+import qualified Data.Aeson as JSON
+import qualified Data.Aeson.TH as JSON
 
 testReq :: String -> (Request -> IO ()) -> TestTree
-testReq str f = 
+testReq str f =
     let (meth, other) = break (== ' ') str
         (p,  version) = break (== ' ') (tail other)
     in testCase str $ f (WT.setPath (setVersion version $ (WT.defaultRequest { Wai.requestMethod = S.pack meth })) (S.pack p))
@@ -88,7 +93,7 @@ methodFilterApp = runApp $ do
     method POST  . action $ contentType "text/plain" >> bytes "POST"
 
 methodFilterTest :: TestTree
-methodFilterTest = testGroup "methodFilter" $ map ($methodFilterApp)
+methodFilterTest = testGroup "methodFilter" $ map ($ methodFilterApp)
     [ testReq "GET /"    . assertPlain200 "GET"
     , testReq "POST /"   . assertPlain200 "POST"
     , testReq "GET /foo" . assert404
@@ -330,7 +335,7 @@ multipleFilter1Test :: TestTree
 multipleFilter1Test = testGroup "multiple test1: root, method"
     [ testReq "GET /index.html" $ assertPlain200 "GET /"      multipleFilter1App
     , testReq "POST /"          $ assertHtml200 "POST /"      multipleFilter1App
-    , testReq "DELETE /"        $ assertPlain200 "DELETE ANY" multipleFilter1App 
+    , testReq "DELETE /"        $ assertPlain200 "DELETE ANY" multipleFilter1App
     , testReq "PUT /"           $ assert404 multipleFilter1App
     ]
 
@@ -360,6 +365,123 @@ issue17Test = testGroup "issue17" $ map ($ issue17App)
 
 --------------------------------------------------------------------------------
 
+limit :: Word64
+limit = 1024
+
+largeReq :: WT.SRequest
+largeReq = WT.SRequest
+    Wai.defaultRequest
+        { Wai.requestBodyLength = Wai.KnownLength (limit + 1)
+        , Wai.requestMethod = HTTP.methodPut
+        }
+    "some request body"
+
+largeReq' :: WT.SRequest
+largeReq' = WT.SRequest
+    Wai.defaultRequest
+        { Wai.requestBodyLength = Wai.ChunkedBody
+        , Wai.requestMethod = HTTP.methodPost
+        }
+    (L.replicate (fromIntegral (limit + 1)) 'a')
+
+assertLargeReq413 :: Application -> WT.SRequest -> IO ()
+assertLargeReq413 app req = flip WT.runSession app $ do
+    respond <- WT.srequest req
+    WT.assertStatus 413 respond
+
+tooLargeReqTestApp :: Application
+tooLargeReqTestApp = runIdentity . runApiary return (def {maxRequestSize = limit}) $ do
+    root $ do
+        method PUT  . action $ do
+            b <- getReqBody
+            b `seq` bytes "Test"
+        method POST . action $ do
+            b <- getReqBody
+            b `seq` bytes "Test"
+
+tooLargeReqTest :: TestTree
+tooLargeReqTest = testGroup "large request body"
+    [ testCase "Large request" $ assertLargeReq413 tooLargeReqTestApp largeReq
+    , testCase "Large request" $ assertLargeReq413 tooLargeReqTestApp largeReq'
+    ]
+
+--------------------------------------------------------------------------------
+
+dalvikRequest :: IO WT.SRequest
+dalvikRequest = do
+    bs <- L.readFile "./tests/dalvik-request"
+    return $ WT.SRequest
+        Wai.defaultRequest
+            {
+              Wai.requestBodyLength = Wai.ChunkedBody
+            , Wai.requestMethod = HTTP.methodPost
+            , Wai.requestHeaders = [("Content-Type", "multipart/form-data; boundary=*****")]
+            }
+        bs
+
+multiPartTestApp :: Application
+multiPartTestApp = runIdentity . runApiary return def $ do
+    root $ do
+        method POST . action $ do
+            p <- getReqBodyParams
+            f <- getReqBodyFiles
+            guard (not . null $ p)
+            guard (not . null $ f)
+            case fileContent (head f) of
+                Left lbs -> bytes "lbs file"
+
+multiPartTestApp' :: Application
+multiPartTestApp' = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . action $ do
+            p <- getReqBodyParams
+            f <- getReqBodyFiles
+            guard (not . null $ p)
+            guard (not . null $ f)
+            case fileContent (head f) of
+                Right path -> do
+                    liftIO $ removeFile path
+                    bytes "disk file"
+
+multiPartTest :: TestTree
+multiPartTest = testGroup "multipart request body"
+    [ testCase "multipart test" $ assertSRequest 200 Nothing "lbs file" multiPartTestApp =<< dalvikRequest
+    , testCase "multipart test" $ assertSRequest 200 Nothing "disk file" multiPartTestApp' =<< dalvikRequest
+    ]
+
+--------------------------------------------------------------------------------
+
+data Foo = Foo {foo :: Int} deriving Show
+
+$(JSON.deriveJSON JSON.defaultOptions ''Foo)
+
+jsonRequest :: WT.SRequest
+jsonRequest = WT.SRequest
+        Wai.defaultRequest { Wai.requestMethod = HTTP.methodPost }
+        "{\"foo\": 123}"
+
+jsonReqTestApp :: Application
+jsonReqTestApp = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . (jsonReqBody [key|foo|]) . action $ do
+            f <- param [key|foo|]
+            showing $ foo f
+
+jsonReqTestApp' :: Application
+jsonReqTestApp' = runIdentity . runApiary return (def {uploadFilePath = Just "./"}) $ do
+    root $ do
+        method POST . (jsonReqBody [key|foo|]) . action $ do
+            f <- param [key|foo|]
+            showing $ (f :: Int)
+
+jsonReqBodyTest :: TestTree
+jsonReqBodyTest = testGroup "json request body filter"
+    [ testCase "json request body test" $ assertSRequest 200 Nothing "123" jsonReqTestApp jsonRequest
+    , testCase "json request body test" $ assertSRequest 404 (Just "text/plain") "404 Page Notfound.\n" jsonReqTestApp' jsonRequest
+    ]
+
+--------------------------------------------------------------------------------
+
 test :: TestTree
 test = testGroup "Application"
     [ helloWorldAllTest
@@ -373,5 +495,8 @@ test = testGroup "Application"
     , acceptTest
     , multipleFilter1Test
     , issue17Test
+    , tooLargeReqTest
+    , multiPartTest
+    , jsonReqBodyTest
     ]
 
