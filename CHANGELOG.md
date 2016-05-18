@@ -1,3 +1,6 @@
+# 2.0.2
+* add json to send ToJson instances with auto 'application/json' type.
+
 # 2.0.1
 * document Data.Param.File
 * expose Control.Monad.Apiary.Action.getReqBodyJSON
