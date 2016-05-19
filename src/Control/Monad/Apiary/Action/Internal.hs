@@ -34,6 +34,7 @@ module Control.Monad.Apiary.Action.Internal
     , bytes, lazyBytes
     , text,  lazyText
     , showing
+    , json
     , string, char
     , appendBuilder
     , appendBytes, appendLazyBytes
@@ -139,7 +140,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Vault.Lazy as V
 import Data.Word (Word64)
-import Data.Aeson (FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.Aeson as JSON
 
 data ApiaryConfig = ApiaryConfig
@@ -764,6 +765,12 @@ lazyText = builder . B.fromLazyText
 -- | set response body from show. encoding UTF-8. since 0.15.2.
 showing :: (Monad m, Show a) => a -> ActionT exts prms m ()
 showing = builder . B.fromShow
+
+-- | set response body from 'ToJSON' with content-type set to @application/json@. since 2.0.2
+json :: (Monad m, ToJSON a) => a -> ActionT exts prms m ()
+json x = do
+    contentType "application/json"
+    lazyBytes (JSON.encode x)
 
 -- | set response body from string. encoding UTF-8. since 0.15.2.
 string :: Monad m => String -> ActionT exts prms m ()

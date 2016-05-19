@@ -60,6 +60,7 @@ import Control.Monad.Apiary.Action
     , bytes, lazyBytes
     , text,  lazyText
     , showing
+    , json
     , string, char
     , appendBuilder
     , appendBytes, appendLazyBytes
